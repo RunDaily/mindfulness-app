@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">心锚</string>
+    <string name="app_description">有意识地使用手机</string>
+
+    <!-- 权限引导 -->
+    <string name="permission_overlay_title">悬浮窗权限</string>
+    <string name="permission_overlay_desc">用于在使用 App 时显示提醒浮窗和计时胶囊</string>
+    <string name="permission_usage_title">使用情况访问权限</string>
+    <string name="permission_usage_desc">用于检测当前正在使用哪个 App，这是核心功能所必需的</string>
+    <string name="permission_battery_title">忽略电池优化（推荐）</string>
+    <string name="permission_battery_desc">防止系统在后台杀掉监控服务，确保提醒功能正常工作</string>
+    <string name="permission_grant">去开启</string>
+    <string name="permission_granted">已开启 ✓</string>
+    <string name="permission_skip">暂时跳过</string>
+
+    <!-- 通用 -->
+    <string name="confirm">确定</string>
+    <string name="cancel">取消</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+    <string name="back">返回</string>
+    <string name="minutes_unit">分钟</string>
+    <string name="hours_unit">小时</string>
+    <string name="daily_limit">每日限制</string>
+    <string name="weekly_limit">每周限制</string>
+    <string name="no_limit">不限制</string>
+
+    <!-- 导航 -->
+    <string name="nav_home">主页</string>
+    <string name="nav_apps">应用</string>
+    <string name="nav_stats">组件</string>
+    <string name="nav_settings">设置</string>
+</resources>

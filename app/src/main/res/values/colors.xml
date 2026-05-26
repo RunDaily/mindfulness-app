@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ── Logo 核心主色：翠绿系 ──────────────────────────── -->
+    <color name="logo_green_light">#7AF0A5</color>   <!-- Logo 最亮绿 -->
+    <color name="logo_green_mid">#4DD880</color>     <!-- Logo 中间绿 -->
+    <color name="logo_green_deep">#28B85E</color>    <!-- Logo 深绿 -->
+
+    <!-- ── 主色（浅色模式）──────────────────────────────── -->
+    <color name="primary">#1FA855</color>             <!-- Logo绿主用色 -->
+    <color name="primary_dark">#157A3E</color>        <!-- 深按压态 -->
+    <color name="primary_light">#4DD880</color>       <!-- Logo中间绿高亮 -->
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- ── 浅色模式背景层 ──────────────────────────────── -->
+    <color name="background">#F2F5F2</color>          <!-- 极淡绿灰 -->
+    <color name="surface">#FBFCFB</color>             <!-- 近白卡片 -->
+    <color name="surface_variant">#E4F0EA</color>     <!-- 柔和绿色卡片背景 -->
+
+    <!-- ── 深色模式背景层（与 Logo 黑底呼应）──────────── -->
+    <color name="background_dark">#111814</color>     <!-- 近黑绿调 -->
+    <color name="surface_dark">#1A2620</color>        <!-- 深色卡片 -->
+    <color name="surface_variant_dark">#223029</color>
+
+    <!-- ── 状态色 ──────────────────────────────────────── -->
+    <color name="warning">#E8941A</color>             <!-- 深橘 -->
+    <color name="danger">#CF5252</color>              <!-- 砖红 -->
+    <color name="success">#1FA855</color>             <!-- 与主色统一 -->
+
+    <!-- ── 文字 ───────────────────────────────────────── -->
+    <color name="text_primary">#1A2E1C</color>        <!-- 近黑深绿 -->
+    <color name="text_secondary">#4D6B54</color>      <!-- 次文字 -->
+    <color name="text_hint">#8BA08E</color>           <!-- 提示文字 -->
+</resources>
