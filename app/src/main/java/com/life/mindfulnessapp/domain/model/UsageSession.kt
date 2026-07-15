@@ -20,7 +20,14 @@ data class UsageSession(
     val accumulatedActiveSeconds: Long = 0L,  // 本次会话中前台段累计秒数（不含当前段）
     val purpose: String? = null,
     val isInBackground: Boolean = false,
-    val backgroundSinceMs: Long = 0L
+    val backgroundSinceMs: Long = 0L,
+    /**
+     * 是否为「超限续记」会话。
+     * 用户在超限页点击「知道了」后，若 App 仍在前台，系统会自动开启此类 session 继续计时，
+     * 以确保超出限额后的实际使用时长也被完整记录。
+     * 处于此状态的 session 不再触发超限提示页（避免反复弹出）。
+     */
+    val isOverLimitSession: Boolean = false
 ) {
     /**
      * 本次会话的有效前台使用时长（秒）= 历史段 + 当前段（后台时不增长）

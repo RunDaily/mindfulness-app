@@ -1,6 +1,7 @@
 package com.life.mindfulnessapp.data.repository
 
 import com.life.mindfulnessapp.data.db.dao.AppTotalUsage
+import com.life.mindfulnessapp.data.db.dao.DailyUsageSummary
 import com.life.mindfulnessapp.data.db.dao.HourlyUsage
 import com.life.mindfulnessapp.data.db.dao.UsageRecordDao
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
@@ -22,6 +23,13 @@ class UsageRecordRepository @Inject constructor(
     /** 仅更新指定记录的备注，传入 null 表示清空备注 */
     suspend fun updateNote(id: Long, note: String?) = dao.updateNote(id, note)
 
+    /** 仅更新指定记录的效果评分 */
+    suspend fun updateEffectScore(id: Long, score: Int?) = dao.updateEffectScore(id, score)
+
+    /** 同时更新备注和效果评分（结束弹框提交时调用）*/
+    suspend fun updateNoteAndScore(id: Long, note: String?, score: Int?) =
+        dao.updateNoteAndScore(id, note, score)
+
     fun getRecentRecords(limit: Int = 50): Flow<List<UsageRecordEntity>> =
         dao.getRecentRecords(limit)
 
@@ -40,6 +48,10 @@ class UsageRecordRepository @Inject constructor(
         return dao.getDailyUsageSeconds(packageName, start, end)
     }
 
+    /** 获取某 App 在任意时间段内的总使用时长（秒），基于本地数据库记录 */
+    suspend fun getAppTotalSeconds(packageName: String, startMs: Long, endMs: Long): Long =
+        dao.getDailyUsageSeconds(packageName, startMs, endMs)
+
     suspend fun getWeeklyUsageSeconds(packageName: String, dateMs: Long = System.currentTimeMillis()): Long {
         val (start, end) = getWeekRange(dateMs)
         return dao.getWeeklyUsageSeconds(packageName, start, end)
@@ -51,9 +63,39 @@ class UsageRecordRepository @Inject constructor(
         dao.deleteOldRecords(thirtyDaysAgo)
     }
 
+    /** 清除全部本地使用记录（「清除本地数据」功能调用）*/
+    suspend fun deleteAllRecords() = dao.deleteAllRecords()
+
     /** 获取 sinceMs 之后的所有已完成记录（用于云端同步）*/
     suspend fun getAllCompletedRecordsSince(sinceMs: Long): List<UsageRecordEntity> =
         dao.getAllCompletedRecordsSince(sinceMs)
+
+    /**
+     * 获取某一天内指定 App 的所有已完成记录（按开始时间正序）。
+     * 用于详情页日历联动列表，显示选中日期的使用明细。
+     */
+    suspend fun getAppDayRecordsAsc(
+        packageName: String,
+        dayStartMs: Long,
+        dayEndMs: Long
+    ): List<UsageRecordEntity> = dao.getDayRecordsForAppAsc(packageName, dayStartMs, dayEndMs)
+
+    /**
+     * 获取指定 App 在某个月份范围内每天的本地记录总时长 Map，key="yyyy-MM-dd"。
+     * 用于日历组件展示本地规则统计时长（区别于系统 UsageStats 数据）。
+     *
+     * @param packageName App 包名
+     * @param monthStartMs 月份起始时间戳（毫秒）
+     * @param monthEndMs   月份结束时间戳（毫秒，不含）
+     */
+    suspend fun getMonthDbUsageMap(
+        packageName: String,
+        monthStartMs: Long,
+        monthEndMs: Long
+    ): Map<String, Long> {
+        return dao.getDailyUsageByRange(packageName, monthStartMs, monthEndMs)
+            .associate { it.dateKey to it.totalSeconds }
+    }
 
     // ── 深度洞察查询 ──────────────────────────────────────────────────────────
 
@@ -84,6 +126,15 @@ class UsageRecordRepository @Inject constructor(
     /** 全局（所有 App）在指定时段内的按小时使用分布 */
     suspend fun getGlobalHourlyDistribution(startMs: Long, endMs: Long): List<HourlyUsage> =
         dao.getGlobalHourlyDistribution(startMs, endMs)
+
+    /**
+     * 获取某天内「克制退出」的累计次数（今日第几次没进去）。
+     * 用于退出仪式弹窗展示「今日已守住 N 次」。
+     */
+    suspend fun getDayDismissCount(dateMs: Long = System.currentTimeMillis()): Int {
+        val (start, end) = getDayRange(dateMs)
+        return dao.getDayDismissCount(start, end)
+    }
 
     /**
      * 获取某一天内指定 App 的所有已完成记录（含 purpose），按开始时间倒序。

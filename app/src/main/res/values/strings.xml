@@ -28,6 +28,6 @@
     <!-- 导航 -->
     <string name="nav_home">主页</string>
     <string name="nav_apps">应用</string>
-    <string name="nav_stats">组件</string>
+    <string name="nav_stats">统计</string>
     <string name="nav_settings">设置</string>
 </resources>

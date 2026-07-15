@@ -31,6 +31,46 @@ class SystemUsageRepository @Inject constructor(
     // ── 公开 API ──────────────────────────────────────────────────────────────
 
     /**
+     * 获取今日全局屏幕使用总时长（秒）。
+     * 统计所有前台应用的累计使用时间，排除系统级 launcher/桌面包，
+     * 用于在拦截页展示「今日手机使用时长」。
+     */
+    suspend fun getTodayTotalScreenSeconds(): Long = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val (start, end) = UsageRecordRepository.getDayRange(now)
+        var totalMs = 0L
+        try {
+            val events = usageStatsManager.queryEvents(start, minOf(end, now))
+            val event = UsageEvents.Event()
+            // 记录每个 App 最近一次进入前台的时间
+            val fgStartMap = mutableMapOf<String, Long>()
+
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                when (event.eventType) {
+                    UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                        fgStartMap[event.packageName] = event.timeStamp.coerceAtLeast(start)
+                    }
+                    UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                        val fgStart = fgStartMap.remove(event.packageName)
+                        if (fgStart != null) {
+                            val fgEnd = event.timeStamp.coerceAtMost(minOf(end, now))
+                            totalMs += (fgEnd - fgStart).coerceAtLeast(0L)
+                        }
+                    }
+                }
+            }
+            // 仍在前台的 App（无 BACKGROUND 事件）：计算到 now
+            fgStartMap.values.forEach { fgStart ->
+                totalMs += (now - fgStart).coerceAtLeast(0L)
+            }
+        } catch (_: Exception) {
+            // 权限未授予时返回 0
+        }
+        totalMs / 1000L
+    }
+
+    /**
      * 获取指定 App 今日的系统实际使用时长（秒）。
      */
     suspend fun getTodayUsageSeconds(packageName: String): Long = withContext(Dispatchers.IO) {
@@ -229,6 +269,123 @@ class SystemUsageRepository @Inject constructor(
         result
     }
 
+    /**
+     * 获取指定月份（yyyy-MM）每日系统实际使用时长 Map，key="yyyy-MM-dd"。
+     *
+     * 数据来源策略：
+     * - 近 7 天内的天：queryEvents 精确计算
+     * - 7 天前的天：queryUsageStats(INTERVAL_DAILY) 聚合兜底
+     *
+     * @param packageName   App 包名
+     * @param monthKey      格式 "yyyy-MM"，例如 "2025-06"
+     * @param extraPastDays 在月份起点之前额外向前拉取的天数（默认 0）。
+     *                      用于日历展示监控日期前 N 天系统时长的场景（跨月也支持）。
+     */
+    suspend fun getMonthUsageMap(
+        packageName: String,
+        monthKey: String,
+        extraPastDays: Int = 0
+    ): Map<String, Long> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val dayMs = 24 * 60 * 60 * 1000L
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        val monthSdf = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.getDefault())
+        val result = mutableMapOf<String, Long>()
+
+        // 计算该月的起止时间
+        val monthCal = java.util.Calendar.getInstance().apply {
+            time = monthSdf.parse(monthKey)!!
+            set(java.util.Calendar.DAY_OF_MONTH, 1)
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val monthStart = monthCal.timeInMillis
+        // 实际查询起点：向前多扩展 extraPastDays 天
+        val queryStart = monthStart - extraPastDays * dayMs
+        monthCal.add(java.util.Calendar.MONTH, 1)
+        val monthEnd = minOf(monthCal.timeInMillis, now)  // 不超过当前时间
+
+        val (todayStart, _) = UsageRecordRepository.getDayRange(now)
+        val sevenDaysAgo = todayStart - 7 * dayMs
+
+        // ── 7 天前的部分：用 queryUsageStats(INTERVAL_DAILY) 批量拉取 ─────────
+        val oldEnd = minOf(sevenDaysAgo, monthEnd)
+        if (queryStart < oldEnd) {
+            try {
+                val stats = usageStatsManager.queryUsageStats(
+                    android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+                    queryStart,
+                    oldEnd
+                )
+                stats?.filter { it.packageName == packageName }?.forEach { stat ->
+                    val cal = java.util.Calendar.getInstance().apply { timeInMillis = stat.firstTimeStamp }
+                    val dateKey = sdf.format(cal.time)
+                    // 不再严格限制必须是本月，extraPastDays 扩展的跨月天数也正常收录
+                    result[dateKey] = (result[dateKey] ?: 0L) + stat.totalTimeInForeground / 1000L
+                }
+            } catch (_: Exception) {}
+        }
+
+        // ── 近 7 天（与查询范围有交集的部分）：queryEvents 精确计算 ──────────
+        val recentStart = maxOf(queryStart, sevenDaysAgo)
+        if (recentStart < monthEnd) {
+            var cur = recentStart
+            while (cur < monthEnd) {
+                val dEnd = minOf(cur + dayMs, monthEnd)
+                val seconds = queryUsageSeconds(packageName, cur, dEnd)
+                val dateKey = sdf.format(java.util.Date(cur))
+                result[dateKey] = seconds
+                cur += dayMs
+            }
+        }
+
+        result
+    }
+
+    /**
+     * 获取近 14 天每日的系统实际使用时长 Map，key="yyyy-MM-dd"。
+     * 数据来源策略与 getLast30DayUsageMap 相同：
+     * - 近 7 天：queryEvents 精确计算
+     * - 7~14 天前：queryUsageStats(INTERVAL_DAILY) 聚合兜底
+     */
+    suspend fun getLast14DayUsageMap(packageName: String): Map<String, Long> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val dayMs = 24 * 60 * 60 * 1000L
+        val (todayStart, _) = UsageRecordRepository.getDayRange(now)
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        val result = mutableMapOf<String, Long>()
+
+        // ── 7~14 天前：从 queryUsageStats(INTERVAL_DAILY) 批量拉取 ────────────
+        val oldRangeStart = todayStart - 13 * dayMs
+        val oldRangeEnd   = todayStart - 7 * dayMs
+        try {
+            val stats = usageStatsManager.queryUsageStats(
+                android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+                oldRangeStart,
+                oldRangeEnd
+            )
+            stats?.filter { it.packageName == packageName }?.forEach { stat ->
+                val cal = Calendar.getInstance().apply { timeInMillis = stat.firstTimeStamp }
+                val dateKey = sdf.format(cal.time)
+                result[dateKey] = (result[dateKey] ?: 0L) + stat.totalTimeInForeground / 1000L
+            }
+        } catch (_: Exception) { /* 无权限时静默忽略 */ }
+
+        // ── 近 7 天（含今天）：使用 queryEvents 精确计算 ──────────────────────
+        for (i in 0..6) {
+            val dStart = todayStart - i * dayMs
+            val dEnd = dStart + dayMs
+            val seconds = queryUsageSeconds(packageName, dStart, minOf(dEnd, now))
+            val cal = Calendar.getInstance().apply { timeInMillis = dStart }
+            val dateKey = sdf.format(cal.time)
+            result[dateKey] = seconds
+        }
+
+        result
+    }
+
     // ── 私有辅助方法 ──────────────────────────────────────────────────────────
 
     /**
@@ -238,9 +395,12 @@ class SystemUsageRepository @Inject constructor(
      * 适合今日、本周等跨天的场景。
      */
     private fun queryUsageSeconds(packageName: String, startMs: Long, endMs: Long): Long {
+        val now = System.currentTimeMillis()
+        // 查询终点不超过当前时刻，避免把今日剩余时间也计入
+        val queryEnd = minOf(endMs, now)
         var totalMs = 0L
         try {
-            val events = usageStatsManager.queryEvents(startMs, endMs)
+            val events = usageStatsManager.queryEvents(startMs, queryEnd)
             val event = UsageEvents.Event()
             var fgStartTime = -1L
 
@@ -254,16 +414,16 @@ class SystemUsageRepository @Inject constructor(
                     }
                     UsageEvents.Event.MOVE_TO_BACKGROUND -> {
                         if (fgStartTime > 0) {
-                            val fgEnd = event.timeStamp.coerceAtMost(endMs)
+                            val fgEnd = event.timeStamp.coerceAtMost(queryEnd)
                             totalMs += (fgEnd - fgStartTime).coerceAtLeast(0L)
                             fgStartTime = -1L
                         }
                     }
                 }
             }
-            // App 仍在前台（无 BACKGROUND 事件）：计算到查询终点
+            // App 仍在前台（无 BACKGROUND 事件）：计算到 now，不计算今日剩余时间
             if (fgStartTime > 0) {
-                totalMs += (endMs - fgStartTime).coerceAtLeast(0L)
+                totalMs += (queryEnd - fgStartTime).coerceAtLeast(0L)
             }
         } catch (e: Exception) {
             // 权限未授予时静默返回 0

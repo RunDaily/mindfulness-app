@@ -60,6 +60,16 @@
                 android:value="monitorForegroundApp" />
         </service>
 
+        <!-- 加强保活：独立守护前台服务（用户可选开启） -->
+        <service
+            android:name=".service.WatchdogForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="watchdogService" />
+        </service>
+
         <!-- 开机自启 Receiver -->
         <receiver
             android:name=".receiver.BootReceiver"
@@ -69,6 +79,22 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!--
+            Hilt WorkManager 初始化器：
+            禁用 WorkManager 默认的 ContentProvider 自动初始化，改为在 Application 中手动初始化。
+            这样 WorkManager 才能感知 Hilt 注入，ServiceWatchdogWorker 的 @AssistedInject 才生效。
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
     </application>
 

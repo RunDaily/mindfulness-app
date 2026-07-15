@@ -13,6 +13,7 @@ import androidx.room.PrimaryKey
  * @param endReason 结束原因
  * @param purpose 使用目的（用户进入 App 前填写，null 表示未填写）
  * @param note 用户事后添加的效果备注（可随时编辑，null 表示未填写）
+ * @param effectScore 本次使用效果自评分（0-10，结束时填写，null 表示未评分）
  */
 @Entity(tableName = "usage_records")
 data class UsageRecordEntity(
@@ -24,7 +25,8 @@ data class UsageRecordEntity(
     val durationSeconds: Long = 0L,
     val endReason: String = EndReason.UNKNOWN,
     val purpose: String? = null,
-    val note: String? = null
+    val note: String? = null,
+    val effectScore: Int? = null
 ) {
     object EndReason {
         const val MANUAL = "MANUAL"           // 用户手动点击胶囊结束

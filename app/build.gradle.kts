@@ -22,11 +22,15 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
     compileOptions {
@@ -79,6 +83,17 @@ dependencies {
     implementation(libs.retrofit.gson)
     implementation(libs.okhttp.core)
     implementation(libs.okhttp.logging)
+
+    // WorkManager + Hilt-WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
+
+    // LocalBroadcastManager（在 App 内进程内发送/接收广播，比系统广播更轻量安全）
+    implementation(libs.androidx.localbroadcastmanager)
+
+    // Google Play Billing
+    implementation(libs.billing.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

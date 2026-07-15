@@ -1,5 +1,6 @@
 package com.life.mindfulnessapp.data.network
 
+import com.life.mindfulnessapp.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -13,10 +14,12 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
 
     /** 后端服务地址 */
-    const val BASE_URL = "https://happyvillage.cn/"
+    const val BASE_URL = "https://anchor-admin.happyvillage.cn/"
 
+    // Release 包关闭 HTTP 日志，避免在生产环境泄露请求内容
     private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY
+                else HttpLoggingInterceptor.Level.NONE
     }
 
     private val okHttpClient = OkHttpClient.Builder()

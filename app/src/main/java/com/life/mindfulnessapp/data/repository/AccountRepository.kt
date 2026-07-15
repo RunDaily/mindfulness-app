@@ -8,6 +8,10 @@ import com.life.mindfulnessapp.data.network.RemoteMonitoredApp
 import com.life.mindfulnessapp.data.network.RemoteSession
 import com.life.mindfulnessapp.data.network.SyncMonitoredAppsRequest
 import com.life.mindfulnessapp.data.network.SyncSessionsRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -44,8 +48,12 @@ class AccountRepository @Inject constructor(
     private val appPreferences: AppPreferences,
     private val usageRecordRepository: UsageRecordRepository,
     private val appLimitRepository: AppLimitRepository,
-    private val api: ApiService
+    private val api: ApiService,
+    private val vipRepository: VipRepository
 ) {
+
+    /** 用于在登录/注册完成后在后台静默同步 VIP 状态 */
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
@@ -61,14 +69,21 @@ class AccountRepository @Inject constructor(
 
     /**
      * 一键登录注册：先尝试登录，若 404（未注册）则自动注册。
+     * @param inviteCode 注册时可携带的邀请码（选填），登录场景传 null 即可
      */
-    suspend fun loginOrRegister(phone: String, password: String): AuthResult {
+    suspend fun loginOrRegister(
+        phone: String,
+        password: String,
+        inviteCode: String? = null
+    ): AuthResult {
         return try {
             val resp = api.login(AuthRequest(phone, password))
             val token = resp.token
             val user = resp.user
             if (resp.success && token != null && user != null) {
                 appPreferences.saveAccount(token, user.username, user.nickname, user.avatarEmoji)
+                // 登录成功后，静默在后台同步 VIP 状态
+                syncScope.launch { vipRepository.fetchVipStatus() }
                 AuthResult.Success(
                     token = token,
                     username = user.username,
@@ -81,7 +96,7 @@ class AccountRepository @Inject constructor(
             }
         } catch (e: HttpException) {
             when (e.code()) {
-                404 -> autoRegister(phone, password)
+                404 -> autoRegister(phone, password, inviteCode)
                 401 -> AuthResult.Error("密码错误，请重新输入")
                 403 -> AuthResult.Error("账号已被禁用，请联系我们")
                 else -> AuthResult.Error("登录失败（${e.code()}），请稍后重试")
@@ -91,13 +106,29 @@ class AccountRepository @Inject constructor(
         }
     }
 
-    private suspend fun autoRegister(phone: String, password: String): AuthResult {
+    private suspend fun autoRegister(
+        phone: String,
+        password: String,
+        inviteCode: String? = null
+    ): AuthResult {
         return try {
-            val resp = api.register(AuthRequest(phone, password))
+            // 注册时携带邀请码（为空时传 null，服务端忽略）
+            val req = AuthRequest(
+                phone      = phone,
+                password   = password,
+                inviteCode = inviteCode?.uppercase()?.takeIf { it.isNotBlank() }
+            )
+            val resp = api.register(req)
             val token = resp.token
             val user = resp.user
             if (resp.success && token != null && user != null) {
                 appPreferences.saveAccount(token, user.username, user.nickname, user.avatarEmoji)
+                // 若携带了邀请码，标记本地已使用
+                if (!inviteCode.isNullOrBlank()) {
+                    appPreferences.hasRedeemedInvite = true
+                }
+                // 注册成功后，静默在后台同步 VIP 状态
+                syncScope.launch { vipRepository.fetchVipStatus() }
                 AuthResult.Success(
                     token = token,
                     username = user.username,
@@ -122,6 +153,33 @@ class AccountRepository @Inject constructor(
     /** 退出登录 */
     fun logout() {
         appPreferences.clearAccount()
+    }
+
+    /** 注销账号（向服务端发起删除请求，成功后清除本地登录态）*/
+    suspend fun deleteAccount(): AuthResult {
+        val token = savedToken ?: return AuthResult.Error("未登录")
+        return try {
+            val resp = api.deleteAccount(bearerToken(token))
+            if (resp.success) {
+                appPreferences.clearAccount()
+                AuthResult.Success(
+                    token = "", username = "", nickname = "", avatarEmoji = "", isNewUser = false
+                )
+            } else {
+                AuthResult.Error(resp.error ?: "注销失败，请稍后重试")
+            }
+        } catch (e: HttpException) {
+            when (e.code()) {
+                401 -> {
+                    // Token 失效，视为已注销，清理本地数据
+                    appPreferences.clearAccount()
+                    AuthResult.Success(token = "", username = "", nickname = "", avatarEmoji = "", isNewUser = false)
+                }
+                else -> AuthResult.Error("注销失败（${e.code()}），请稍后重试")
+            }
+        } catch (e: Exception) {
+            AuthResult.Error("网络连接失败，请检查网络")
+        }
     }
 
     // ── 数据同步 ────────────────────────────────────────────────────────────────

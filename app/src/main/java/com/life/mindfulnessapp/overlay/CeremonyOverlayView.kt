@@ -11,6 +11,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -153,60 +154,31 @@ fun CeremonyOverlayView(
         onFinished()
     }
 
-    // ── 主题背景渐变（根据 themeId 差异化）───────────────────────────────
+    // ── 主题背景渐变 ─────────────────────────────────────────────────────
+    // 核心原则：ceremonyBgColor 作为主体（完全不透明深色底），
+    // 主题 accentColor 叠加更明显的右侧色调感（15%），提升主题归属感。
     val bgBrush = remember(themeId, themeConfig) {
-        when (themeId) {
-            "cyberpunk", "glitch" ->
-                Brush.verticalGradient(
-                    listOf(
-                        themeConfig.ceremonyBgColor,
-                        themeConfig.capsuleAccentColor.copy(alpha = 0.10f),
-                        themeConfig.ceremonyBgColor
-                    )
-                )
-            "lava" ->
-                Brush.verticalGradient(
-                    listOf(
-                        themeConfig.ceremonyBgColor,
-                        themeConfig.capsuleAccentColor.copy(alpha = 0.20f)
-                    )
-                )
-            "sakura" ->
-                Brush.linearGradient(
-                    listOf(
-                        themeConfig.ceremonyBgColor,
-                        themeConfig.capsuleAccentColor.copy(alpha = 0.13f),
-                        themeConfig.ceremonyBgColor
-                    )
-                )
-            "moon" ->
-                Brush.radialGradient(
-                    listOf(
-                        themeConfig.capsuleAccentColor.copy(alpha = 0.14f),
-                        themeConfig.ceremonyBgColor
-                    )
-                )
-            "deep_sea" ->
-                Brush.verticalGradient(
-                    listOf(
-                        themeConfig.capsuleAccentColor.copy(alpha = 0.12f),
-                        themeConfig.ceremonyBgColor
-                    )
-                )
-            "rpg" ->
-                Brush.linearGradient(
-                    listOf(
-                        themeConfig.capsuleAccentColor.copy(alpha = 0.08f),
-                        themeConfig.ceremonyBgColor,
-                        themeConfig.capsuleAccentColor.copy(alpha = 0.06f)
-                    )
-                )
-            else ->
-                Brush.linearGradient(
-                    listOf(themeConfig.ceremonyBgColor, themeConfig.ceremonyBgColor)
-                )
-        }
+        val base   = themeConfig.ceremonyBgColor.copy(alpha = 1f)  // 强制完全不透明
+        val accent = themeConfig.capsuleAccentColor
+        // 左侧 100% 不透明深色底 → 右侧叠主题色光晕（15%）
+        Brush.horizontalGradient(
+            colorStops = arrayOf(
+                0.0f to base,
+                0.6f to base,
+                1.0f to accent.copy(alpha = 0.20f)
+            )
+        )
     }
+
+    // ── 边框高亮渐变（主题色双边光晕，随 glowAnim 呼吸）────────────────
+    val borderBrush = Brush.linearGradient(
+        colorStops = arrayOf(
+            0.00f to themeConfig.capsuleAccentColor.copy(alpha = 0.55f + 0.35f * glowAnim.value),
+            0.35f to themeConfig.capsuleAccentColor.copy(alpha = 0.30f + 0.20f * glowAnim.value),
+            0.65f to themeConfig.capsuleAccentColor.copy(alpha = 0.30f + 0.20f * glowAnim.value),
+            1.00f to themeConfig.capsuleAccentColor.copy(alpha = 0.55f + 0.35f * glowAnim.value)
+        )
+    )
 
     // ── 布局：全屏透明容器，胶囊在顶部居中 ──────────────────────────────
     Box(
@@ -226,23 +198,22 @@ fun CeremonyOverlayView(
                 .height(72.dp)
                 // 边框呼吸光晕：打字完成后 glowAnim 驱动阴影扩张
                 .shadow(
-                    elevation = (16.dp + 18.dp * glowAnim.value),
+                    elevation = (16.dp + 22.dp * glowAnim.value),
                     shape = RoundedCornerShape(20.dp),
-                    ambientColor = themeConfig.capsuleAccentColor.copy(alpha = 0.30f + 0.25f * glowAnim.value),
-                    spotColor   = themeConfig.capsuleAccentColor.copy(alpha = 0.40f + 0.30f * glowAnim.value)
+                    ambientColor = themeConfig.capsuleAccentColor.copy(alpha = 0.35f + 0.30f * glowAnim.value),
+                    spotColor   = themeConfig.capsuleAccentColor.copy(alpha = 0.45f + 0.35f * glowAnim.value)
+                )
+                // 主题色边框高亮（始终显示，随 glowAnim 呼吸增强）
+                .border(
+                    width = (1.2f + 0.8f * glowAnim.value).dp,
+                    brush = borderBrush,
+                    shape = RoundedCornerShape(20.dp)
                 )
                 .clip(RoundedCornerShape(20.dp))
                 .background(bgBrush),
             contentAlignment = Alignment.CenterStart
         ) {
-            // ── 赛博/故障/熔岩：微粒子 Canvas 层（在文字下方） ────────────
-            if (themeId in listOf("cyberpunk", "glitch", "lava", "rpg")) {
-                CeremonyParticles(
-                    themeId    = themeId,
-                    accentColor = themeConfig.capsuleAccentColor,
-                    modifier   = Modifier.matchParentSize()
-                )
-            }
+            // default 主题不展示粒子效果（zen/gauge 同）
 
             // ── 左侧主题色竖条（打字进度条） ─────────────────────────────
             Box(
@@ -285,16 +256,7 @@ fun CeremonyOverlayView(
             ) {
                 // 顶部小标签（主题次要色）
                 Text(
-                    text = when (themeId) {
-                        "cyberpunk" -> "> INTENT_"
-                        "glitch"    -> "// INTENT"
-                        "rpg"       -> "⚔ 冒险目标"
-                        "lava"      -> "🔥 此刻意图"
-                        "sakura"    -> "🌸 心中所念"
-                        "moon"      -> "🌙 此刻意图"
-                        "deep_sea"  -> "🌊 潜入目的"
-                        else        -> "此刻的意图"
-                    },
+                    text = "此刻的意图",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     color = themeConfig.ceremonySubLabelColor,
@@ -355,68 +317,5 @@ fun CeremonyOverlayView(
     }
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-//  微粒子背景（仅用于 cyberpunk / glitch / lava / rpg 主题）
-//  极轻量：固定 8 个粒子，用 rememberInfiniteTransition 驱动，零 allocation
-// ════════════════════════════════════════════════════════════════════════════
 
-private data class CeremonyParticle(
-    val x: Float,   // 0..1 相对宽
-    val y: Float,   // 0..1 相对高
-    val r: Float,   // 半径系数
-    val phase: Float // 时间偏移
-)
 
-private val CEREMONY_PARTICLES = listOf(
-    CeremonyParticle(0.08f, 0.30f, 1.6f, 0.0f),
-    CeremonyParticle(0.18f, 0.70f, 1.0f, 0.3f),
-    CeremonyParticle(0.55f, 0.20f, 1.4f, 0.6f),
-    CeremonyParticle(0.72f, 0.80f, 0.9f, 0.1f),
-    CeremonyParticle(0.88f, 0.40f, 1.2f, 0.8f),
-    CeremonyParticle(0.42f, 0.65f, 0.8f, 0.5f),
-    CeremonyParticle(0.93f, 0.75f, 1.1f, 0.2f),
-    CeremonyParticle(0.30f, 0.35f, 0.7f, 0.9f)
-)
-
-@Composable
-private fun CeremonyParticles(
-    themeId: String,
-    accentColor: Color,
-    modifier: Modifier = Modifier
-) {
-    val transition = rememberInfiniteTransition(label = "ceremony_particles")
-    val time by transition.animateFloat(
-        initialValue = 0f,
-        targetValue  = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "ceremony_time"
-    )
-
-    androidx.compose.foundation.Canvas(modifier = modifier) {
-        CEREMONY_PARTICLES.forEach { p ->
-            val t = (time + p.phase) % 1f
-            // 透明度：正弦波，0 → 峰值 → 0
-            val alpha = kotlin.math.sin(t * kotlin.math.PI.toFloat()) *
-                when (themeId) {
-                    "glitch" -> 0.55f
-                    "lava"   -> 0.50f
-                    "rpg"    -> 0.40f
-                    else     -> 0.45f  // cyberpunk
-                }
-            if (alpha <= 0.02f) return@forEach
-
-            val px = size.width  * p.x
-            val py = size.height * p.y
-            val radius = p.r.dp.toPx()
-
-            drawCircle(
-                color  = accentColor.copy(alpha = alpha),
-                radius = radius,
-                center = Offset(px, py)
-            )
-        }
-    }
-}

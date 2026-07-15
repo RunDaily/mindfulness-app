@@ -1,6 +1,7 @@
 package com.life.mindfulnessapp.overlay
 
 import android.content.pm.PackageManager
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -12,11 +13,19 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,11 +37,15 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,9 +56,19 @@ import com.life.mindfulnessapp.service.SessionManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
 
 /** 展开状态下无操作自动收起的延迟（毫秒） */
 private const val AUTO_COLLAPSE_DELAY_MS = 3000L
+
+/** 闪光描边提醒的间隔（毫秒），每隔此时间触发一次双闪 */
+private const val FLASH_BORDER_INTERVAL_MS = 2 * 60 * 1000L  // 2分钟
+
+/** 紧急状态下闪光间隔缩短（毫秒） */
+private const val FLASH_BORDER_INTERVAL_URGENT_MS = 40 * 1000L  // 40秒
+
+/** 单次闪光动画时长（ms）*/
+private const val FLASH_ANIM_DURATION_MS = 600
 
 /**
  * 无操作多少毫秒后开始进入休眠（前台状态下5分钟）
@@ -95,10 +118,13 @@ fun CapsuleOverlayView(
     isPaused: State<Boolean> = mutableStateOf(false),
     themeId: String = "default",
     onToggleExpand: () -> Unit,
-    onEndSession: () -> Unit,
+    onEndSession: (effectScore: Int?, note: String?) -> Unit,
     onReturnToApp: (() -> Unit)? = null,
     onRegisterWakeUp: ((wakeUpFn: () -> Unit) -> Unit)? = null,
     onRegisterShowConfirm: ((showConfirmFn: () -> Unit) -> Unit)? = null,
+    onRegisterWarnFiveMin: ((fn: () -> Unit) -> Unit)? = null,
+    onRegisterStartCountdown: ((fn: () -> Unit) -> Unit)? = null,
+    onExtendLimit: ((extraMinutes: Int) -> Unit)? = null,
     onConfirmDialogOpen: (() -> Unit)? = null,
     onConfirmDialogClose: (() -> Unit)? = null,
     playEnterAnimation: Boolean = true
@@ -166,13 +192,6 @@ fun CapsuleOverlayView(
     )
     val discAngle = if (isPaused.value) 0f else discRotation
 
-    // cyberpunk/glitch 扫描线
-    val scanlineAlpha by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1600, easing = LinearEasing), repeatMode = RepeatMode.Restart
-        ), label = "scan_alpha"
-    )
 
     // 【新增】收起态时间数字主题色呼吸（非紧急时轻微脉动，强调主题归属感）
     val timePulse by infiniteTransition.animateFloat(
@@ -182,13 +201,9 @@ fun CapsuleOverlayView(
         ), label = "time_pulse"
     )
 
-    // 【新增】收起态：竖线光晕脉动
-    val dividerGlow by infiniteTransition.animateFloat(
-        initialValue = 0.18f, targetValue = 0.42f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse
-        ), label = "divider_glow"
-    )
+    // ── 闪光描边 ───────────────────────────────────────────────────────
+    // flashBorderAlpha: 0f = 不显示, 1f = 完全显示；由定时双闪动画驱动
+    val flashBorderAlpha = remember { Animatable(0f) }
 
     // ── 休眠 / 唤醒 ──────────────────────────────────────────────────────
     val dormantAlpha  = remember { Animatable(1f) }
@@ -214,12 +229,85 @@ fun CapsuleOverlayView(
     // ── 结束确认弹窗 ──────────────────────────────────────────────────────
     var showEndConfirmDialog by remember { mutableStateOf(false) }
 
+    // ── 5分钟预警状态（true = 正在展示提示 banner，展示3秒后自动恢复） ─────
+    var showFiveMinWarning by remember { mutableStateOf(false) }
+
+    // ── 1分钟倒计时模式 ───────────────────────────────────────────────────
+    var countdownMode by remember { mutableStateOf(false) }
+    // 延长选项展开状态
+    var showExtendOptions by remember { mutableStateOf(false) }
+
     DisposableEffect(Unit) {
         onRegisterWakeUp?.invoke { dormantResetKey++; wakeUp() }
         onRegisterShowConfirm?.invoke { showEndConfirmDialog = true }
+        onRegisterWarnFiveMin?.invoke {
+            // 自动展开 + 显示5分钟提示 banner，3秒后自动收起
+            showFiveMinWarning = true
+        }
+        onRegisterStartCountdown?.invoke {
+            // 切换到倒计时形态
+            countdownMode = true
+            showExtendOptions = false
+        }
         onDispose {
             onRegisterWakeUp?.invoke {}
             onRegisterShowConfirm?.invoke {}
+            onRegisterWarnFiveMin?.invoke {}
+            onRegisterStartCountdown?.invoke {}
+        }
+    }
+
+    // 5分钟预警：自动展开胶囊，震动，3秒后收起
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(showFiveMinWarning) {
+        if (showFiveMinWarning) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            // 若未展开则自动展开
+            if (!expanded.value) onToggleExpand()
+            delay(3500L)
+            showFiveMinWarning = false
+            // 3.5秒后自动收起
+            if (expanded.value) onToggleExpand()
+        }
+    }
+
+    // 1分钟倒计时：进入倒计时模式时唤醒胶囊 + 震动
+    LaunchedEffect(countdownMode) {
+        if (countdownMode) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            delay(80)
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            wakeUp()
+            dormantResetKey++
+        }
+    }
+
+    // 延长后剩余恢复到60秒以上：退出倒计时模式
+    LaunchedEffect(dailyRemainingSeconds.value) {
+        if (countdownMode && dailyRemainingSeconds.value > 60L) {
+            countdownMode = false
+            showExtendOptions = false
+        }
+    }
+
+    // ── 定时闪光描边提醒 ────────────────────────────────────────────────
+    // 循环运行：等待 interval → 双闪 → 再等待 → 再双闪 ...
+    // isPaused 或 isUrgent 变化时 LaunchedEffect 重启，间隔自动切换。
+    LaunchedEffect(isPaused.value, isUrgent) {
+        if (isPaused.value) return@LaunchedEffect
+        while (true) {
+            val interval = if (isUrgent) FLASH_BORDER_INTERVAL_URGENT_MS else FLASH_BORDER_INTERVAL_MS
+            delay(interval)
+            // 双闪：亮 → 灭 → 亮 → 灭
+            repeat(2) {
+                flashBorderAlpha.animateTo(
+                    1f, tween(FLASH_ANIM_DURATION_MS, easing = FastOutSlowInEasing)
+                )
+                flashBorderAlpha.animateTo(
+                    0f, tween(FLASH_ANIM_DURATION_MS, easing = FastOutSlowInEasing)
+                )
+                if (it == 0) delay(120) // 两闪之间短暂停顿
+            }
         }
     }
 
@@ -250,59 +338,41 @@ fun CapsuleOverlayView(
     // ── 布局 ─────────────────────────────────────────────────────────────
     run {
         Box(modifier = Modifier.padding(8.dp)) {
-            Box(
-                modifier = Modifier
-                    .graphicsLayer {
-                        val combinedScale = enterScale.value * dormantScale.value
-                        scaleX = combinedScale
-                        scaleY = combinedScale
-                        alpha  = enterAlpha.value * dormantAlpha.value
-                    }
-                    .shadow(
-                        elevation = if (dormantScale.value < 0.95f) 2.dp else 10.dp,
-                        shape = RoundedCornerShape(24.dp),
-                        ambientColor = themeConfig.capsuleAccentColor.copy(alpha = 0.25f),
-                        spotColor    = themeConfig.capsuleAccentColor.copy(alpha = 0.35f)
-                    )
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(bgColor)
-                    .then(
-                        when (themeId) {
-                            "cyberpunk", "glitch" ->
-                                Modifier.background(
-                                    Brush.linearGradient(
-                                        listOf(
-                                            themeConfig.capsuleAccentColor.copy(alpha = 0.08f + scanlineAlpha * 0.06f),
-                                            Color.Transparent,
-                                            themeConfig.capsuleAccentColor.copy(alpha = 0.04f + (1f - scanlineAlpha) * 0.06f)
-                                        )
-                                    )
+        // 闪光描边颜色（随紧急程度变化）
+        val flashBorderColor = urgencyColor(themeConfig.capsuleAccentColor, ratio)
+
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    val combinedScale = enterScale.value * dormantScale.value
+                    scaleX = combinedScale
+                    scaleY = combinedScale
+                    alpha  = enterAlpha.value * dormantAlpha.value
+                }
+                .shadow(
+                    elevation = if (dormantScale.value < 0.95f) 2.dp else 10.dp,
+                    shape = RoundedCornerShape(24.dp),
+                    ambientColor = themeConfig.capsuleAccentColor.copy(alpha = 0.25f),
+                    spotColor    = themeConfig.capsuleAccentColor.copy(alpha = 0.35f)
+                )
+                // 闪光描边：叠加在 shadow 之上、clip 之外，形成外发光效果
+                .then(
+                    if (flashBorderAlpha.value > 0.01f)
+                        Modifier.border(
+                            width = (1.5f + flashBorderAlpha.value * 1.5f).dp,
+                            brush = Brush.linearGradient(
+                                listOf(
+                                    flashBorderColor.copy(alpha = flashBorderAlpha.value * 0.95f),
+                                    flashBorderColor.copy(alpha = flashBorderAlpha.value * 0.55f),
+                                    flashBorderColor.copy(alpha = flashBorderAlpha.value * 0.85f)
                                 )
-                            "lava" ->
-                                Modifier.background(
-                                    Brush.verticalGradient(
-                                        listOf(Color.Transparent, themeConfig.capsuleAccentColor.copy(alpha = 0.10f))
-                                    )
-                                )
-                            "moon" ->
-                                Modifier.background(
-                                    Brush.radialGradient(
-                                        listOf(themeConfig.capsuleAccentColor.copy(alpha = 0.08f), Color.Transparent)
-                                    )
-                                )
-                            "sakura" ->
-                                Modifier.background(
-                                    Brush.linearGradient(
-                                        listOf(
-                                            themeConfig.capsuleAccentColor.copy(alpha = 0.06f),
-                                            Color.Transparent,
-                                            themeConfig.capsuleAccentColor.copy(alpha = 0.04f)
-                                        )
-                                    )
-                                )
-                            else -> Modifier
-                        }
-                    )
+                            ),
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                    else Modifier
+                )
+                .clip(RoundedCornerShape(24.dp))
+                .background(bgColor)
             ) {
                 if (expanded.value) {
                     // ══════════════════════════════════════════════════════
@@ -310,7 +380,7 @@ fun CapsuleOverlayView(
                     // ══════════════════════════════════════════════════════
                     Column(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -324,7 +394,7 @@ fun CapsuleOverlayView(
                                 isPaused       = isPaused.value,
                                 arcProgress    = arcProgress,
                                 hasLimit       = dailyLimitSeconds.value > 0L,
-                                size           = 36
+                                size           = 38
                             )
                             Column {
                                 if (isPaused.value) {
@@ -336,7 +406,7 @@ fun CapsuleOverlayView(
                                         fontFamily = timeFont
                                     )
                                     Text(
-                                        text = "点击胶囊返回 ${appName.value}",
+                                        text = "点击返回 ${appName.value}",
                                         fontSize = 10.sp,
                                         color = subColor.copy(alpha = 0.75f)
                                     )
@@ -344,7 +414,7 @@ fun CapsuleOverlayView(
                                     // 本次会话时长
                                     Text(
                                         text = formatSeconds(sessionSeconds.value),
-                                        fontSize = 16.sp,
+                                        fontSize = 17.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
                                         fontFamily = timeFont
@@ -369,8 +439,8 @@ fun CapsuleOverlayView(
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(11.dp))
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(10.dp))
                                         .background(themeConfig.capsuleStopButtonColor)
                                         .clickable { showEndConfirmDialog = true }
                                 ) {
@@ -380,7 +450,7 @@ fun CapsuleOverlayView(
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(12.dp)
+                                                .size(11.dp)
                                                 .clip(RoundedCornerShape(2.dp))
                                                 .background(Color.White)
                                         )
@@ -399,24 +469,92 @@ fun CapsuleOverlayView(
                         // 使用目的行
                         val currentPurposeText = purpose.value
                         if (!currentPurposeText.isNullOrBlank() && !isPaused.value) {
+                            // 闪光时：描边高亮 + 背景微染 + 文字提亮，与外层胶囊描边联动
+                            val purposeFlash = flashBorderAlpha.value
+                            // 平时底色：主题色极淡背景，让目的行有独立的「区域感」
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                modifier = Modifier.padding(start = 2.dp)
+                                horizontalArrangement = Arrangement.spacedBy(0.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (purposeFlash > 0.01f)
+                                            Modifier
+                                                .background(
+                                                    color = flashBorderColor.copy(alpha = purposeFlash * 0.10f),
+                                                    shape = RoundedCornerShape(6.dp)
+                                                )
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = flashBorderColor.copy(alpha = purposeFlash * 0.75f),
+                                                    shape = RoundedCornerShape(6.dp)
+                                                )
+                                        else
+                                            Modifier.background(
+                                                color = themeConfig.capsuleAccentColor.copy(alpha = 0.07f),
+                                                shape = RoundedCornerShape(6.dp)
+                                            )
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text(
-                                    text = if (themeConfig.capsuleUseMonoFont) ">" else "📌",
-                                    fontSize = 11.sp,
-                                    color = if (themeConfig.capsuleUseMonoFont)
-                                        themeConfig.capsuleAccentColor else Color.Unspecified
+                                // 左侧细色条：视觉锚点
+                                Box(
+                                    modifier = Modifier
+                                        .width(2.5.dp)
+                                        .height(14.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(
+                                            androidx.compose.ui.graphics.lerp(
+                                                themeConfig.capsuleAccentColor.copy(alpha = 0.60f),
+                                                flashBorderColor.copy(alpha = 1f),
+                                                purposeFlash * 0.8f
+                                            )
+                                        )
                                 )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = currentPurposeText,
-                                    fontSize = 11.sp,
-                                    color = subColor,
-                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 13.sp,
+                                    // 闪光时：从接近白色提亮到 flashBorderColor
+                                    color = androidx.compose.ui.graphics.lerp(
+                                        Color.White.copy(alpha = 0.90f),
+                                        flashBorderColor.copy(alpha = 1f),
+                                        purposeFlash * 0.65f
+                                    ),
+                                    fontWeight = if (purposeFlash > 0.5f) FontWeight.SemiBold else FontWeight.Medium,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
+                                    fontFamily = timeFont
+                                )
+                            }
+                        }
+
+                        // ── 5分钟预警 banner（展开态内，临时显示后消失） ───────────
+                        AnimatedVisibility(
+                            visible = showFiveMinWarning && !isPaused.value,
+                            enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 2 },
+                            exit  = fadeOut(tween(250))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFFFFD54F).copy(alpha = 0.15f))
+                                    .border(
+                                        1.dp,
+                                        Color(0xFFFFD54F).copy(alpha = 0.55f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(horizontal = 10.dp, vertical = 7.dp)
+                            ) {
+                                Text("⏳", fontSize = 13.sp)
+                                Text(
+                                    text = "还有 5 分钟，准备收尾了",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFFFFD54F),
                                     fontFamily = timeFont
                                 )
                             }
@@ -424,11 +562,133 @@ fun CapsuleOverlayView(
                     }
                 } else {
                     // ══════════════════════════════════════════════════════
-                    //  收起态（三段式：时间 | 标签 | 停止）
+                    //  收起态
                     // ══════════════════════════════════════════════════════
+                    if (countdownMode && !isPaused.value) {
+                        // ── 倒计时形态（最后1分钟）────────────────────────────
+                        Column(
+                            modifier = Modifier
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            // 主行：倒计时 + 延长按钮
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // 倒计时数字（大红色，醒目）
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "还剩",
+                                        fontSize = 9.sp,
+                                        color = Color(0xFFEF5350).copy(alpha = 0.8f),
+                                        fontFamily = timeFont,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                    Text(
+                                        text = formatSeconds(dailyRemainingSeconds.value),
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (pulseAlpha > 0.7f) Color(0xFFEF5350) else Color(0xFFFF7043),
+                                        fontFamily = FontFamily.Monospace,
+                                        letterSpacing = 0.sp
+                                    )
+                                }
+
+                                // 分隔竖线
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .height(32.dp)
+                                        .background(Color.White.copy(alpha = 0.18f))
+                                )
+
+                                // 延长按钮
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                if (showExtendOptions)
+                                                    Color(0xFF4CAF50).copy(alpha = 0.25f)
+                                                else
+                                                    Color(0xFF4CAF50).copy(alpha = 0.18f)
+                                            )
+                                            .border(
+                                                1.dp,
+                                                Color(0xFF4CAF50).copy(alpha = if (showExtendOptions) 0.8f else 0.45f),
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable { showExtendOptions = !showExtendOptions }
+                                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                                    ) {
+                                        Text(
+                                            text = if (showExtendOptions) "▲ 取消" else "+ 延长",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF81C784),
+                                            fontFamily = timeFont
+                                        )
+                                    }
+                                    Text(
+                                        text = "宽限时间",
+                                        fontSize = 9.sp,
+                                        color = Color.White.copy(alpha = 0.40f),
+                                        fontFamily = timeFont
+                                    )
+                                }
+                            }
+
+                            // 延长选项列表（点击后展开）
+                            AnimatedVisibility(
+                                visible = showExtendOptions,
+                                enter = fadeIn(tween(200)) + expandVertically(tween(200)),
+                                exit  = fadeOut(tween(150)) + shrinkVertically(tween(150))
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    listOf(5, 10, 15).forEach { mins ->
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color(0xFF4CAF50).copy(alpha = 0.20f))
+                                                .border(
+                                                    1.dp,
+                                                    Color(0xFF4CAF50).copy(alpha = 0.55f),
+                                                    RoundedCornerShape(8.dp)
+                                                )
+                                                .clickable {
+                                                    showExtendOptions = false
+                                                    onExtendLimit?.invoke(mins)
+                                                }
+                                                .padding(vertical = 7.dp)
+                                        ) {
+                                            Text(
+                                                text = "+${mins}分",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF81C784),
+                                                fontFamily = timeFont
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                    // ── 普通收起态（三段式：时间 | 标签 | 停止）──────────────
                     Row(
                         modifier = Modifier
-                            .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                            .padding(start = 12.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
@@ -436,7 +696,7 @@ fun CapsuleOverlayView(
                         if (isPaused.value) {
                             Text(
                                 text = if (themeConfig.capsuleUseMonoFont) "PAUSED" else "已暂停",
-                                fontSize = 15.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFAAAAAA),
                                 letterSpacing = 0.5.sp,
@@ -460,100 +720,66 @@ fun CapsuleOverlayView(
                             }
                             Text(
                                 text = formatSeconds(sessionSeconds.value),
-                                fontSize = 18.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = timeColor,
-                                letterSpacing = 1.sp,
+                                letterSpacing = 0.5.sp,
                                 fontFamily = timeFont
                             )
                         }
 
-                        // ② 分隔符：Canvas 弧形光晕竖线（替代简单方块）
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Canvas(
-                            modifier = Modifier
-                                .width(8.dp)
-                                .height(24.dp)
-                        ) {
-                            val cx = size.width / 2f
-                            val cy = size.height / 2f
-                            val lineH = size.height * 0.75f
-                            // 光晕：主题色散射
-                            drawLine(
-                                color = themeConfig.capsuleAccentColor.copy(alpha = dividerGlow * 0.6f),
-                                start = Offset(cx, cy - lineH / 2f),
-                                end   = Offset(cx, cy + lineH / 2f),
-                                strokeWidth = 4.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
-                            // 核心线
-                            drawLine(
-                                color = themeConfig.capsuleAccentColor.copy(alpha = dividerGlow + 0.15f),
-                                start = Offset(cx, cy - lineH / 2f),
-                                end   = Offset(cx, cy + lineH / 2f),
-                                strokeWidth = 1.2.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
+                        // ② 分隔符
+                        Text(
+                            text = "·",
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.35f),
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
 
                         // ③ 标签（目的优先 / AppName）
-                        val collapsedLabel = purpose.value?.takeIf { it.isNotBlank() } ?: appName.value
+                        val collapsedPurpose = purpose.value?.takeIf { it.isNotBlank() }
+                        val collapsedLabel = collapsedPurpose ?: appName.value
+                        // 有目的文案时：字号/颜色/字重拉升，与计时形成对等视觉权重
                         Text(
                             text = collapsedLabel,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White.copy(alpha = 0.80f),
+                            fontSize = if (collapsedPurpose != null) 12.sp else 11.sp,
+                            fontWeight = if (collapsedPurpose != null) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (collapsedPurpose != null)
+                                Color.White.copy(alpha = 0.92f)
+                            else
+                                Color.White.copy(alpha = 0.78f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 120.dp),
+                            modifier = Modifier.widthIn(max = 88.dp),
                             fontFamily = timeFont
                         )
 
                         // ④ 分隔符
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Canvas(
-                            modifier = Modifier
-                                .width(8.dp)
-                                .height(24.dp)
-                        ) {
-                            val cx = size.width / 2f
-                            val cy = size.height / 2f
-                            val lineH = size.height * 0.75f
-                            drawLine(
-                                color = themeConfig.capsuleAccentColor.copy(alpha = dividerGlow * 0.5f),
-                                start = Offset(cx, cy - lineH / 2f),
-                                end   = Offset(cx, cy + lineH / 2f),
-                                strokeWidth = 4.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
-                            drawLine(
-                                color = themeConfig.capsuleAccentColor.copy(alpha = dividerGlow + 0.12f),
-                                start = Offset(cx, cy - lineH / 2f),
-                                end   = Offset(cx, cy + lineH / 2f),
-                                strokeWidth = 1.2.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "·",
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.35f),
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
 
                         // ⑤ 停止按钮
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(10.dp))
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(8.dp))
                                 .background(themeConfig.capsuleStopButtonColor)
                                 .clickable { showEndConfirmDialog = true }
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(12.dp)
+                                    .size(10.dp)
                                     .clip(RoundedCornerShape(2.dp))
                                     .background(Color.White)
                             )
                         }
                     }
+                    } // end普通收起态
                 }
             }
 
@@ -575,10 +801,10 @@ fun CapsuleOverlayView(
                     subColor        = subColor,
                     useMonoFont     = themeConfig.capsuleUseMonoFont,
                     stopButtonColor = themeConfig.capsuleStopButtonColor,
-                    onConfirm = {
-                        showEndConfirmDialog = false
-                        onEndSession()
-                    },
+            onConfirm = { score, note ->
+                showEndConfirmDialog = false
+                onEndSession(score, note)
+            },
                     onDismiss = { showEndConfirmDialog = false }
                 )
             }
@@ -727,7 +953,7 @@ fun formatSeconds(seconds: Long): String {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  结束会话确认弹窗（v2：加入本次会话时长回顾）
+//  结束会话确认弹窗（v3：加入效果评分滑动条 + 备注输入框）
 // ════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -739,7 +965,7 @@ private fun EndConfirmDialog(
     subColor: Color,
     useMonoFont: Boolean = false,
     stopButtonColor: Color = Color(0xFF27AE60),
-    onConfirm: () -> Unit,
+    onConfirm: (effectScore: Int?, note: String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     val scale = remember { Animatable(0.8f) }
@@ -752,6 +978,14 @@ private fun EndConfirmDialog(
     }
 
     val font = if (useMonoFont) FontFamily.Monospace else FontFamily.Default
+
+    // 效果评分状态（null 表示未评分，滑动后才设置）
+    var scoreEnabled by remember { mutableStateOf(false) }
+    var sliderValue by remember { mutableFloatStateOf(0f) }
+    val effectScore: Int? = if (scoreEnabled) sliderValue.toInt() else null
+
+    // 备注输入状态
+    var noteText by remember { mutableStateOf("") }
 
     // 本次时长文案
     val sessionLabel = buildString {
@@ -773,70 +1007,182 @@ private fun EndConfirmDialog(
         }
     }
 
+    // 评分对应的颜色（低分红→高分绿）
+    val scoreColor = when {
+        !scoreEnabled -> subColor.copy(alpha = 0.4f)
+        sliderValue <= 3f -> Color(0xFFE57373)
+        sliderValue <= 6f -> Color(0xFFFFB74D)
+        else -> Color(0xFF66BB6A)
+    }
+
     Box(
         modifier = Modifier
             .graphicsLayer {
                 scaleX = scale.value; scaleY = scale.value; this.alpha = alpha.value
             }
-            .shadow(12.dp, shape = RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
+            .shadow(16.dp, shape = RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(bgColor)
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .width(300.dp)
+            .padding(horizontal = 24.dp, vertical = 24.dp)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = if (useMonoFont) "END_SESSION?" else "结束本次使用？",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                fontFamily = font
-            )
-            Text(
-                text = appName,
-                fontSize = 11.sp,
-                color = subColor.copy(alpha = 0.8f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontFamily = font
-            )
+            // ── 标题与App信息 ──────────────────────────────────────────────────────
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = if (useMonoFont) "END_SESSION?" else "结束本次使用？",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontFamily = font
+                )
+                Text(
+                    text = appName,
+                    fontSize = 13.sp,
+                    color = subColor.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontFamily = font
+                )
+            }
 
-            // 【新增】会话时长回顾小胶囊
+            // ── 会话时长回顾小胶囊 ────────────────────────────────────────
             if (sessionSeconds >= 10L) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(iconColor.copy(alpha = 0.12f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = sessionLabel,
-                        fontSize = 11.sp,
-                        color = iconColor.copy(alpha = 0.85f),
+                        fontSize = 13.sp,
+                        color = iconColor.copy(alpha = 0.9f),
                         fontFamily = font,
                         fontWeight = FontWeight.Medium
                     )
                 }
             }
 
+            // ── 分隔线 ────────────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(Color.White.copy(alpha = 0.10f))
+            )
+
+            // ── 效果评分区 ────────────────────────────────────────────────
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = if (useMonoFont) "EFFECT_SCORE" else "效果评分",
+                        fontSize = 13.sp,
+                        color = subColor.copy(alpha = 0.85f),
+                        fontFamily = font,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                    // 分值展示（未评分时显示 -/10，评分后显示具体分值）
+                    Text(
+                        text = if (scoreEnabled) "${sliderValue.toInt()}/10" else "-/10",
+                        fontSize = 20.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = scoreColor
+                    )
+                }
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { newVal ->
+                        sliderValue = newVal
+                        scoreEnabled = true
+                    },
+                    valueRange = 0f..10f,
+                    steps = 9,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = scoreColor,
+                        activeTrackColor = scoreColor.copy(alpha = 0.8f),
+                        inactiveTrackColor = Color.White.copy(alpha = 0.12f),
+                        activeTickColor = Color.Transparent,
+                        inactiveTickColor = Color.Transparent
+                    )
+                )
+                // 刻度标签
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("0", fontSize = 11.sp, color = subColor.copy(alpha = 0.4f), fontFamily = FontFamily.Monospace)
+                    Text("5", fontSize = 11.sp, color = subColor.copy(alpha = 0.4f), fontFamily = FontFamily.Monospace)
+                    Text("10", fontSize = 11.sp, color = subColor.copy(alpha = 0.4f), fontFamily = FontFamily.Monospace)
+                }
+            }
+
+            // ── 备注输入框 ────────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 90.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.07f))
+                    .padding(14.dp)
+            ) {
+                if (noteText.isEmpty()) {
+                    Text(
+                        text = if (useMonoFont) "// add note..." else "写点备注…",
+                        fontSize = 14.sp,
+                        color = subColor.copy(alpha = 0.35f),
+                        fontFamily = font
+                    )
+                }
+                BasicTextField(
+                    value = noteText,
+                    onValueChange = { if (it.length <= 100) noteText = it },
+                    textStyle = TextStyle(
+                        fontSize = 14.sp,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontFamily = font,
+                        lineHeight = 20.sp
+                    ),
+                    cursorBrush = SolidColor(iconColor),
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 4
+                )
+            }
+
+            // ── 操作按钮 ──────────────────────────────────────────────────
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 4.dp)
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(Color.White.copy(alpha = 0.08f))
                         .clickable { onDismiss() }
-                        .padding(vertical = 7.dp)
+                        .padding(vertical = 12.dp)
                 ) {
                     Text(
                         text = if (useMonoFont) "CANCEL" else "取消",
-                        fontSize = 12.sp,
+                        fontSize = 15.sp,
                         color = subColor.copy(alpha = 0.9f),
                         fontWeight = FontWeight.Medium,
                         fontFamily = font
@@ -846,14 +1192,14 @@ private fun EndConfirmDialog(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(stopButtonColor.copy(alpha = 0.85f))
-                        .clickable { onConfirm() }
-                        .padding(vertical = 7.dp)
+                        .clickable { onConfirm(effectScore, noteText.takeIf { it.isNotBlank() }) }
+                        .padding(vertical = 12.dp)
                 ) {
                     Text(
                         text = if (useMonoFont) "CONFIRM" else "结束",
-                        fontSize = 12.sp,
+                        fontSize = 15.sp,
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold,
                         fontFamily = font

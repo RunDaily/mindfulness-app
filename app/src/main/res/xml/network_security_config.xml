@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- 所有流量默认走 HTTPS，不允许 HTTP 明文 -->
+    <!-- 全局强制 HTTPS，anchor.happyvillage.cn 已使用 HTTPS，无需明文例外 -->
     <base-config cleartextTrafficPermitted="false" />
 </network-security-config>

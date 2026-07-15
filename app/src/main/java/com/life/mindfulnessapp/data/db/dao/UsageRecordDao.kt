@@ -72,12 +72,24 @@ interface UsageRecordDao {
     @Query("DELETE FROM usage_records WHERE startTime < :beforeMs")
     suspend fun deleteOldRecords(beforeMs: Long)
 
+    /** 清除全部使用记录（用于「清除本地数据」功能）*/
+    @Query("DELETE FROM usage_records")
+    suspend fun deleteAllRecords()
+
     @Query("SELECT * FROM usage_records WHERE id = :id LIMIT 1")
     suspend fun getRecordById(id: Long): UsageRecordEntity?
 
     /** 仅更新单条记录的备注字段，避免覆盖其他字段 */
     @Query("UPDATE usage_records SET note = :note WHERE id = :id")
     suspend fun updateNote(id: Long, note: String?)
+
+    /** 仅更新单条记录的效果评分字段 */
+    @Query("UPDATE usage_records SET effectScore = :score WHERE id = :id")
+    suspend fun updateEffectScore(id: Long, score: Int?)
+
+    /** 同时更新备注和效果评分（结束弹框提交时调用）*/
+    @Query("UPDATE usage_records SET note = :note, effectScore = :score WHERE id = :id")
+    suspend fun updateNoteAndScore(id: Long, note: String?, score: Int?)
 
     /**
      * 查询某一天内有 purpose 记录的条目，用于「今日有意识使用回顾」
@@ -220,6 +232,20 @@ interface UsageRecordDao {
     ): List<UsageRecordEntity>
 
     /**
+     * 查询某天内「克制退出」的次数：
+     * purpose 为空 + durationSeconds <= 20 秒，视为用户在拦截页选择了离开。
+     */
+    @Query("""
+        SELECT COUNT(*) FROM usage_records
+        WHERE startTime >= :dayStartMs
+        AND startTime < :dayEndMs
+        AND endTime > 0
+        AND purpose IS NULL
+        AND durationSeconds <= 20
+    """)
+    suspend fun getDayDismissCount(dayStartMs: Long, dayEndMs: Long): Int
+
+    /**
      * 查询指定时间点之后的所有已完成记录（用于云端同步）。
      */
     @Query("""
@@ -229,7 +255,53 @@ interface UsageRecordDao {
         ORDER BY startTime DESC
     """)
     suspend fun getAllCompletedRecordsSince(sinceMs: Long): List<UsageRecordEntity>
+
+    /**
+     * 查询某一天内指定 App 的所有已完成记录，按开始时间正序。
+     * 用于详情页日历联动列表，显示某天的使用明细。
+     */
+    @Query("""
+        SELECT * FROM usage_records
+        WHERE packageName = :packageName
+        AND startTime >= :dayStartMs
+        AND startTime < :dayEndMs
+        AND endTime > 0
+        ORDER BY startTime ASC
+    """)
+    suspend fun getDayRecordsForAppAsc(
+        packageName: String,
+        dayStartMs: Long,
+        dayEndMs: Long
+    ): List<UsageRecordEntity>
+
+    /**
+     * 查询指定 App 在某时间段内每天的本地记录总时长（秒）。
+     * 用于日历组件展示"规则内统计时长"（即本地拦截规则记录的时长，区别于系统 UsageStats）。
+     * 返回结构：dateKey（yyyy-MM-dd）→ totalSeconds
+     */
+    @Query("""
+        SELECT 
+            date(startTime / 1000, 'unixepoch', 'localtime') AS dateKey,
+            SUM(durationSeconds) AS totalSeconds
+        FROM usage_records
+        WHERE packageName = :packageName
+        AND startTime >= :startMs
+        AND startTime < :endMs
+        AND endTime > 0
+        GROUP BY dateKey
+    """)
+    suspend fun getDailyUsageByRange(
+        packageName: String,
+        startMs: Long,
+        endMs: Long
+    ): List<DailyUsageSummary>
 }
+
+/** 每日使用量摘要（Room 查询结果映射）*/
+data class DailyUsageSummary(
+    val dateKey: String,      // "yyyy-MM-dd"
+    val totalSeconds: Long
+)
 
 /** 小时级使用量（Room 查询结果映射）*/
 data class HourlyUsage(

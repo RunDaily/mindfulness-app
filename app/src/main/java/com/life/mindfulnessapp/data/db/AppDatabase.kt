@@ -5,21 +5,24 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.life.mindfulnessapp.data.db.dao.AppLimitDao
+import com.life.mindfulnessapp.data.db.dao.FavoriteQuoteDao
 import com.life.mindfulnessapp.data.db.dao.LimitResetDao
 import com.life.mindfulnessapp.data.db.dao.UsageRecordDao
 import com.life.mindfulnessapp.data.db.entity.AppLimitEntity
+import com.life.mindfulnessapp.data.db.entity.FavoriteQuoteEntity
 import com.life.mindfulnessapp.data.db.entity.LimitResetEntity
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
 
 @Database(
-    entities = [AppLimitEntity::class, UsageRecordEntity::class, LimitResetEntity::class],
-    version = 8,
+    entities = [AppLimitEntity::class, UsageRecordEntity::class, LimitResetEntity::class, FavoriteQuoteEntity::class],
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun appLimitDao(): AppLimitDao
     abstract fun usageRecordDao(): UsageRecordDao
     abstract fun limitResetDao(): LimitResetDao
+    abstract fun favoriteQuoteDao(): FavoriteQuoteDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -137,6 +140,32 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE app_limits ADD COLUMN timeLimitEnabled INTEGER NOT NULL DEFAULT 1")
                 db.execSQL("ALTER TABLE app_limits ADD COLUMN overTimeMessage TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /**
+         * 版本 8 → 9：usage_records 新增 effectScore 字段
+         * 用于记录用户在结束弹框中对本次使用效果的自评分（0-10，null 表示未评分）
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE usage_records ADD COLUMN effectScore INTEGER")
+            }
+        }
+
+        /**
+         * 版本 9 → 10：新增 favorite_quotes 表
+         * 存储用户在拦截页收藏的名言
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS favorite_quotes (
+                        content TEXT NOT NULL PRIMARY KEY,
+                        author TEXT NOT NULL DEFAULT '',
+                        savedAt INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
             }
         }
     }

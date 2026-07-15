@@ -24,6 +24,7 @@ data class AccountUiState(
     val avatarEmoji: String = "⚓",
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false,
+    val isDeleting: Boolean = false,
     val syncStatus: String = "",
     val toastMessage: String? = null
 )
@@ -58,6 +59,7 @@ class AccountViewModel @Inject constructor(
     fun loginOrRegister(
         phone: String,
         password: String,
+        inviteCode: String = "",
         onSuccess: (isNewUser: Boolean) -> Unit = {}
     ) {
         if (phone.isBlank() || password.isBlank()) {
@@ -75,7 +77,9 @@ class AccountViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            when (val result = accountRepository.loginOrRegister(phone, password)) {
+            when (val result = accountRepository.loginOrRegister(
+                phone, password, inviteCode.trim().takeIf { it.isNotBlank() }
+            )) {
                 is AuthResult.Success -> {
                     _uiState.update {
                         it.copy(
@@ -103,6 +107,26 @@ class AccountViewModel @Inject constructor(
         accountRepository.logout()
         _uiState.update {
             AccountUiState(isLoggedIn = false, toastMessage = "已退出登录")
+        }
+    }
+
+    /** 注销账号（永久删除，需二次确认后调用）*/
+    fun deleteAccount(onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDeleting = true) }
+            when (val result = accountRepository.deleteAccount()) {
+                is AuthResult.Success -> {
+                    _uiState.update {
+                        AccountUiState(isLoggedIn = false, toastMessage = "账号已注销，数据已清除")
+                    }
+                    onSuccess()
+                }
+                is AuthResult.Error -> {
+                    _uiState.update {
+                        it.copy(isDeleting = false, toastMessage = result.message)
+                    }
+                }
+            }
         }
     }
 

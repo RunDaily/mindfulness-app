@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.life.mindfulnessapp.data.db.AppDatabase
 import com.life.mindfulnessapp.data.db.dao.AppLimitDao
+import com.life.mindfulnessapp.data.db.dao.FavoriteQuoteDao
 import com.life.mindfulnessapp.data.db.dao.LimitResetDao
 import com.life.mindfulnessapp.data.db.dao.UsageRecordDao
 import dagger.Module
@@ -33,7 +34,9 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_5_6,
                 AppDatabase.MIGRATION_6_7,
                 AppDatabase.MIGRATION_7_8,
-                AppDatabase.MIGRATION_6_8
+                AppDatabase.MIGRATION_6_8,
+                AppDatabase.MIGRATION_8_9,
+                AppDatabase.MIGRATION_9_10
             )
             .build()
     }
@@ -46,4 +49,7 @@ object DatabaseModule {
 
     @Provides
     fun provideLimitResetDao(db: AppDatabase): LimitResetDao = db.limitResetDao()
+
+    @Provides
+    fun provideFavoriteQuoteDao(db: AppDatabase): FavoriteQuoteDao = db.favoriteQuoteDao()
 }
