@@ -52,24 +52,22 @@ import kotlinx.coroutines.launch
 /**
  * 仪式感展示浮窗（主题色联动版 v2）
  *
- * 改进：
- * - 打字完成后主题色呼吸光晕脉冲（边框 + 左侧竖条渐亮）
- * - 左侧主题色竖条（随打字进度从 0 → 100% 高度填充）
- * - 赛博/故障/熔岩主题：背景增加微粒子 Canvas 层（不干扰文字）
- * - 打字完成后自动缩短停留时间（文字越短停留越短，更流畅）
+ * 已由胶囊入场「意图确认态」（CapsuleOverlayView.playIntentSeal）替代，
+ * 当前工程不再挂载此浮窗；保留文件便于对照旧动效或回退。
  *
  * @param purposeText  用户输入的使用目的文字（打字机效果展示）
- * @param themeId      当前拦截主题 ID，用于主题化背景色和文字色
+ * @param isDarkTheme  是否夜间模式，驱动极简配色
  * @param onFinished   仪式感动画全部结束后的回调（用于移除浮窗 + 弹入普通胶囊）
  */
+@Deprecated("入场仪式已并入 CapsuleOverlayView 意图确认态（playIntentSeal）")
 @Composable
 fun CeremonyOverlayView(
     purposeText: String,
-    themeId: String = "default",
+    isDarkTheme: Boolean = true,
     onFinished: () -> Unit
 ) {
-    // ── 读取主题配置 ──────────────────────────────────────────────────────
-    val themeConfig = remember(themeId) { getInterceptThemeConfig(themeId) }
+    // ── 读取主题配置（极简 · 跟随日/夜）──────────────────────────────────
+    val themeConfig = remember(isDarkTheme) { getInterceptThemeConfig(isDark = isDarkTheme) }
     val font = if (themeConfig.capsuleUseMonoFont) FontFamily.Monospace else FontFamily.Default
 
     // ── 动画状态 ──────────────────────────────────────────────────────────
@@ -157,7 +155,7 @@ fun CeremonyOverlayView(
     // ── 主题背景渐变 ─────────────────────────────────────────────────────
     // 核心原则：ceremonyBgColor 作为主体（完全不透明深色底），
     // 主题 accentColor 叠加更明显的右侧色调感（15%），提升主题归属感。
-    val bgBrush = remember(themeId, themeConfig) {
+    val bgBrush = remember(isDarkTheme, themeConfig) {
         val base   = themeConfig.ceremonyBgColor.copy(alpha = 1f)  // 强制完全不透明
         val accent = themeConfig.capsuleAccentColor
         // 左侧 100% 不透明深色底 → 右侧叠主题色光晕（15%）

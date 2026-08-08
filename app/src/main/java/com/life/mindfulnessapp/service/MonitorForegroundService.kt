@@ -1,6 +1,5 @@
 package com.life.mindfulnessapp.service
 
-import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,18 +7,15 @@ import android.app.PendingIntent
 import android.app.Service
 import android.app.usage.UsageStatsManager
 import android.content.BroadcastReceiver
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
+import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.life.mindfulnessapp.MainActivity
@@ -29,8 +25,9 @@ import com.life.mindfulnessapp.data.db.entity.LimitResetEntity
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
 import com.life.mindfulnessapp.data.repository.AppLimitRepository
 import com.life.mindfulnessapp.data.repository.LimitResetRepository
-import com.life.mindfulnessapp.data.repository.QuoteRepository
 import com.life.mindfulnessapp.data.repository.UsageRecordRepository
+import com.life.mindfulnessapp.domain.model.UsageSession
+import com.life.mindfulnessapp.overlay.ManualEndDestination
 import com.life.mindfulnessapp.overlay.OverlayManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +37,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
@@ -56,10 +54,16 @@ class MonitorForegroundService : Service() {
         const val ACTION_OPEN_NOTE = "ACTION_OPEN_NOTE"
         /** Intent extra key：需要弹出备注弹窗的 recordId */
         const val EXTRA_NOTE_RECORD_ID = "extra_note_record_id"
-        /** 打开 AppList 页并自动弹出指定 App 编辑对话框的 Intent Action */
+        /** Intent extra：结束流程中是否已完成意图回顾 */
+        const val EXTRA_SESSION_REVIEWED = "extra_session_reviewed"
+        /** 打开监控配置页的 Intent Action */
         const val ACTION_OPEN_APP_LIMIT_EDIT = "ACTION_OPEN_APP_LIMIT_EDIT"
         /** Intent extra key：要编辑限制的 App 包名 */
         const val EXTRA_APP_PACKAGE_NAME = "extra_app_package_name"
+        /** 打开心锚首页（拦截页「去做点别的」） */
+        const val ACTION_OPEN_HOME = "ACTION_OPEN_HOME"
+        /** 打开「想去的地方」配置页 */
+        const val ACTION_OPEN_POSITIVE_DESTINATIONS = "ACTION_OPEN_POSITIVE_DESTINATIONS"
         /**
          * LocalBroadcast Action：用户在 Anchor App 内手动结束会话时发送。
          * MainActivity 收到后显示 Snackbar 轻提示。
@@ -70,11 +74,9 @@ class MonitorForegroundService : Service() {
         /** 会话结束通知 ID */
         const val SESSION_END_NOTIFICATION_ID = 3001
         const val POLL_INTERVAL_MS = 1000L
-        /** 未锁屏后台超时：2 分钟后弹出确认弹窗 */
-        const val BACKGROUND_TIMEOUT_MS = 2 * 60 * 1000L
-        const val BACKGROUND_TIMEOUT_MINUTES = 2
-        /** 确认弹窗的最长等待时间：超过 1 分钟未操作则自动结束会话 */
-        const val CONFIRM_DIALOG_TIMEOUT_MS = 60 * 1000L
+        /** 含意图门：离开倒计时默认秒数（实际以 AppPreferences 为准） */
+        const val DEFAULT_AWAY_COUNTDOWN_SEC =
+            AppPreferences.DEFAULT_AWAY_COUNTDOWN_SECONDS.toLong()
         /**
          * 后台切换防抖延迟（毫秒）。
          * 用于过滤通知栏下拉、系统弹框等导致的短暂"离开前台"误判。
@@ -87,30 +89,13 @@ class MonitorForegroundService : Service() {
          * 用户息屏后 3 分钟内亮屏并回到被监控 App，视为「同一次使用意图中断」：
          *   - 不重新弹拦截页
          *   - 息屏期间不计入使用时长（计时已在息屏时冻结）
-         * 超过 3 分钟未回到该 App，则静默结束会话。
+         * 注意：息屏时无论会话当时是否已被 UsageStats 误判为后台，都只进宽限期、不直接结束，
+         * 避免「锁屏→亮屏回 App」被当成新进入而重弹首次拦截。
+         * 超过 3 分钟未回到该 App，则静默结束会话，并写入待确认中断；
+         * 下次进入时在标准拦截页意图门区提供「继续上次」或重写意图。
          */
         const val SCREEN_OFF_GRACE_MS = 3 * 60 * 1000L
         const val SCREEN_OFF_GRACE_MINUTES = 3
-
-        // ── 每日简报推送相关常量 ────────────────────────────────────────────────
-        /** 每日简报推送通知渠道 ID */
-        const val DAILY_BRIEF_CHANNEL_ID = "daily_brief_notification"
-        /** 每日简报推送通知 ID */
-        const val DAILY_BRIEF_NOTIFICATION_ID = 2001
-        /** 每日简报检测帧间隔：30 秒检测一次，判断是否到了小时:分钟 */
-        const val DAILY_BRIEF_POLL_INTERVAL_MS = 30_000L
-
-        // ── 格言推送相关常量 ───────────────────────────────────────────────────
-        /** 格言推送通知渠道 ID */
-        const val QUOTE_REMINDER_CHANNEL_ID = "quote_reminder_notification"
-        /** 格言推送通知 ID */
-        const val QUOTE_REMINDER_NOTIFICATION_ID = 4001
-        /** 格言推送协程检测间隔：60 秒检测一次 */
-        const val QUOTE_REMINDER_POLL_INTERVAL_MS = 60_000L
-        /** 格言推送的结束时间（固定 22:00，不打扰深夜）*/
-        const val QUOTE_REMINDER_END_HOUR = 22
-        /** 开启格言推送所需最低收藏数 */
-        const val QUOTE_REMINDER_MIN_FAVORITES = 3
 
         fun start(context: Context) {
             val intent = Intent(context, MonitorForegroundService::class.java)
@@ -131,21 +116,21 @@ class MonitorForegroundService : Service() {
     @Inject lateinit var appPreferences: AppPreferences
     @Inject lateinit var limitResetRepository: LimitResetRepository
     @Inject lateinit var usageRecordRepository: UsageRecordRepository
-    @Inject lateinit var quoteRepository: QuoteRepository
+    @Inject lateinit var pendingInterruptStore: com.life.mindfulnessapp.data.PendingInterruptStore
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var monitorJob: Job? = null
     private var backgroundTimeoutJob: Job? = null
+    /** 含意图门离开倒计时剩余秒；锁屏时冻结递减 */
+    private var awayCountdownRemainingSec: Long = -1L
+    /** 锁屏导致离开倒计时冻结 */
+    @Volatile private var awayCountdownFrozen: Boolean = false
+
+    /** 当前配置的离开倒计时秒数（意图门暂停胶囊 / 纯锁静默等待同量级） */
+    private fun configuredAwayCountdownSec(): Long =
+        appPreferences.getAwayCountdownSeconds().toLong()
     /** 防抖：检测到被监控 App 离开前台后，延迟确认是否真正进入后台的协程 */
     private var backgroundDebounceJob: Job? = null
-    /** 每日简报专用协程（独立于主监控循环，30 秒检测一次） */
-    private var dailyBriefJob: Job? = null
-    /** 每日简报：记录已发送简报的日期（yyyy-MM-dd），避免同一天重复发送 */
-    private var lastBriefDate: String = ""
-    /** 格言推送专用协程（每 60 秒检测一次是否到达下次推送时间） */
-    private var quoteReminderJob: Job? = null
-    /** 格言推送：上次发送时间戳（毫秒），用于计算间隔 */
-    private var lastQuoteReminderTimeMs: Long = 0L
     /** 常驻通知刷新协程（每分钟刷新一次，展示今日使用汇总） */
     private var notificationRefreshJob: Job? = null
 
@@ -157,62 +142,116 @@ class MonitorForegroundService : Service() {
 
     /**
      * 息屏时被监控 App 的包名（用于亮屏后判断是否需要恢复会话）。
-     * 仅在息屏时有会话存在时才会被赋值，亮屏后清除。
+     * 仅在「前台息屏」进入宽限期时赋值；桌面暂停态息屏不走此标记。
      */
     private var screenOffPackage: String? = null
+
+    /**
+     * 桌面暂停态下锁屏的包名。
+     * 息屏时会收起胶囊；解锁后若会话仍在后台，应还原暂停胶囊（而不是当成息屏宽限把胶囊弄丢）。
+     */
+    private var lockedWhilePausedPackage: String? = null
+
+    /**
+     * 拦截页展示期间息屏的目标包名。
+     * 息屏常被 UsageStats 误判成「离开」，不能记守住、不能拆页；解锁后若页已丢则静默重展且不计冲动。
+     */
+    private var screenOffDuringInterceptPkg: String? = null
 
     private var enabledPackages: Set<String> = emptySet()
     private var lastForegroundPackage: String? = null
 
+    private fun isScreenInteractive(): Boolean {
+        val pm = getSystemService(PowerManager::class.java) ?: return true
+        return pm.isInteractive
+    }
+
     /**
      * 锁屏 / 亮屏广播接收器：
      *
-     * - ACTION_SCREEN_OFF（灭屏/锁屏）：
-     *     • 若当前有活跃会话（App 在前台）→ 冻结计时（onAppGoBackground）+ 启动 3 分钟宽限计时
-     *       宽限期内用户亮屏回到该 App → 恢复会话，不重新拦截
-     *       宽限期超时 → 静默结束会话
-     *     • 若会话已在后台（isInBackground=true）→ 直接结束会话（用户已离开过 App 再锁屏）
-     *     • 无会话 → 不做任何处理
+     * - ACTION_SCREEN_OFF：
+     *     • 拦截页展示中 → 标记假离开，保留拦截（不记守住）
+     *     • 已在桌面暂停（含刚切入后台）→ 冻结离开倒计时，保留暂停胶囊
+     *     • 仍在 App 内前台息屏 → 息屏宽限；亮屏回到 App 则静默续用
      *
-     * - ACTION_USER_PRESENT（解锁回到桌面）：
-     *     • 若在宽限期内（screenOffPackage != null）→ 取消锁屏超时，等待用户回到 App
-     *       （用户回到 App 时由 handleForegroundChange 走 onAppReturnToForeground 恢复）
-     *     • 若已超出宽限期（screenOffPackage == null）→ 无需处理，会话已结束
+     * - ACTION_SCREEN_ON / ACTION_USER_PRESENT：
+     *     • 拦截页息屏：解锁后若页还在则继续；若已丢则静默重展且不计冲动
+     *     • 桌面暂停后锁屏：解冻离开倒计时；解锁后还原暂停胶囊（或若已在 App 内则直接续用）
+     *     • 息屏宽限：若 App 已在前台则续用；若仍在桌面则先还原暂停胶囊，等待点回
      */
     private val screenStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    val session = sessionManager.currentSession.value
-                    if (session != null) {
-                        cancelBackgroundTimeout()
-                        cancelBackgroundDebounce()
-                        if (session.isInBackground) {
-                            // Case 3：息屏前 App 已在后台 → 直接结束会话
-                            Log.d(TAG, "屏幕关闭，会话已在后台，直接结束 [${session.packageName}]")
-                            serviceScope.launch {
-                                sessionManager.endSession(UsageRecordEntity.EndReason.AUTO_TIMEOUT)
-                            }
-                            overlayManager.dismissAll()
-                            screenOffPackage = null
-                        } else {
-                            // Case 1 / Case 2：息屏前 App 在前台 → 冻结计时，进入宽限期
-                            Log.d(TAG, "屏幕关闭，App 在前台，冻结计时进入宽限期 [${session.packageName}]，宽限 ${SCREEN_OFF_GRACE_MINUTES} 分钟")
-                            sessionManager.onAppGoBackground()
-                            overlayManager.dismissAll()  // 关闭胶囊和所有浮窗
-                            screenOffPackage = session.packageName
-                            startScreenOffTimeout(session.packageName)
+                    if (overlayManager.isInterceptVisible.get()) {
+                        val pkg = overlayManager.interceptTargetPackage
+                        if (pkg != null) {
+                            screenOffDuringInterceptPkg = pkg
+                            Log.d(TAG, "拦截页期间息屏，保留拦截、不记离开 [$pkg]")
                         }
                     }
-                }
-                Intent.ACTION_USER_PRESENT -> {
-                    val pkg = screenOffPackage
-                    if (pkg != null) {
-                        // 宽限期内解锁 → 等待用户主动回到 App，计时已冻结，不需要额外操作
-                        // handleForegroundChange 检测到 App 回到前台时会走 onAppReturnToForeground
-                        Log.d(TAG, "屏幕解锁，仍在宽限期，等待用户回到 App [$pkg]")
+                    val session = sessionManager.currentSession.value ?: return
+                    cancelBackgroundDebounce()
+                    if (session.isInBackground) {
+                        Log.d(
+                            TAG,
+                            "屏幕关闭，会话已在桌面暂停，冻结离开倒计时 [${session.packageName}]"
+                        )
+                        // 含意图门：冻结算倒计时，保留暂停胶囊；纯时长锁本无桌面胶囊
+                        awayCountdownFrozen = true
+                        lockedWhilePausedPackage = session.packageName
+                        screenOffPackage = null
+                        cancelScreenOffTimeout()
+                    } else {
+                        cancelBackgroundTimeout()
+                        sessionManager.onAppGoBackground()
+                        Log.d(
+                            TAG,
+                            "屏幕关闭，进入息屏宽限期 [${session.packageName}]，" +
+                                "宽限 ${SCREEN_OFF_GRACE_MINUTES} 分钟"
+                        )
+                        overlayManager.dismissAll()
+                        lockedWhilePausedPackage = null
+                        screenOffPackage = session.packageName
+                        startScreenOffTimeout(session.packageName)
                     }
-                    // 若 screenOffPackage == null（宽限期已过），会话已结束，无需处理
+                }
+                Intent.ACTION_SCREEN_ON,
+                Intent.ACTION_USER_PRESENT -> {
+                    if (awayCountdownFrozen) {
+                        awayCountdownFrozen = false
+                        Log.d(TAG, "屏幕亮起/解锁，解冻离开倒计时")
+                    }
+                    val interceptLockedPkg = screenOffDuringInterceptPkg
+                    if (interceptLockedPkg != null && intent.action == Intent.ACTION_USER_PRESENT) {
+                        screenOffDuringInterceptPkg = null
+                        if (!overlayManager.isInterceptVisible.get()) {
+                            Log.d(
+                                TAG,
+                                "解锁后拦截页已丢，静默重展且不计冲动 [$interceptLockedPkg]"
+                            )
+                            serviceScope.launch {
+                                showInterceptOverlay(interceptLockedPkg, countImpulse = false)
+                            }
+                        } else {
+                            Log.d(TAG, "解锁后拦截页仍在，不计新冲动 [$interceptLockedPkg]")
+                        }
+                    }
+                    val pausedPkg = lockedWhilePausedPackage
+                    if (pausedPkg != null && intent.action == Intent.ACTION_USER_PRESENT) {
+                        lockedWhilePausedPackage = null
+                        Log.d(TAG, "屏幕解锁，还原暂停态 [$pausedPkg]")
+                        serviceScope.launch {
+                            restorePausedCapsuleAfterUnlock(pausedPkg)
+                        }
+                    }
+                    val pkg = screenOffPackage
+                    if (pkg != null && intent.action == Intent.ACTION_USER_PRESENT) {
+                        Log.d(TAG, "屏幕解锁，息屏宽限期内尝试恢复 [$pkg]")
+                        serviceScope.launch {
+                            tryResumeAfterScreenOff(pkg, reason = "USER_PRESENT")
+                        }
+                    }
                 }
             }
         }
@@ -221,8 +260,6 @@ class MonitorForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        createDailyBriefChannel()
-        createQuoteReminderChannel()
         createSessionEndChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
 
@@ -231,36 +268,66 @@ class MonitorForegroundService : Service() {
         // 使用 KEEP 策略，多次调用不会重复入队。
         ServiceWatchdogWorker.schedule(this)
 
-        // 用户点击胶囊"结束"按钮后，根据当前所在 App 执行不同操作：
-        //
-        //  1. 用户在被监控 App 内结束 → 直接打开 Anchor App（引导回来，替代原来的按 Home 键）
-        //  2. 用户在 Anchor App（本应用）内结束 → 发 LocalBroadcast，由 MainActivity 显示 Snackbar
-        //  3. 用户在其他 App / 系统界面内结束 → 发通知轻提示，不打扰当前使用
-        overlayManager.onManualEndSession = {
+        // 用户点击胶囊「结束」后：
+        //  HomeAligned → 回桌面（轻条由 OverlayManager 挂）
+        //  HomeDrifted → 回桌面（可点轻条再进心锚）
+        //  OpenRecord → 打开心锚并定位该条
+        //  LegacyUnreviewed → 通知 / 广播（旧路径）
+        overlayManager.onManualEndSession = { recordId, mindfulnessLevel, destination ->
             val endedPackage = overlayManager.capsuleAppPackageName.value
-            when {
-                // 情景 1：在被监控 App 内结束，打开 Anchor App
-                endedPackage.isNotEmpty() && lastForegroundPackage == endedPackage -> {
-                    Log.d(TAG, "[ManualEnd] 在被监控App内结束，跳转到 Anchor App")
-                    openMainActivity()
+            when (destination) {
+                ManualEndDestination.HomeAligned,
+                ManualEndDestination.HomeDrifted -> {
+                    Log.d(
+                        TAG,
+                        "[ManualEnd] 已回顾 → 回桌面 recordId=$recordId level=$mindfulnessLevel dest=$destination"
+                    )
+                    pressHomeButton()
                 }
-                // 情景 2：在 Anchor App 内结束，发 LocalBroadcast 触发 Snackbar
-                lastForegroundPackage == packageName -> {
-                    Log.d(TAG, "[ManualEnd] 在 Anchor App 内结束，发 LocalBroadcast")
-                    LocalBroadcastManager.getInstance(this@MonitorForegroundService)
-                        .sendBroadcast(Intent(ACTION_SESSION_ENDED_IN_APP))
+                ManualEndDestination.OpenRecord -> {
+                    Log.d(TAG, "[ManualEnd] 去心锚定位 recordId=$recordId")
+                    openMainActivityForRecord(recordId)
                 }
-                // 情景 3：在其他 App 或系统界面内结束，发通知轻提示
-                else -> {
-                    Log.d(TAG, "[ManualEnd] 在其他App内结束，发通知提示")
-                    sendSessionEndNotification(endedPackage)
+                ManualEndDestination.LegacyUnreviewed -> {
+                    when {
+                        lastForegroundPackage == packageName -> {
+                            Log.d(TAG, "[ManualEnd] 在心锚内结束 → 广播切今日高亮 recordId=$recordId")
+                            LocalBroadcastManager.getInstance(this@MonitorForegroundService)
+                                .sendBroadcast(
+                                    Intent(ACTION_SESSION_ENDED_IN_APP)
+                                        .putExtra(EXTRA_NOTE_RECORD_ID, recordId)
+                                        .putExtra(EXTRA_SESSION_REVIEWED, false)
+                                )
+                        }
+                        else -> {
+                            Log.d(TAG, "[ManualEnd] 未回顾 → 通知可点回今日高亮 recordId=$recordId")
+                            sendSessionEndNotification(endedPackage, recordId, reviewed = false)
+                        }
+                    }
                 }
             }
         }
 
-        // 有目的使用手动结束后，打开 App 引导用户记录感受
-        overlayManager.onManualEndWithPurpose = { recordId ->
-            openMainActivityForNote(recordId)
+        overlayManager.onLaunchPositiveApp = { targetPackage ->
+            Log.d(TAG, "[PositiveDest] 启动正向 App pkg=$targetPackage")
+            launchApp(targetPackage)
+        }
+
+        overlayManager.onOpenPositiveDestinationSettings = {
+            Log.d(TAG, "[PositiveDest] 打开想去的地方配置")
+            openPositiveDestinationSettings()
+        }
+
+        overlayManager.onExtendSession = { extraMinutes ->
+            serviceScope.launch {
+                val ok = sessionManager.extendSessionOnce(extraMinutes)
+                if (ok) {
+                    val renewed = sessionManager.currentSession.value
+                    Log.d(TAG, "[Extend] 胶囊续时 +${extraMinutes} 分 ok=${renewed != null}")
+                } else {
+                    Log.w(TAG, "[Extend] extendSessionOnce 失败")
+                }
+            }
         }
 
         serviceScope.launch {
@@ -275,11 +342,6 @@ class MonitorForegroundService : Service() {
             }
         }
 
-        // 每日简报独立运行，不依赖监控列表是否为空
-        startDailyBriefJob()
-        // 格言推送独立运行
-        startQuoteReminderJob()
-
         // 常驻通知刷新：每分钟更新一次今日使用汇总
         startNotificationRefreshJob()
 
@@ -287,6 +349,7 @@ class MonitorForegroundService : Service() {
         // ACTION_SCREEN_OFF / ACTION_USER_PRESENT 只能动态注册，无法在 AndroidManifest 声明
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_USER_PRESENT)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -382,9 +445,9 @@ class MonitorForegroundService : Service() {
             bigText = "今日暂无使用记录\n守护进行中，继续保持 🌿"
         } else {
             val totalText = formatDuration(totalSeconds)
-            summaryLine = "今日已使用 $totalText"
+            summaryLine = "今日正念时长 $totalText"
             bigText = buildString {
-                append("今日已使用 $totalText\n")
+                append("今日正念时长 $totalText\n")
                 val sorted = usageList.sortedByDescending { it.totalSeconds }
                 sorted.forEach { app ->
                     val name = getAppName(app.packageName)
@@ -409,233 +472,16 @@ class MonitorForegroundService : Service() {
         Log.d(TAG, "[NotifRefresh] 常驻通知已更新：$summaryLine")
     }
 
-    /**
-     * 启动每日简报专用协程，每 30 秒检测一次是否到达用户设定的推送时间。
-     * 与主监控循环（1 秒轮询）完全隔离，互不影响。
-     */
-    private fun startDailyBriefJob() {
-        dailyBriefJob?.cancel()
-        dailyBriefJob = serviceScope.launch {
-            Log.d(TAG, "[DailyBrief] 专用协程已启动")
-            while (true) {
-                try {
-                    checkAndSendDailyBrief()
-                } catch (e: Exception) {
-                    Log.e(TAG, "[DailyBrief] 检测出错", e)
-                }
-                delay(DAILY_BRIEF_POLL_INTERVAL_MS)
-            }
-        }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    //  格言推送
-    // ════════════════════════════════════════════════════════════════════════
-
-    /**
-     * 启动格言推送专用协程，每 60 秒检测一次。
-     * 触发条件：
-     *   1. 格言推送开关开启
-     *   2. 当前时间在用户设定的活跃时段内（startHour ~ 22:00）
-     *   3. 距离上次推送已超过用户设定的间隔时长
-     */
-    private fun startQuoteReminderJob() {
-        quoteReminderJob?.cancel()
-        quoteReminderJob = serviceScope.launch {
-            Log.d(TAG, "[QuoteReminder] 专用协程已启动")
-            while (true) {
-                try {
-                    checkAndSendQuoteReminder()
-                } catch (e: Exception) {
-                    Log.e(TAG, "[QuoteReminder] 检测出错", e)
-                }
-                delay(QUOTE_REMINDER_POLL_INTERVAL_MS)
-            }
-        }
-    }
-
-    private suspend fun checkAndSendQuoteReminder() {
-        if (!appPreferences.isQuoteReminderEnabled()) return
-
-        val cal = Calendar.getInstance()
-        val curHour = cal.get(Calendar.HOUR_OF_DAY)
-        val startHour = appPreferences.getQuoteReminderStartHour()
-        // 不在活跃时段内，跳过
-        if (curHour < startHour || curHour >= QUOTE_REMINDER_END_HOUR) return
-
-        val intervalMs = appPreferences.getQuoteReminderIntervalHours() * 60 * 60 * 1000L
-        val now = System.currentTimeMillis()
-        // 还没到下次推送时间，跳过
-        if (now - lastQuoteReminderTimeMs < intervalMs) return
-
-        // 从收藏中随机取一条
-        val favorites = quoteRepository.getAllFavorites().first()
-        if (favorites.size < QUOTE_REMINDER_MIN_FAVORITES) return
-
-        val quote = favorites.random()
-        lastQuoteReminderTimeMs = now
-        Log.d(TAG, "[QuoteReminder] 触发推送：${quote.content.take(20)}...")
-        showQuoteReminderNotification(quote.content, quote.author)
-    }
-
-    private fun showQuoteReminderNotification(content: String, author: String) {
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            QUOTE_REMINDER_NOTIFICATION_ID,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        val displayText = if (author.isBlank()) content else "$content\n$author"
-        val notification = NotificationCompat.Builder(this, QUOTE_REMINDER_CHANNEL_ID)
-            .setContentTitle("💬 来自你的收藏")
-            .setContentText(content)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(displayText))
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(QUOTE_REMINDER_NOTIFICATION_ID, notification)
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-
-    /**
-     * 检查当前时间是否应发送每日简报。
-     *
-     * 触发条件：
-     *   1. 用户已开启每日简报开关
-     *   2. 当前小时和分钟与用户设定的推送时间匹配
-     *   3. 今日还未发送过简报（以日期字符串判断）
-     */
-    private fun checkAndSendDailyBrief() {
-        val briefEnabled = appPreferences.isDailyBriefEnabled()
-        val cal = Calendar.getInstance()
-        val curHour   = cal.get(Calendar.HOUR_OF_DAY)
-        val curMinute = cal.get(Calendar.MINUTE)
-        val todayDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(cal.time)
-
-        if (!briefEnabled) return
-
-        val targetHour   = appPreferences.getDailyBriefHour()
-        val targetMinute = appPreferences.getDailyBriefMinute()
-
-        // 小时和分钟均匹配才触发
-        if (curHour != targetHour || curMinute != targetMinute) return
-        // 今天已发送过，跳过
-        if (todayDate == lastBriefDate) {
-            Log.d(TAG, "[DailyBrief] 今天已发送过简报，跳过")
-            return
-        }
-
-        lastBriefDate = todayDate
-        Log.d(TAG, "[DailyBrief] 触发！${targetHour}:${targetMinute.toString().padStart(2,'0')}，准备发送今日简报")
-
-        serviceScope.launch {
-            sendDailyBriefNotification()
-        }
-    }
-
-    /**
-     * 汇总当日使用记录，生成大白话形式的简报文案，并发送通知。
-     */
-    private suspend fun sendDailyBriefNotification() {
-        try {
-            val now = System.currentTimeMillis()
-            val (dayStart, dayEnd) = UsageRecordRepository.getDayRange(now)
-            Log.d(TAG, "[DailyBrief] 查询今日使用记录，dayStart=$dayStart, dayEnd=$dayEnd")
-
-            val usageList = usageRecordRepository.getAppTotalByPeriod(dayStart, dayEnd)
-            // 克制次数：在拦截页选择"还是算了"退出的次数
-            val restrainCount = usageRecordRepository.getDayDismissCount(now)
-
-            Log.d(TAG, "[DailyBrief] 查询结果：${usageList.size} 个 App，克制次数=$restrainCount")
-
-            val totalSeconds = usageList.sumOf { it.totalSeconds }
-            val (title, content) = buildDailyBriefText(usageList, totalSeconds, restrainCount)
-
-            showDailyBriefNotification(title, content)
-            Log.d(TAG, "[DailyBrief] 通知已发送！")
-        } catch (e: Exception) {
-            Log.e(TAG, "[DailyBrief] 发送通知出错", e)
-        }
-    }
-
-    /**
-     * 生成每日简报的通知标题和正文。
-     * 风格：大白话、轻松、三言两语。
-     */
-    private fun buildDailyBriefText(
-        usageList: List<com.life.mindfulnessapp.data.db.dao.AppTotalUsage>,
-        totalSeconds: Long,
-        restrainCount: Int
-    ): Pair<String, String> {
-        // 完全零使用
-        if (usageList.isEmpty() && restrainCount == 0) {
-            return "🌿 今日简报" to "今天没有触碰任何受监控的 App，天天当个自律人就这么容易！"
-        }
-
-        val sorted = usageList.sortedByDescending { it.totalSeconds }
-        val totalText = formatDuration(totalSeconds)
-        val title = "📊 今日小结"
-
-        val content = buildString {
-            // 总时长
-            if (totalSeconds > 0) {
-                append("今天手机消耗了 $totalText")
-            } else {
-                append("今天和手机的缘分不多")
-            }
-
-            // 最常用 App
-            if (sorted.isNotEmpty()) {
-                val top = sorted.first()
-                val topName = getAppName(top.packageName)
-                val topTime = formatDuration(top.totalSeconds)
-                append("，最吃时间的是 $topName（$topTime）")
-                if (sorted.size >= 2) {
-                    val second = sorted[1]
-                    val secName = getAppName(second.packageName)
-                    val secTime = formatDuration(second.totalSeconds)
-                    append("，其次是 $secName（$secTime）")
-                }
-                append("。")
-            } else {
-                append("。")
-            }
-
-            // 克制情况
-            when {
-                restrainCount >= 5 -> append("克制了 $restrainCount 次想打开却强行收手，今天赢得漂亮！🎉")
-                restrainCount >= 2 -> append("中途克制了 $restrainCount 次冲动，安全感拉满！")
-                restrainCount == 1 -> append("还克制了 1 次小冲动，慢慢来。")
-                totalSeconds in 1..1800 -> append("今天用得超少，少就是多！🌱")
-                totalSeconds > 7200 -> append("不过记得适时休息一下眼睛，明天再装！")
-                else -> append("总体还行，继续加油👊")
-            }
-        }
-
-        return title to content
-    }
-
-    /**
-     * 获取 App 名称，若获取失败则返回包名最后一段作为兜底。
-     */
     private fun getAppName(packageName: String): String {
         return try {
             packageManager.getApplicationLabel(
                 packageManager.getApplicationInfo(packageName, 0)
             ).toString()
         } catch (e: PackageManager.NameNotFoundException) {
-            // 兜底：取包名最后一段
             packageName.substringAfterLast(".")
         }
     }
 
-    /**
-     * 将秒数格式化为人类可读的时长字符串。
-     * 示例：90秒 → "1分30秒"，3600秒 → "1小时"，3690秒 → "1小时1分"
-     */
     private fun formatDuration(totalSeconds: Long): String {
         if (totalSeconds <= 0) return "0分钟"
         val hours = totalSeconds / 3600
@@ -648,31 +494,6 @@ class MonitorForegroundService : Service() {
             minutes > 0 -> "${minutes}分钟"
             else -> "${seconds}秒"
         }
-    }
-
-    /**
-     * 发布每日简报通知。
-     */
-    private fun showDailyBriefNotification(title: String, content: String) {
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            DAILY_BRIEF_NOTIFICATION_ID,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        val notification = NotificationCompat.Builder(this, DAILY_BRIEF_CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(content)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(content))
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(DAILY_BRIEF_NOTIFICATION_ID, notification)
     }
 
     /**
@@ -745,14 +566,34 @@ class MonitorForegroundService : Service() {
     }
 
     private suspend fun handleForegroundChange(currentPkg: String?) {
+        // 结束确认 / 续时弹窗期间会话会被临时标成后台以冻结计时。
+        // 若此处仍走「回前台 → showCapsule」，会拆掉刚弹出的浮层（表现为点结束无反应）。
+        if (overlayManager.isCapsuleDialogBlocking.get()) {
+            Log.d(TAG, "胶囊结束确认/续时弹窗中，忽略前台切换 $lastForegroundPackage -> $currentPkg")
+            return
+        }
+
         val prevPkg = lastForegroundPackage
 
         if (currentPkg == prevPkg) {
+            // 锁屏宽限期内：部分机型 UsageStats 仍报告同一包名（无 FOREGROUND 变化），
+            // 若不在此处恢复，会卡在「计时冻结 + 胶囊已dismiss」且最终误走超时结束。
+            if (currentPkg != null && screenOffPackage == currentPkg) {
+                if (tryResumeAfterScreenOff(currentPkg, reason = "same-pkg-poll")) return
+            }
             // 拦截页/超限页正在展示期间，跳过超限检查，避免重复触发
             if (overlayManager.isInterceptVisible.get()) return
             val session = sessionManager.currentSession.value
             if (session != null && !session.isInBackground) {
-                if (session.isDailyLimitExceeded || session.isWeeklyLimitExceeded) {
+                // 会话中跨入时段锁：硬踢（优先于日限/单次限）
+                val liveLimit = appLimitRepository.getAppLimit(session.packageName)
+                if (liveLimit != null && isPeriodHardLocked(liveLimit, session.packageName)) {
+                    handlePeriodLock(session.packageName, endActiveSession = true)
+                    return
+                }
+                if (session.isSessionLimitReached) {
+                    handleSessionLimitReached(session.packageName)
+                } else if (session.isDailyLimitExceeded || session.isWeeklyLimitExceeded) {
                     // 超限续记 session：用户已明确知晓超限并主动选择继续，不再重复弹超限页
                     if (!session.isOverLimitSession) {
                         handleLimitExceeded(session.packageName)
@@ -777,32 +618,40 @@ class MonitorForegroundService : Service() {
             Log.d(TAG, "前台切换: $prevPkg -> $currentPkg")
 
             when {
-                overlayManager.isInterceptVisible.get() -> {
+                // 仅当拦截页就是当前这个 App 时跳过；若用户从 A 的拦截切到 B，必须收口 A 并处理 B
+                overlayManager.isInterceptVisible.get() &&
+                    overlayManager.interceptTargetPackage == currentPkg -> {
                     Log.d(TAG, "$currentPkg 拦截弹窗正在展示中，跳过本轮")
                 }
                 existingSession?.packageName == currentPkg && existingSession.isInBackground -> {
-                    val isFromScreenOff = screenOffPackage == currentPkg
-                    sessionManager.onAppReturnToForeground()
-                    cancelBackgroundTimeout()
-                    cancelScreenOffTimeout()
-                    screenOffPackage = null
-                    overlayManager.resumeCapsule()  // 用户已回来，恢复胶囊到活跃状态
-                    // 必须读取 onAppReturnToForeground() 更新后的最新 session
-                    // （isInBackground=false，startTime 已重置为当前时刻）
-                    val restoredSession = sessionManager.currentSession.value ?: existingSession
-                    overlayManager.showCapsule(restoredSession, playEnterAnimation = false)
-                    if (isFromScreenOff) {
-                        Log.d(TAG, "$currentPkg 锁屏后回来（宽限期内），恢复计时，accumulated=${restoredSession.accumulatedActiveSeconds}s")
+                    val limit = appLimitRepository.getAppLimit(currentPkg)
+                    if (limit != null && isPeriodHardLocked(limit, currentPkg)) {
+                        Log.d(TAG, "$currentPkg 后台恢复时时段锁已生效，硬踢")
+                        handlePeriodLock(currentPkg, endActiveSession = true)
                     } else {
-                        Log.d(TAG, "$currentPkg 从后台回来，继续计时，accumulated=${restoredSession.accumulatedActiveSeconds}s")
+                        resumeBackgroundSession(currentPkg, existingSession)
                     }
                 }
                 existingSession?.packageName == currentPkg && !existingSession.isInBackground -> {
                     Log.d(TAG, "$currentPkg 已在前台运行中，跳过")
                 }
                 else -> {
-                    Log.d(TAG, "显示拦截浮窗: $currentPkg，existingSession=$existingSession")
-                    showInterceptOverlay(currentPkg)
+                    val limit = appLimitRepository.getAppLimit(currentPkg)
+                    if (limit != null && isPeriodHardLocked(limit, currentPkg)) {
+                        Log.d(TAG, "$currentPkg 时段锁生效，展示硬挡页")
+                        handlePeriodLock(currentPkg, endActiveSession = false)
+                    } else if (limit != null && !limit.requireIntentOnOpen) {
+                        // 纯时长锁 / 仅时段已过：只关心限额与计时，与中断确认无关
+                        if (pendingInterruptStore.get(currentPkg) != null) {
+                            pendingInterruptStore.clear(currentPkg)
+                            Log.d(TAG, "$currentPkg 意图门关闭，丢弃残留中断确认快照")
+                        }
+                        Log.d(TAG, "$currentPkg 意图门关闭，尝试无拦截进入")
+                        enterWithoutIntentGate(currentPkg, limit.appName)
+                    } else {
+                        Log.d(TAG, "显示拦截浮窗: $currentPkg，existingSession=$existingSession")
+                        showInterceptOverlay(currentPkg)
+                    }
                 }
             }
             return
@@ -831,8 +680,27 @@ class MonitorForegroundService : Service() {
                 lastForegroundPackage = currentPkg
                 return
             }
-            Log.d(TAG, "$interceptTarget 拦截页展示期间用户按 Home 离开，立即关闭拦截页")
-            overlayManager.dismissIntercept()
+            // 息屏常被 UsageStats 报成「切走」：不记守住、不拆拦截
+            val screenOffFakeLeave =
+                screenOffDuringInterceptPkg == interceptTarget || !isScreenInteractive()
+            if (screenOffFakeLeave) {
+                if (screenOffDuringInterceptPkg == null) {
+                    screenOffDuringInterceptPkg = interceptTarget
+                }
+                Log.d(TAG, "$interceptTarget 拦截页期间息屏导致的假离开，保留拦截、不记次数")
+                lastForegroundPackage = currentPkg
+                return
+            }
+            Log.d(TAG, "$interceptTarget 拦截页展示期间用户按 Home 离开，关闭拦截并走离开肯定")
+            // Home / 切走与点「离开」同等：计入门外离开（守住），并走轻量肯定（尊重冷却）
+            recordInterceptDismiss(interceptTarget, toOwnApp = false)
+            overlayManager.isInterceptVisible.set(false)
+            overlayManager.showDismissCeremony(
+                packageName = interceptTarget,
+                destination = com.life.mindfulnessapp.overlay.DismissDestination.HOME
+            ) {
+                overlayManager.dismissIntercept()
+            }
             lastForegroundPackage = currentPkg
             return
         }
@@ -851,28 +719,12 @@ class MonitorForegroundService : Service() {
                 if (lastForegroundPackage != debouncePackage) {
                     val currentSession = sessionManager.currentSession.value
                     if (currentSession != null && currentSession.packageName == debouncePackage && !currentSession.isInBackground) {
-                        // ── 检查 App 进程是否还存活 ────────────────────────────────
-                        // 若进程已被系统/用户杀掉，立即结束会话并关闭胶囊，
-                        // 不进入"暂停等待"流程（用户无法再"回到"一个已死亡的 App）
-                        if (!isAppProcessAlive(debouncePackage)) {
-                            Log.d(TAG, "$debouncePackage 进程已消亡（被杀），立即结束会话并关闭胶囊")
-                            sessionManager.endSession(UsageRecordEntity.EndReason.APP_CLOSED)
-                            cancelBackgroundTimeout()
-                            overlayManager.dismissAll()
-                            return@launch
-                        }
-
-                        Log.d(TAG, "$debouncePackage 确认进入后台（进程存活），触发后台逻辑")
-
-                        sessionManager.onAppGoBackground()
-
-                        // App 进入后台，胶囊统一切换为暂停状态
-                        Log.d(TAG, "$debouncePackage 进入后台，胶囊切换为暂停状态")
-                        overlayManager.pauseCapsule(returnToAppAction = {
-                            // 点击暂停胶囊时：直接拉起该App回到前台
-                            launchApp(debouncePackage)
-                        })
-                        startBackgroundTimeout(debouncePackage)
+                        // 进入后台暂停 + 超时等待。
+                        // 注意：不要用 ActivityManager.getRunningAppProcesses() 判断第三方 App
+                        // 是否被杀——Android 11+ 该 API 基本只能看到本应用进程，会把「回桌面」
+                        // 误判成「进程已死」，导致几秒内胶囊消失、再次进入又全屏拦截。
+                        Log.d(TAG, "$debouncePackage 确认进入后台，触发暂停逻辑")
+                        handleAppWentBackground(debouncePackage)
                     }
                 } else {
                     Log.d(TAG, "$debouncePackage 防抖期间回到前台，取消后台逻辑")
@@ -894,41 +746,172 @@ class MonitorForegroundService : Service() {
     }
 
     /**
-     * 检查指定包名的 App 进程是否仍然存活。
-     *
-     * 使用 ActivityManager.getRunningAppProcesses() 枚举所有运行中的进程，
-     * 如果找到该包名对应的进程条目，说明进程仍然存在（App 只是切到后台）。
-     * 若找不到，说明进程已被用户/系统强制终止（Force Stop 或滑掉最近任务）。
-     *
-     * ⚠️ 注意：从 Android 11（API 30）起，此 API 只能看到本应用自己的进程，
-     * 但对于"被监控的第三方 App 是否还活着"这个场景依然有效——
-     * 即便返回列表不完整，若列表里没有该包名，说明其进程已被杀掉。
-     * 这与我们"宁可误判、不可遗漏"的策略一致：宁可提前结束会话，也不让胶囊悬空。
+     * 从一个被监控 App 切到另一个时，收口前一会话。
+     * 写入 [UsageRecordEntity.EndReason.SWITCHED_AWAY]，下次回到原 App 在意图门区续航；
+     * 同时清掉其后台超时与锁屏宽限，避免孤悬协程误伤新会话。
      */
-    private fun isAppProcessAlive(packageName: String): Boolean {
-        val am = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val processes = try {
-            am.runningAppProcesses ?: emptyList()
-        } catch (_: Exception) {
-            return true  // 获取失败时保守处理，认为进程存活，不立即结束
+    private suspend fun endSessionForMonitoredAppSwitch(previousPackage: String) {
+        cancelBackgroundTimeout()
+        cancelScreenOffTimeout()
+        awayCountdownRemainingSec = -1L
+        awayCountdownFrozen = false
+        if (screenOffPackage == previousPackage) {
+            screenOffPackage = null
         }
-        return processes.any { proc ->
-            proc.pkgList?.contains(packageName) == true
+        if (lockedWhilePausedPackage == previousPackage) {
+            lockedWhilePausedPackage = null
         }
+        sessionManager.endSession(UsageRecordEntity.EndReason.SWITCHED_AWAY)
+        overlayManager.dismissCapsule()
     }
 
-    private suspend fun showInterceptOverlay(packageName: String) {
+    /**
+     * 意图门关闭时：若时长已超限则弹超限页，否则直接开会话并显示胶囊。
+     */
+    private suspend fun enterWithoutIntentGate(packageName: String, appNameHint: String) {
         val existing = sessionManager.currentSession.value
         if (existing != null && existing.packageName != packageName) {
-            Log.w(TAG, "showInterceptOverlay 发现残留会话 [${existing.packageName}]，强制结束并清理关联资源")
-            sessionManager.endSession(UsageRecordEntity.EndReason.APP_CLOSED)
-            // 同步取消该残留会话对应的后台超时计时，避免孤悬协程在 3 分钟后误触发
-            cancelBackgroundTimeout()
-            // 移除旧 App 的胶囊（如果还在屏幕上）
-            overlayManager.dismissCapsule()
+            Log.w(TAG, "enterWithoutIntentGate：从 [${existing.packageName}] 切到 [$packageName]，收口前一会话")
+            endSessionForMonitoredAppSwitch(existing.packageName)
         }
 
         val limit = appLimitRepository.getAppLimit(packageName) ?: return
+        if (isPeriodHardLocked(limit, packageName)) {
+            handlePeriodLock(packageName, endActiveSession = false)
+            return
+        }
+        val appName = try {
+            packageManager.getApplicationLabel(
+                packageManager.getApplicationInfo(packageName, 0)
+            ).toString()
+        } catch (_: PackageManager.NameNotFoundException) {
+            appNameHint.ifBlank { limit.appName }
+        }
+
+        if (limit.timeLimitEnabled) {
+            val now = System.currentTimeMillis()
+            val todayUsed = usageRecordRepository.getDailyUsageSeconds(packageName, now)
+            val weekUsed = usageRecordRepository.getWeeklyUsageSeconds(packageName, now)
+            val dailyLimitSeconds = limit.effectiveDailyLimitMinutes() * 60L
+            val weeklyLimitSeconds = limit.effectiveWeeklyLimitMinutes() * 60L
+            val over = (dailyLimitSeconds > 0 && todayUsed >= dailyLimitSeconds) ||
+                (weeklyLimitSeconds > 0 && weekUsed >= weeklyLimitSeconds)
+            if (over) {
+                Log.d(TAG, "$packageName 意图门关且已超限，展示超限页")
+                handleLimitExceeded(packageName)
+                return
+            }
+        }
+
+        val session = sessionManager.startSession(packageName, appName, purpose = null)
+        if (session != null) {
+            if (lastForegroundPackage == packageName) {
+                overlayManager.showCapsule(session)
+                Log.d(TAG, "无意图门进入，会话已创建并显示胶囊：$packageName")
+            } else {
+                Log.d(TAG, "无意图门进入时 App 已不在前台，隐藏胶囊并静默等待：$packageName")
+                handleAppWentBackground(packageName, alreadyInBackground = false)
+            }
+        } else {
+            Log.w(TAG, "enterWithoutIntentGate startSession 返回 null：$packageName")
+        }
+    }
+
+    /** 当前是否应被时段锁硬挡 */
+    private fun isPeriodHardLocked(
+        limit: com.life.mindfulnessapp.data.db.entity.AppLimitEntity,
+        packageName: String,
+        nowMillis: Long = System.currentTimeMillis()
+    ): Boolean {
+        if (!limit.periodLockEnabled) return false
+        val windows = com.life.mindfulnessapp.domain.model.PeriodWindowsCodec.decode(limit.periodWindowsJson)
+        return com.life.mindfulnessapp.domain.model.PeriodLockPolicy.isLockedNow(
+            enabled = true,
+            windows = windows,
+            nowMillis = nowMillis
+        )
+    }
+
+    /**
+     * 展示时段锁硬挡（无破界入口）。
+     * @param endActiveSession 会话中跨入窗口时先收口会话
+     */
+    private suspend fun handlePeriodLock(packageName: String, endActiveSession: Boolean) {
+        val limit = appLimitRepository.getAppLimit(packageName) ?: return
+        val windows = com.life.mindfulnessapp.domain.model.PeriodWindowsCodec.decode(limit.periodWindowsJson)
+        val active = com.life.mindfulnessapp.domain.model.PeriodLockPolicy.activeWindow(windows)
+            ?: return
+
+        if (endActiveSession) {
+            val session = sessionManager.currentSession.value
+            if (session != null && session.packageName == packageName) {
+                sessionManager.endSession(UsageRecordEntity.EndReason.LIMIT_REACHED)
+                overlayManager.dismissCapsule()
+            }
+        }
+
+        // 若仍挂着别的拦截层，先拆
+        if (overlayManager.isInterceptVisible.get() &&
+            overlayManager.interceptTargetPackage != null &&
+            overlayManager.interceptTargetPackage != packageName
+        ) {
+            overlayManager.dismissIntercept()
+        }
+
+        overlayManager.showPeriodLock(
+            packageName = packageName,
+            appName = limit.appName,
+            windowLabel = active.label(),
+            daysLabel = active.daysLabel(),
+            commitment = limit.periodLockCommitment,
+            remainingUnlockLabel = com.life.mindfulnessapp.domain.model.PeriodLockPolicy
+                .remainingUnlockLabel(active),
+            onDismiss = {
+                pressHomeButton()
+                serviceScope.launch {
+                    recordInterceptDismiss(packageName, toOwnApp = false)
+                }
+            },
+            onOpenOwnApp = {
+                openMainActivityHome()
+                serviceScope.launch {
+                    recordInterceptDismiss(packageName, toOwnApp = true)
+                }
+            }
+        )
+    }
+
+    private suspend fun showInterceptOverlay(
+        packageName: String,
+        countImpulse: Boolean = true
+    ) {
+        val existing = sessionManager.currentSession.value
+        if (existing != null && existing.packageName != packageName) {
+            Log.w(TAG, "showInterceptOverlay：从 [${existing.packageName}] 切到 [$packageName]，收口前一会话")
+            endSessionForMonitoredAppSwitch(existing.packageName)
+        }
+
+        // 若仍挂着另一个 App 的拦截层，先拆掉再展示新目标
+        if (overlayManager.isInterceptVisible.get() &&
+            overlayManager.interceptTargetPackage != null &&
+            overlayManager.interceptTargetPackage != packageName
+        ) {
+            Log.d(
+                TAG,
+                "关闭旧拦截页 [${overlayManager.interceptTargetPackage}]，准备拦截 [$packageName]"
+            )
+            overlayManager.interceptTargetPackage?.let { oldPkg ->
+                recordInterceptDismiss(oldPkg, toOwnApp = false)
+            }
+            overlayManager.dismissIntercept()
+        }
+
+        val limit = appLimitRepository.getAppLimit(packageName) ?: return
+
+        if (isPeriodHardLocked(limit, packageName)) {
+            handlePeriodLock(packageName, endActiveSession = false)
+            return
+        }
 
         val appName = try {
             packageManager.getApplicationLabel(
@@ -941,38 +924,35 @@ class MonitorForegroundService : Service() {
         overlayManager.showIntercept(
             packageName = packageName,
             appName = appName,
-            dailyLimitMinutes = limit.dailyLimitMinutes,
-            weeklyLimitMinutes = limit.weeklyLimitMinutes,
-            onContinue = { purpose ->
-                // 若用户填写了目的，自动复制到剪贴板，方便在 App 搜索框直接粘贴
-                if (!purpose.isNullOrBlank()) {
-                    copyPurposeToClipboard(purpose)
-                }
+            dailyLimitMinutes = limit.effectiveDailyLimitMinutes(),
+            weeklyLimitMinutes = limit.effectiveWeeklyLimitMinutes(),
+            countImpulse = countImpulse,
+            onContinue = { decision ->
                 // onContinue 从主线程（Compose onClick）触发
                 serviceScope.launch {
-                    val session = sessionManager.startSession(packageName, appName, purpose)
+                    val session = sessionManager.startSession(
+                        packageName = packageName,
+                        appName = appName,
+                        purpose = decision.purpose,
+                        intentKind = decision.intentKind,
+                        sessionLimitMinutes = decision.sessionLimitMinutes
+                    )
                     if (session != null) {
                         // 检查：用户在拦截页期间是否已按 Home 键离开（App 不在前台）
                         // 若 lastForegroundPackage 已不是被监控的 App，说明用户已经回到桌面，
                         // 此时不应显示胶囊（或立刻进入后台模式），避免胶囊一闪即灭
                         if (lastForegroundPackage == packageName) {
                             overlayManager.showCapsule(session)
-                            Log.d(TAG, "会话已创建（purpose=$purpose），胶囊已请求显示：$packageName")
+                            Log.d(
+                                TAG,
+                                "会话已创建（kind=${decision.intentKind}, purpose=${decision.purpose}, " +
+                                    "sessionMin=${decision.sessionLimitMinutes}），胶囊已请求显示：$packageName"
+                            )
                         } else {
-                            // 用户已在拦截页按 Home 离开：将会话立即标记为后台状态，
-                            // 启动后台超时计时，显示暂停提示气泡
-                            Log.d(TAG, "用户在拦截页按 Home 离开后确认意图，App 不在前台，直接进入后台等待：$packageName")
+                            // 用户已在拦截页按 Home 离开：按能力分流（意图门倒计时 / 纯锁藏胶囊）
+                            Log.d(TAG, "用户在拦截页按 Home 离开后确认意图，App 不在前台：$packageName")
                             overlayManager.isInterceptVisible.set(false)
-                            sessionManager.onAppGoBackground()
-                            // 显示胶囊并立即切换为暂停状态
-                            val bgSession = sessionManager.currentSession.value
-                            if (bgSession != null) {
-                                overlayManager.showCapsule(bgSession, playEnterAnimation = false)
-                            }
-                            overlayManager.pauseCapsule(returnToAppAction = {
-                                launchApp(packageName)
-                            })
-                            startBackgroundTimeout(packageName)
+                            handleAppWentBackground(packageName, alreadyInBackground = false)
                         }
                     } else {
                         overlayManager.isInterceptVisible.set(false)
@@ -980,29 +960,120 @@ class MonitorForegroundService : Service() {
                     }
                 }
             },
-            onDismiss = {
-                // 用户在拦截页选择「还是算了」退出：写入一条极短的拦截退出记录，
-                // 供首页时间轴展示「克制住了」条目
+            onSessionResumed = { session ->
+                // 「继续上次」：跳过写意图，直接恢复胶囊计时
                 serviceScope.launch {
-                    val now = System.currentTimeMillis()
-                    val recordId = usageRecordRepository.insertRecord(
-                        UsageRecordEntity(
-                            packageName = packageName,
-                            startTime = now,
-                            endTime = now,
-                            durationSeconds = 0L,
-                            endReason = UsageRecordEntity.EndReason.APP_CLOSED,
-                            purpose = null
-                        )
-                    )
-                    android.util.Log.d(TAG, "拦截退出记录已写入 [id=$recordId, pkg=$packageName]")
+                    if (lastForegroundPackage == session.packageName) {
+                        // 继续上次：跳过进入仪式，直接出胶囊
+                        overlayManager.showCapsule(session, playEnterAnimation = false)
+                        Log.d(TAG, "中断会话已恢复，胶囊已显示：${session.packageName}，accumulated=${session.accumulatedActiveSeconds}s")
+                    } else {
+                        Log.d(TAG, "恢复会话时 App 不在前台：${session.packageName}")
+                        handleAppWentBackground(session.packageName, alreadyInBackground = false)
+                    }
                 }
+            },
+            onDismiss = {
+                // 用户在拦截页选择离开：写入一条极短的拦截退出记录
+                recordInterceptDismiss(packageName, toOwnApp = false)
                 pressHomeButton()
+            },
+            onOpenOwnApp = {
+                recordInterceptDismiss(packageName, toOwnApp = true)
+                openMainActivityHome()
             },
             onReset = {
                 handleResetLimit(packageName)
             }
         )
+    }
+
+    /**
+     * 拦截页离开：写入极短克制记录。
+     * @param toOwnApp true = 打开心锚；false = 离开回桌面
+     */
+    private fun recordInterceptDismiss(packageName: String, toOwnApp: Boolean) {
+        serviceScope.launch {
+            val now = System.currentTimeMillis()
+            val reason = if (toOwnApp) {
+                UsageRecordEntity.EndReason.GATE_DISMISS_OWN_APP
+            } else {
+                UsageRecordEntity.EndReason.GATE_DISMISS
+            }
+            val recordId = usageRecordRepository.insertRecord(
+                UsageRecordEntity(
+                    packageName = packageName,
+                    startTime = now,
+                    endTime = now,
+                    durationSeconds = 0L,
+                    endReason = reason,
+                    purpose = null
+                )
+            )
+            android.util.Log.d(
+                TAG,
+                "拦截退出记录已写入 [id=$recordId, pkg=$packageName, toOwnApp=$toOwnApp]"
+            )
+        }
+    }
+
+    /**
+     * 本次会话时长到点：展示收口页（有意图时可对照），出口回心锚并定位该条。
+     * 续时已前移到胶囊临近结束时，本页不再提供续时。
+     */
+    private fun handleSessionLimitReached(packageName: String) {
+        if (overlayManager.isInterceptVisible.getAndSet(true)) return
+        serviceScope.launch {
+            try {
+                val session = sessionManager.currentSession.value
+                if (session == null || session.packageName != packageName) {
+                    overlayManager.isInterceptVisible.set(false)
+                    return@launch
+                }
+                // 读页期间冻结会话计时，避免边读边耗尽
+                sessionManager.onAppGoBackground()
+                overlayManager.dismissCapsule()
+
+                val appName = session.appName.ifBlank {
+                    try {
+                        packageManager.getApplicationLabel(
+                            packageManager.getApplicationInfo(packageName, 0)
+                        ).toString()
+                    } catch (_: Exception) {
+                        appLimitRepository.getAppLimit(packageName)?.appName ?: packageName
+                    }
+                }
+                val committedMinutes = (session.effectiveSessionLimitSeconds / 60L)
+                    .toInt()
+                    .coerceAtLeast(1)
+                val endingRecordId = session.recordId
+
+                overlayManager.showSessionLimitReached(
+                    packageName = packageName,
+                    appName = appName,
+                    purpose = session.purpose,
+                    committedMinutes = committedMinutes,
+                    onConfirm = { mindfulnessLevel, note ->
+                        serviceScope.launch {
+                            sessionManager.endSession(
+                                reason = UsageRecordEntity.EndReason.SESSION_LIMIT_REACHED,
+                                note = note,
+                                mindfulnessLevel = mindfulnessLevel
+                            )
+                            Log.d(
+                                TAG,
+                                "[$packageName] 单次时长到点 → 回心锚定位 recordId=$endingRecordId" +
+                                    " level=$mindfulnessLevel"
+                            )
+                            openMainActivityForRecord(endingRecordId)
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "handleSessionLimitReached 异常", e)
+                overlayManager.isInterceptVisible.set(false)
+            }
+        }
     }
 
     private fun handleLimitExceeded(packageName: String) {
@@ -1014,6 +1085,11 @@ class MonitorForegroundService : Service() {
         }
         serviceScope.launch {
             try {
+                // 超限续记需保留原意图：先快照再 endSession
+                val prior = sessionManager.currentSession.value
+                val priorPurpose = prior?.purpose
+                val priorIntentKind = prior?.intentKind
+
                 sessionManager.endSession(UsageRecordEntity.EndReason.LIMIT_REACHED)
                 overlayManager.dismissCapsule()
 
@@ -1036,14 +1112,22 @@ class MonitorForegroundService : Service() {
                             pressHomeButton()
                         }
                     },
+                    onOpenOwnApp = {
+                        openMainActivityHome()
+                    },
                     onReset = {
                         handleResetLimit(packageName)
                     },
                     onContinueOverLimit = {
                         // 用户明确点击「我知道超了，继续使用」：
-                        // 开启超限续记 session，后续时长照常记录，不再弹超限页。
+                        // 开启超限续记 session，后续时长照常记录，不再弹超限页；保留原意图叙事。
                         serviceScope.launch {
-                            val overSession = sessionManager.startOverLimitSession(packageName, appName)
+                            val overSession = sessionManager.startOverLimitSession(
+                                packageName = packageName,
+                                appName = appName,
+                                purpose = priorPurpose,
+                                intentKind = priorIntentKind
+                            )
                             if (overSession != null) {
                                 overlayManager.showCapsule(overSession)
                                 Log.d(TAG, "[$packageName] 用户主动选择超限继续使用，续记 session 已开启 [id=${overSession.recordId}]")
@@ -1064,7 +1148,7 @@ class MonitorForegroundService : Service() {
      * 用户点击「重新设定今日目标」后的处理：
      * 1. 结束当前会话
      * 2. 关闭超限浮窗（由 OverlayManager.onReset 包装已完成）
-     * 3. 发 Intent 打开 MainActivity，导航到 AppList 页并自动弹出该 App 的编辑对话框
+     * 3. 发 Intent 打开 MainActivity，导航到该 App 的监控配置页
      */
     private fun handleResetLimit(packageName: String) {
         Log.d(TAG, "[Reset] 用户点击重新设定，跳转到设置页: pkg=$packageName")
@@ -1088,45 +1172,243 @@ class MonitorForegroundService : Service() {
         }
     }
 
-    private fun startBackgroundTimeout(packageName: String) {
+    /**
+     * App 确认离开前台后的分流：
+     * - 含意图门：桌面可见暂停胶囊 + 离开倒计时，归零按中断收口（可续）；锁屏冻结算秒
+     * - 仅时长锁：立刻藏胶囊（仅前台显示）；会话暂停，超时后静默收口
+     *
+     * @param alreadyInBackground 调用前是否已执行过 onAppGoBackground
+     */
+    private fun handleAppWentBackground(
+        packageName: String,
+        alreadyInBackground: Boolean = false
+    ) {
+        val sessionBefore = sessionManager.currentSession.value
+        if (sessionBefore == null || sessionBefore.packageName != packageName) return
+        if (!alreadyInBackground && !sessionBefore.isInBackground) {
+            sessionManager.onAppGoBackground()
+        }
+        val session = sessionManager.currentSession.value ?: return
+        if (session.packageName != packageName) return
+
         cancelBackgroundTimeout()
+        awayCountdownFrozen = false
+
+        if (session.hasIntentGate) {
+            Log.d(TAG, "$packageName 含意图门：展示暂停胶囊 + ${configuredAwayCountdownSec()}s 离开倒计时")
+            val remain = if (awayCountdownRemainingSec > 0L) awayCountdownRemainingSec else configuredAwayCountdownSec()
+            awayCountdownRemainingSec = remain
+            overlayManager.showPausedCapsule(
+                session = session,
+                returnToAppAction = { launchApp(packageName) },
+                awayCountdownSeconds = remain
+            )
+            startAwayCountdown(packageName)
+        } else {
+            Log.d(TAG, "$packageName 仅时长锁：藏起胶囊，静默等待收口")
+            awayCountdownRemainingSec = -1L
+            overlayManager.dismissCapsule()
+            startSilentBackgroundEnd(packageName)
+        }
+    }
+
+    /** 含意图门：可见离开倒计时；锁屏时 awayCountdownFrozen=true 不递减 */
+    private fun startAwayCountdown(packageName: String) {
+        cancelBackgroundTimeout()
+        if (awayCountdownRemainingSec <= 0L) {
+            awayCountdownRemainingSec = configuredAwayCountdownSec()
+        }
+        // 用 elapsedRealtime 墙钟，避免协程调度抖动导致 UI 停更；冻结时平移 deadline
+        var deadlineElapsedMs =
+            SystemClock.elapsedRealtime() + awayCountdownRemainingSec * 1000L
+        var wasFrozen = awayCountdownFrozen
+        overlayManager.updateAwayCountdown(awayCountdownRemainingSec)
         backgroundTimeoutJob = serviceScope.launch {
-            // ── 阶段 1：等待 2 分钟（未锁屏后台超时阈值）────────────────────────────
-            // 注意：进入后台时 SessionManager.onAppGoBackground() 已将 isInBackground = true，
-            // currentSessionSeconds 从此刻起冻结，后台等待的时间不会计入使用时长。
-            Log.d(TAG, "$packageName 进入后台，启动 ${BACKGROUND_TIMEOUT_MINUTES} 分钟未锁屏超时计时")
-            delay(BACKGROUND_TIMEOUT_MS)
+            Log.d(TAG, "$packageName 离开倒计时开始 remaining=${awayCountdownRemainingSec}s")
+            while (isActive && awayCountdownRemainingSec > 0L) {
+                delay(250L)
+                val session = sessionManager.currentSession.value
+                if (session == null || session.packageName != packageName || !session.isInBackground) {
+                    Log.d(TAG, "$packageName 离开倒计时取消（已回前台或会话结束）")
+                    return@launch
+                }
+                val frozen = awayCountdownFrozen
+                if (frozen && !wasFrozen) {
+                    // 刚冻结：把剩余秒钉住
+                    awayCountdownRemainingSec =
+                        ((deadlineElapsedMs - SystemClock.elapsedRealtime() + 999L) / 1000L)
+                            .coerceAtLeast(0L)
+                    overlayManager.updateAwayCountdown(awayCountdownRemainingSec)
+                } else if (!frozen && wasFrozen) {
+                    // 刚解冻：按钉住的剩余重设 deadline
+                    deadlineElapsedMs =
+                        SystemClock.elapsedRealtime() + awayCountdownRemainingSec * 1000L
+                }
+                wasFrozen = frozen
+                if (frozen) continue
 
+                val remain =
+                    ((deadlineElapsedMs - SystemClock.elapsedRealtime() + 999L) / 1000L)
+                        .coerceAtLeast(0L)
+                if (remain != awayCountdownRemainingSec) {
+                    awayCountdownRemainingSec = remain
+                    overlayManager.updateAwayCountdown(remain)
+                }
+            }
             val session = sessionManager.currentSession.value
-            if (session == null || session.packageName != packageName || !session.isInBackground) return@launch
-
-            // ── 阶段 2：弹出确认弹窗 ────────────────────────────────────────────────
-            Log.d(TAG, "$packageName 后台超过 ${BACKGROUND_TIMEOUT_MINUTES} 分钟，弹出结束确认弹窗")
-            val confirmed = overlayManager.triggerBackgroundTimeoutConfirm()
-            if (!confirmed) {
-                // 胶囊已不存在（用户可能已手动关闭），静默结束会话
-                Log.d(TAG, "$packageName 胶囊不存在，静默结束会话")
-                sessionManager.endSession(UsageRecordEntity.EndReason.AUTO_TIMEOUT)
-                overlayManager.dismissCapsule()
+            if (session == null || session.packageName != packageName || !session.isInBackground) {
                 return@launch
             }
+            if (awayCountdownRemainingSec > 0L) return@launch
+            Log.d(TAG, "$packageName 离开倒计时归零，按中断收口（可续）")
+            val endingRecordId = session.recordId
+            overlayManager.capsuleAppPackageName.value = packageName
+            sessionManager.endSession(UsageRecordEntity.EndReason.AWAY_COUNTDOWN)
+            awayCountdownRemainingSec = -1L
+            overlayManager.dismissCapsule()
+            // 中断语义：发「可续」通知，不走手动结束回调（避免「计时已结束 ✓」）
+            sendInterruptEndNotification(packageName, endingRecordId)
+        }
+    }
 
-            // ── 阶段 3：弹窗 1 分钟无操作倒计时 ────────────────────────────────────
-            // 弹窗期间 isInBackground = true，计时已冻结，不会额外计入时长。
-            // 1 分钟后如果用户仍未操作，强制结束会话。
-            delay(CONFIRM_DIALOG_TIMEOUT_MS)
-            val sessionAfterWait = sessionManager.currentSession.value
-            if (sessionAfterWait != null && sessionAfterWait.packageName == packageName && sessionAfterWait.isInBackground) {
-                Log.d(TAG, "$packageName 确认弹窗超过 1 分钟无操作，自动结束会话")
-                sessionManager.endSession(UsageRecordEntity.EndReason.AUTO_TIMEOUT)
-                overlayManager.dismissCapsule()
+    /** 仅时长锁：无桌面胶囊，超时后静默结束（不写中断确认） */
+    private fun startSilentBackgroundEnd(packageName: String) {
+        cancelBackgroundTimeout()
+        backgroundTimeoutJob = serviceScope.launch {
+            val waitMs = configuredAwayCountdownSec() * 1000L
+            Log.d(TAG, "$packageName 纯时长锁静默收口计时 ${waitMs}ms")
+            delay(waitMs)
+            val session = sessionManager.currentSession.value
+            if (session == null || session.packageName != packageName || !session.isInBackground) {
+                return@launch
             }
+            Log.d(TAG, "$packageName 纯时长锁静默结束会话")
+            sessionManager.endSession(UsageRecordEntity.EndReason.BACKGROUND_TIMEOUT)
+            overlayManager.dismissCapsule()
         }
     }
 
     private fun cancelBackgroundTimeout() {
         backgroundTimeoutJob?.cancel()
         backgroundTimeoutJob = null
+    }
+
+    /**
+     * 锁屏宽限期内尝试静默恢复会话。
+     *
+     * @return true 表示已成功恢复（或确认无需再处理宽限状态）
+     */
+    private fun tryResumeAfterScreenOff(packageName: String, reason: String): Boolean {
+        if (screenOffPackage != packageName) return false
+        val session = sessionManager.currentSession.value
+        if (session == null || session.packageName != packageName) {
+            Log.w(TAG, "[$packageName] 宽限恢复失败（无会话），reason=$reason")
+            screenOffPackage = null
+            cancelScreenOffTimeout()
+            return false
+        }
+        if (!session.isInBackground) {
+            cancelScreenOffTimeout()
+            screenOffPackage = null
+            return true
+        }
+
+        if (reason == "USER_PRESENT") {
+            val usageStatsManager =
+                getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val currentFg = getForegroundPackage(usageStatsManager)
+            if (currentFg != packageName) {
+                Log.d(TAG, "[$packageName] 解锁后尚未回到 App（当前前台=$currentFg），按能力还原暂停态")
+                showPausedCapsule(session)
+                return false
+            }
+            lastForegroundPackage = packageName
+        }
+
+        resumeBackgroundSession(packageName, session)
+        Log.d(TAG, "[$packageName] 锁屏宽限内静默恢复，reason=$reason")
+        return true
+    }
+
+    /**
+     * 桌面暂停态锁屏后解锁：若仍在后台则还原暂停态；若已在 App 内则直接续用。
+     */
+    private fun restorePausedCapsuleAfterUnlock(packageName: String) {
+        val session = sessionManager.currentSession.value
+        if (session == null || session.packageName != packageName || !session.isInBackground) {
+            Log.d(TAG, "[$packageName] 解锁后无需还原暂停态（session=${session?.packageName}, bg=${session?.isInBackground}）")
+            return
+        }
+        val usageStatsManager =
+            getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val currentFg = getForegroundPackage(usageStatsManager)
+        if (currentFg == packageName) {
+            lastForegroundPackage = packageName
+            resumeBackgroundSession(packageName, session)
+            Log.d(TAG, "[$packageName] 解锁后已在 App 内，直接续用")
+            return
+        }
+        Log.d(TAG, "[$packageName] 解锁后仍在桌面，还原暂停态")
+        showPausedCapsule(session)
+    }
+
+    /**
+     * 展示切走后的暂停态：
+     * - 含意图门：暂停胶囊 + 剩余离开倒计时
+     * - 仅时长锁：保持藏起
+     */
+    private fun showPausedCapsule(session: UsageSession) {
+        val packageName = session.packageName
+        if (!session.hasIntentGate) {
+            overlayManager.dismissCapsule()
+            if (backgroundTimeoutJob?.isActive != true) {
+                startSilentBackgroundEnd(packageName)
+            }
+            return
+        }
+        val remain = if (awayCountdownRemainingSec > 0L) awayCountdownRemainingSec else configuredAwayCountdownSec()
+        awayCountdownRemainingSec = remain
+        overlayManager.showPausedCapsule(
+            session = session,
+            returnToAppAction = { launchApp(packageName) },
+            awayCountdownSeconds = remain
+        )
+        if (backgroundTimeoutJob?.isActive != true) {
+            startAwayCountdown(packageName)
+        } else {
+            overlayManager.updateAwayCountdown(remain)
+        }
+    }
+
+    /** 从后台/锁屏冻结态恢复计时并重新展示胶囊（不重走拦截）。 */
+    private fun resumeBackgroundSession(
+        packageName: String,
+        existingSession: UsageSession
+    ) {
+        val isFromScreenOff = screenOffPackage == packageName
+        sessionManager.onAppReturnToForeground()
+        cancelBackgroundTimeout()
+        cancelScreenOffTimeout()
+        screenOffPackage = null
+        lockedWhilePausedPackage = null
+        awayCountdownFrozen = false
+        awayCountdownRemainingSec = -1L
+        overlayManager.resumeCapsule()
+        val restoredSession = sessionManager.currentSession.value ?: existingSession
+        overlayManager.showCapsule(restoredSession, playEnterAnimation = false)
+        if (isFromScreenOff) {
+            Log.d(
+                TAG,
+                "$packageName 锁屏后回来（宽限期内），恢复计时，" +
+                    "accumulated=${restoredSession.accumulatedActiveSeconds}s"
+            )
+        } else {
+            Log.d(
+                TAG,
+                "$packageName 从后台回来，继续计时，" +
+                    "accumulated=${restoredSession.accumulatedActiveSeconds}s"
+            )
+        }
     }
 
     /**
@@ -1143,10 +1425,15 @@ class MonitorForegroundService : Service() {
             val session = sessionManager.currentSession.value
             if (session != null && session.packageName == packageName && session.isInBackground) {
                 Log.d(TAG, "[$packageName] 锁屏宽限期超时，静默结束会话")
-                sessionManager.endSession(UsageRecordEntity.EndReason.AUTO_TIMEOUT)
+                sessionManager.endSession(UsageRecordEntity.EndReason.SCREEN_OFF_TIMEOUT)
                 overlayManager.dismissAll()
             }
-            screenOffPackage = null
+            if (screenOffPackage == packageName) {
+                screenOffPackage = null
+            }
+            if (lockedWhilePausedPackage == packageName) {
+                lockedWhilePausedPackage = null
+            }
         }
     }
 
@@ -1156,18 +1443,19 @@ class MonitorForegroundService : Service() {
     }
 
     /**
-     * 拉起指定包名的App到前台。
-     * 暂停状态下用户点击胶囊时调用，直接跳回被监控的App。
-     *
-     * @param packageName 目标App包名
+     * 将已有任务整栈拉回前台（模拟点桌面图标），尽量回到离开时的页面。
+     * 不要只用 LAUNCHER Activity + REORDER_TO_FRONT：那常会重开入口页，丢掉用户刚才的界面。
      */
     private fun launchApp(packageName: String) {
         try {
             val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
             if (launchIntent != null) {
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                // setPackage(null) + RESET_TASK_IF_NEEDED：与系统桌面启动一致，优先恢复既有 task
+                launchIntent.setPackage(null)
+                launchIntent.flags =
+                    Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                 startActivity(launchIntent)
-                Log.d(TAG, "成功拉起App: $packageName")
+                Log.d(TAG, "成功拉起App（恢复任务栈）: $packageName")
             } else {
                 Log.w(TAG, "无法获取 $packageName 的启动Intent")
             }
@@ -1184,70 +1472,42 @@ class MonitorForegroundService : Service() {
         startActivity(homeIntent)
     }
 
-    /**
-     * 将用户输入的使用目的复制到系统剪贴板，并弹出 Toast 提示。
-     * 用户进入目标 App 后可直接粘贴到搜索框，实现「带着意图进入」的完整体验。
-     *
-     * 注意：Toast 必须在主线程弹出，此方法已在主线程（Compose onClick 回调）中被调用，
-     * 但为保险起见统一通过 mainHandler.post 确保安全。
-     */
-    private fun copyPurposeToClipboard(purpose: String) {
-        try {
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("使用目的", purpose)
-            clipboard.setPrimaryClip(clip)
-            Log.d(TAG, "[Clipboard] 已复制目的到剪贴板：$purpose")
-            // Toast 必须在主线程，用 mainHandler 确保
-            Handler(Looper.getMainLooper()).post {
-                Toast.makeText(
-                    applicationContext,
-                    "「$purpose」已复制，可直接粘贴到搜索框 📋",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "[Clipboard] 复制失败", e)
+    /** 打开心锚首页（拦截/超限页「去做点别的」） */
+    private fun openMainActivityHome() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            action = ACTION_OPEN_HOME
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
+        startActivity(intent)
+    }
+
+    /** 打开「想去的地方」配置页 */
+    private fun openPositiveDestinationSettings() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            action = ACTION_OPEN_POSITIVE_DESTINATIONS
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        startActivity(intent)
+    }
+
+    /** 打开心锚今日页并高亮指定记录（补备注） */
+    private fun openMainActivityForRecord(recordId: Long) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            action = ACTION_OPEN_NOTE
+            putExtra(EXTRA_NOTE_RECORD_ID, recordId)
+            putExtra(EXTRA_SESSION_REVIEWED, false)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        startActivity(intent)
     }
 
     /**
-     * 打开主 App 并传入 recordId，触发首页备注弹窗。
-     * 延迟 400ms 等待桌面动画完成再打开，避免视觉突兀。
+     * 离开倒计时等中断收口后的轻量通知：强调可续，而非「已完成」。
      */
-    private fun openMainActivityForNote(recordId: Long) {
-        serviceScope.launch {
-            kotlinx.coroutines.delay(400)
-            val intent = Intent(this@MonitorForegroundService, MainActivity::class.java).apply {
-                action = ACTION_OPEN_NOTE
-                putExtra(EXTRA_NOTE_RECORD_ID, recordId)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            }
-            startActivity(intent)
-        }
-    }
-
-    /**
-     * 直接打开 Anchor App（不携带额外参数）。
-     * 用于用户在被监控 App 内手动结束会话时，将用户引导回 Anchor App。
-     * 延迟 200ms，让胶囊消失动画先完成。
-     */
-    private fun openMainActivity() {
-        serviceScope.launch {
-            kotlinx.coroutines.delay(200)
-            val intent = Intent(this@MonitorForegroundService, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            }
-            startActivity(intent)
-        }
-    }
-
-    /**
-     * 发送「会话已结束」轻量通知。
-     * 用于用户在第三方 App 内手动结束会话时，通过通知栏给出静默确认。
-     *
-     * @param endedPackage 被结束会话的 App 包名，用于获取 App 名称
-     */
-    private fun sendSessionEndNotification(endedPackage: String) {
+    private fun sendInterruptEndNotification(endedPackage: String, recordId: Long) {
         val appName = try {
             packageManager.getApplicationLabel(
                 packageManager.getApplicationInfo(endedPackage, 0)
@@ -1260,14 +1520,72 @@ class MonitorForegroundService : Service() {
             this,
             SESSION_END_NOTIFICATION_ID,
             Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                action = ACTION_OPEN_NOTE
+                putExtra(EXTRA_NOTE_RECORD_ID, recordId)
+                putExtra(EXTRA_SESSION_REVIEWED, false)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
         val notification = NotificationCompat.Builder(this, SESSION_END_CHANNEL_ID)
+            .setContentTitle("计时已暂停结束")
+            .setContentText("$appName · 10 分钟内可继续上次")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setSilent(true)
+            .build()
+
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(SESSION_END_NOTIFICATION_ID, notification)
+    }
+
+    /**
+     * 发送「会话已结束」轻量通知。
+     * 手动结束不强制跳心锚；用通知确认，点击后再进今日高亮。
+     *
+     * @param endedPackage 被结束会话的 App 包名
+     * @param recordId 刚结束的记录 ID，供通知 deep link 高亮
+     * @param reviewed 是否已在结束流程中完成意图回顾
+     */
+    private fun sendSessionEndNotification(
+        endedPackage: String,
+        recordId: Long,
+        reviewed: Boolean = false
+    ) {
+        val appName = try {
+            packageManager.getApplicationLabel(
+                packageManager.getApplicationInfo(endedPackage, 0)
+            ).toString()
+        } catch (e: Exception) {
+            endedPackage.substringAfterLast(".")
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            SESSION_END_NOTIFICATION_ID,
+            Intent(this, MainActivity::class.java).apply {
+                action = ACTION_OPEN_NOTE
+                putExtra(EXTRA_NOTE_RECORD_ID, recordId)
+                putExtra(EXTRA_SESSION_REVIEWED, reviewed)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val contentText = if (reviewed) {
+            "$appName · 对照已保存"
+        } else {
+            "$appName · 点此回看"
+        }
+
+        val notification = NotificationCompat.Builder(this, SESSION_END_CHANNEL_ID)
             .setContentTitle("计时已结束 ✓")
-            .setContentText("$appName 的使用记录已保存")
+            .setContentText(contentText)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -1295,39 +1613,6 @@ class MonitorForegroundService : Service() {
     }
 
     /**
-     * 创建每日简报通知渠道。
-     * 与前台服务渠道分离，使用默认重要性（会弹出提示音），支持用户独立关闭。
-     */
-    private fun createDailyBriefChannel() {
-        val channel = NotificationChannel(
-            DAILY_BRIEF_CHANNEL_ID,
-            "每日简报",
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = "每天在指定时间推送今日 App 使用情况简报"
-            setShowBadge(true)
-        }
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.createNotificationChannel(channel)
-    }
-
-    /**
-     * 创建格言推送通知渠道。
-     */
-    private fun createQuoteReminderChannel() {
-        val channel = NotificationChannel(
-            QUOTE_REMINDER_CHANNEL_ID,
-            "格言推送",
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = "定时推送你收藏的格言，在想刷手机前给你一点提醒"
-            setShowBadge(false)
-        }
-        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.createNotificationChannel(channel)
-    }
-
-    /**
      * 创建「会话结束」轻量通知渠道。
      * 用于用户在第三方 App 内手动结束计时时，发出静默确认通知。
      * 使用最低重要性（不弹出、不响铃），仅在通知抽屉可见。
@@ -1338,7 +1623,7 @@ class MonitorForegroundService : Service() {
             "计时结束提醒",
             NotificationManager.IMPORTANCE_MIN
         ).apply {
-            description = "在其他应用内结束计时时，发出静默确认通知"
+            description = "手动结束或离开倒计时中断后的静默确认通知"
             setShowBadge(false)
         }
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

@@ -8,8 +8,10 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import android.widget.FrameLayout
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
@@ -18,9 +20,12 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.life.mindfulnessapp.data.AppPreferences
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
 import com.life.mindfulnessapp.data.repository.AppLimitRepository
 import com.life.mindfulnessapp.data.repository.UsageRecordRepository
+import com.life.mindfulnessapp.domain.model.PendingInterrupt
+import com.life.mindfulnessapp.domain.model.UsageRecordCounts
 import com.life.mindfulnessapp.domain.model.UsageSession
 import com.life.mindfulnessapp.domain.usecase.GetAppHistoryUsageUseCase
 import com.life.mindfulnessapp.service.SessionManager
@@ -42,36 +47,64 @@ class OverlayManager @Inject constructor(
     private val appLimitRepository: AppLimitRepository,
     private val getAppHistoryUsageUseCase: GetAppHistoryUsageUseCase,
     private val sessionManager: SessionManager,
-    private val appPreferences: com.life.mindfulnessapp.data.AppPreferences
+    private val appPreferences: com.life.mindfulnessapp.data.AppPreferences,
+    private val pendingInterruptStore: com.life.mindfulnessapp.data.PendingInterruptStore,
+    private val impulseStore: com.life.mindfulnessapp.data.ImpulseStore
 ) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val mainHandler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    /** 由外部（Service）注册，在用户手动结束会话时执行（如按 Home 键） */
-    var onManualEndSession: (() -> Unit)? = null
-
     /**
-     * 由外部（Service）注册：当用户手动结束了一次「有目的的使用」时回调。
-     * 参数为刚结束的 recordId，用于打开 App 并引导用户记录感受。
+     * 由外部（Service）注册：用户确认手动结束会话后回调。
+     * @param recordId 刚结束的记录 ID
+     * @param mindfulnessLevel 正念档位（未回顾时为 null）
+     * @param destination 收口去向（回桌面对齐 / 回桌面跑偏可回看 / 进心锚）
      */
-    var onManualEndWithPurpose: ((recordId: Long) -> Unit)? = null
+    var onManualEndSession: ((
+        recordId: Long,
+        mindfulnessLevel: Int?,
+        destination: ManualEndDestination
+    ) -> Unit)? = null
+
+    /** 主动离开后轻条：打开正向 App */
+    var onLaunchPositiveApp: ((packageName: String) -> Unit)? = null
+
+    /** 主动离开后轻条：打开「想去的地方」配置页 */
+    var onOpenPositiveDestinationSettings: (() -> Unit)? = null
+
+    /** 由外部（Service）注册：胶囊临近结束时用户确认续时 */
+    var onExtendSession: ((extraMinutes: Int) -> Unit)? = null
 
     private var interceptView: View? = null
     private var adView: View? = null          // 广告页浮窗（非 VIP 超限时插入）
     /** 广告被外部强制关闭（如用户按 Home 键）时置为 true，防止 onAdFinished 误触发超限页 */
     private var adCancelled: Boolean = false
     private var capsuleView: View? = null
+    private var capsuleParams: WindowManager.LayoutParams? = null
+    /**
+     * 胶囊内结束确认 / 续时弹窗进行中。
+     * 此时会故意把会话标成后台以冻结计时；监控循环若据此「回前台恢复」会拆掉弹窗。
+     */
+    val isCapsuleDialogBlocking = AtomicBoolean(false)
+    private var capsuleSnapAnimator: ValueAnimator? = null
+    /** 收起后回到偏好停靠点（左 / 中 / 右） */
+    private val snapAfterCollapseRunnable = Runnable {
+        val view = capsuleView ?: return@Runnable
+        val params = capsuleParams ?: return@Runnable
+        if (!capsuleExpanded.value) {
+            snapCapsuleToDock(view, params, forceDock = appPreferences.getCapsuleDockPosition())
+        }
+    }
     private var ceremonyView: View? = null   // 仪式感动画专属浮窗（居中、全屏透明）
     private var dismissCeremonyView: View? = null  // 退出仪式浮窗（"离开仪式"）
 
     /**
-     * 退出仪式冷却：记录每个 App 上次「完整播放勋章动画」的时间戳（ms）。
+     * 离开肯定冷却：记录每个 App 上次展示肯定（轻提示或全屏勋章）的时间戳（ms）。
      *
      * 设计原则：
-     * - 冷却窗口内（2分钟）再次退出 → 跳过全屏动画，直接 pressHome，
-     *   避免「刷」勋章和仪式变成噪音；
-     * - 冷却计时从「上次完整仪式播放完毕」开始，而非从用户点击时开始。
+     * - 冷却窗口内再次退出 → 静默离开，避免刷提示；
+     * - 日常用轻提示；仅里程碑播全屏勋章。
      */
     private val dismissCeremonyCooldownMs = 2 * 60 * 1000L   // 2 分钟
     private val lastDismissCeremonyTime = mutableMapOf<String, Long>()  // packageName → timestamp
@@ -85,11 +118,23 @@ class OverlayManager @Inject constructor(
     /** Compose 层注册的「显示结束确认弹窗」回调：后台超时时由 Service 调用，弹出确认弹窗 */
     private var capsuleShowConfirm: (() -> Unit)? = null
 
+    /** 点「结束」：弹出结束确认（触摸由 Window 层命中，Compose clickable 收不到） */
+    private var capsuleRequestEnd: (() -> Unit)? = null
+
+    /** 「结束」在胶囊 View 内的命中区（含少量外扩），单位 px */
+    private var capsuleStopHitRect: android.graphics.RectF? = null
+
+    /** 结束确认打开时，把触摸交给 Compose，避免点按被拖拽监听吞掉 */
+    private var capsuleEndDialogOpen: Boolean = false
+
     /** Compose 层注册的「5分钟预警」回调：剩余恰好低于5分钟时触发一次 */
     private var capsuleWarnFiveMin: (() -> Unit)? = null
 
-    /** Compose 层注册的「1分钟倒计时」回调：剩余恰好低于1分钟时触发，切换胶囊为倒计时形态 */
+    /** Compose 层注册的「1分钟临界」回调：剩余首次低于1分钟时触发，同形态加压（不换皮） */
     private var capsuleStartCountdown: (() -> Unit)? = null
+
+    /** 意图门入场展开停留期间：点按/外侧点按提前收起 */
+    private var capsuleSkipEntrance: (() -> Unit)? = null
 
     /**
      * 原子标志：当前是否正在展示拦截弹窗（或正在准备展示/创建会话）。
@@ -123,23 +168,55 @@ class OverlayManager @Inject constructor(
 
     /**
      * 胶囊暂停状态：app进入后台（且无活跃服务）时为true
-     * 暂停时胶囊继续显示，但光盘停转，且点击可回到app
+     * 暂停时胶囊继续显示；点按胶囊主体返回 App，点「结束」弹确认
      */
     val capsuleIsPaused = mutableStateOf(false)
 
+    /** 是否为超限续记会话（视觉与普通限额会话区分） */
+    val capsuleIsOverLimit = mutableStateOf(false)
+
+    /** 当前会话是否开启意图门 */
+    val capsuleHasIntentGate = mutableStateOf(true)
+
+    /** 当前会话是否开启时长锁（含超限续记） */
+    val capsuleHasTimeLock = mutableStateOf(true)
+    /** 是否存在单次会话上限（驱动胶囊按会话预算预警） */
+    val capsuleHasSessionLimit = mutableStateOf(false)
+    /** 单次时长临近结束时是否还可续一次 */
+    val capsuleCanExtend = mutableStateOf(false)
+    /** 本会话是否开启意图回顾 */
+    /** 纯时长锁迷你态：已用侧是否显示到秒 */
+    val capsuleShowUsedSeconds = mutableStateOf(false)
+    /** true = 紧凑迷你；false = 标准迷你（默认） */
+    val capsuleMiniCompact = mutableStateOf(false)
+
     /**
-     * 显示全屏拦截浮窗（始终要求用户写下使用目的）
+     * 含意图门切走后的「自动结束」剩余秒数。
+     * -1 = 未处于离开倒计时；>=0 时暂停态展示倒计时。
+     */
+    val capsuleAwayCountdownSeconds = mutableStateOf(-1L)
+
+    /**
+     * 显示全屏拦截浮窗（始终要求用户写下使用目的）。
+     *
+     * 若该 App 存在「非标准闭环」待确认中断，则以「最近操作」条呈现，
+     * 展示相对时刻并可一键继续，或重写意图开始新的一次。
+     *
      * @param onContinue 用户确认继续时的回调，携带输入的使用目的
+     * @param onSessionResumed 用户选择「继续上次」并成功恢复会话后的回调
      */
     fun showIntercept(
         packageName: String,
         appName: String,
         dailyLimitMinutes: Int,
         weeklyLimitMinutes: Int,
-        onContinue: (purpose: String?) -> Unit,
+        onContinue: (com.life.mindfulnessapp.domain.model.InterceptEnterDecision) -> Unit,
         onDismiss: () -> Unit,
+        onOpenOwnApp: (() -> Unit)? = null,
         onReset: (() -> Unit)? = null,
-        themeIdOverride: String? = null
+        onSessionResumed: ((UsageSession) -> Unit)? = null,
+        /** false：同一进入尝试的静默重展（如拦截页期间息屏后解锁），不计新冲动 */
+        countImpulse: Boolean = true
     ) {
         isInterceptVisible.set(true)
         interceptTargetPackage = packageName
@@ -151,7 +228,13 @@ class OverlayManager @Inject constructor(
             val todayRecords = usageRecordRepository.getDayRecordsForApp(packageName, now)
             val remainingModifyCount = appLimitRepository.getRemainingModifyCount(packageName)
             val currentLimit = appLimitRepository.getAppLimit(packageName)
-            // 获取系统数据：app 今日实际使用时长 + 全局屏幕时长
+            val pendingInterrupt = pendingInterruptStore.get(packageName)
+            val intentGateOnEarly = currentLimit?.requireIntentOnOpen ?: true
+            val recentPurposes = if (intentGateOnEarly) {
+                usageRecordRepository.getRecentPurposes(packageName, limit = 5)
+            } else {
+                emptyList()
+            }
 
             // 若当前有进行中的会话（同一个 App），需加上本次会话已累计的时长。
             // 数据库只存已完成的记录，正在进行的会话时长不在 DB 里。
@@ -168,32 +251,67 @@ class OverlayManager @Inject constructor(
                 removeInterceptViewInternal()
 
                 // 判断是否已超限：超限用户只能看超限页（离开 or 重设），不允许再「继续」
-                val dailyLimitSeconds = currentLimit?.dailyLimitMinutes?.times(60L) ?: 0L
-                val weeklyLimitSeconds = currentLimit?.weeklyLimitMinutes?.times(60L) ?: 0L
+                val dailyLimitSeconds = currentLimit?.effectiveDailyLimitMinutes()?.times(60L) ?: 0L
+                val weeklyLimitSeconds = currentLimit?.effectiveWeeklyLimitMinutes()?.times(60L) ?: 0L
                 val isAlreadyOverLimit = (dailyLimitSeconds > 0 && todayUsedSeconds >= dailyLimitSeconds)
                         || (weeklyLimitSeconds > 0 && weekUsedSeconds >= weeklyLimitSeconds)
 
                 if (isAlreadyOverLimit) {
-                    // 非 VIP：先插播广告，广告结束后展示超限页
-                    // VIP：直接展示超限页（跳过广告）
-                    // 两种路径最终都走 showLimitReachedInternal，不经过普通拦截页，
-                    // 确保超限用户无法通过任何路径点到「继续使用」按钮。
+                    // 超限优先：清掉待确认，避免与超限页叠加
+                    pendingInterruptStore.clear(packageName)
                     if (!appPreferences.isVipActive()) {
                         showAdOverlay(packageName = packageName, onAdFinished = {
                             if (isInterceptVisible.get()) {
-                                showLimitReachedInternal(packageName, onDismiss, onReset)
+                                showLimitReachedInternal(packageName, onDismiss, onReset, onOpenOwnApp = onOpenOwnApp)
                             }
                         })
                     } else {
-                        showLimitReachedInternal(packageName, onDismiss, onReset)
+                        showLimitReachedInternal(packageName, onDismiss, onReset, onOpenOwnApp = onOpenOwnApp)
                     }
                     return@post
+                }
+
+                val enterCount = UsageRecordCounts.enterCount(todayRecords)
+                val dismissCount = UsageRecordCounts.dismissCount(todayRecords)
+
+                // 未闭环快照：仅意图门 + 有恢复回调时展示「最近操作」条；否则丢弃
+                val intentGateOn = currentLimit?.requireIntentOnOpen ?: true
+                val resumeCandidate = if (
+                    pendingInterrupt != null &&
+                    onSessionResumed != null &&
+                    intentGateOn
+                ) {
+                    pendingInterrupt
+                } else {
+                    if (pendingInterrupt != null) {
+                        pendingInterruptStore.clear(packageName)
+                    }
+                    null
+                }
+
+                val impulseCount = if (countImpulse) {
+                    impulseStore.incrementImpulse(packageName)
+                } else {
+                    impulseStore.getImpulseCount(packageName).coerceAtLeast(1)
                 }
 
                 showInterceptInternal(
                     packageName, appName, dailyLimitMinutes, weeklyLimitMinutes,
                     todayUsedSeconds, weekUsedSeconds, todayRecords,
-                    remainingModifyCount, themeIdOverride, onReset, onContinue, onDismiss
+                    remainingModifyCount, onContinue, onDismiss,
+                    onOpenOwnApp = onOpenOwnApp,
+                    pendingInterrupt = resumeCandidate,
+                    onSessionResumed = onSessionResumed,
+                    sessionLimitEnabled = currentLimit?.sessionLimitEnabled ?: true,
+                    // 进门时当场确认分钟数；配置页不再暴露默认值，统一预填 15
+                    defaultSessionLimitMinutes = 15,
+                    intentQualityCheckEnabled = currentLimit?.intentQualityCheckEnabled ?: false,
+                    intentBlockKeywords = com.life.mindfulnessapp.domain.model.IntentBlockKeywords
+                        .decode(currentLimit?.intentBlockKeywordsJson),
+                    impulseCount = impulseCount,
+                    enterCount = enterCount,
+                    dismissCount = dismissCount,
+                    recentPurposes = recentPurposes
                 )
             }
         }
@@ -209,13 +327,24 @@ class OverlayManager @Inject constructor(
         weekUsedSeconds: Long,
         todayRecords: List<com.life.mindfulnessapp.data.db.entity.UsageRecordEntity>,
         remainingModifyCount: Int,
-        themeIdOverride: String?,
-        onReset: (() -> Unit)?,
-        onContinue: (purpose: String?) -> Unit,
-        onDismiss: () -> Unit
+        onContinue: (com.life.mindfulnessapp.domain.model.InterceptEnterDecision) -> Unit,
+        onDismiss: () -> Unit,
+        onOpenOwnApp: (() -> Unit)? = null,
+        pendingInterrupt: PendingInterrupt? = null,
+        onSessionResumed: ((UsageSession) -> Unit)? = null,
+        sessionLimitEnabled: Boolean = true,
+        defaultSessionLimitMinutes: Int = 15,
+        intentQualityCheckEnabled: Boolean = false,
+        intentBlockKeywords: List<String> = emptyList(),
+        impulseCount: Int = 1,
+        enterCount: Int = 0,
+        dismissCount: Int = 0,
+        recentPurposes: List<com.life.mindfulnessapp.domain.model.RecentPurpose> = emptyList()
     ) {
-        val capsuleTargetPos = CapsuleTargetPosition(x = 0f, y = 160f)
-        val currentThemeId = themeIdOverride ?: appPreferences.getInterceptThemeId()
+        val capsuleTargetPos = CapsuleTargetPosition(
+            x = capsuleDockAbsoluteCenterX(),
+            y = capsuleRestingYPx().toFloat()
+        )
 
         // InterceptOverlayScreen 专用 reset 回调（内部有调整弹窗，携带用户选择的新时长）：
         // 用户在弹窗中确认新的时间目标后，先保存限额，再关闭浮窗，不再跳转设置页
@@ -238,75 +367,115 @@ class OverlayManager @Inject constructor(
                 }
             } else null
 
-        // 禅/仪表盘等模式的 reset 回调（无内部弹窗，直接跳转设置页）
-        val resetCallbackSimple: (() -> Unit)? =
-            if (remainingModifyCount > 0 && onReset != null) {
-                {
-                    removeInterceptViewInternal()
-                    isInterceptVisible.set(false)
-                    onReset()
-                }
-            } else null
-
         val isDarkTheme = appPreferences.isDarkThemeEnabled()
 
-        // ── 退出仪式回调（先展示"离开仪式"胶囊动画，动画结束后再执行真正的离开）──
-        // 通用于禅模式和普通模式的 onDismiss 处理：
-        //   1. 标记 isInterceptVisible = false（用户已做决定）
-        //   2. 展示退出仪式浮窗（叠在拦截页上方，无缝衔接）
-        //   3. 退出仪式弹出后（约 300ms），移除全屏拦截页（拦截页在仪式背后淡出）
-        //   4. 仪式动画全部结束 → 执行 onDismiss（实际 pressHome）
+        val isLimitTheme =
+            (dailyLimitMinutes > 0 && todayUsedSeconds >= dailyLimitMinutes * 60L) ||
+                (weeklyLimitMinutes > 0 && weekUsedSeconds >= weeklyLimitMinutes * 60L)
+
+        // ── 离开肯定：日常轻提示（先离开再肯定）；里程碑才全屏勋章后再离开 ──
+        // 拦截页会先播短退场，再调到此处
         val dismissWithCeremony: () -> Unit = {
+            pendingInterruptStore.clear(packageName)
             isInterceptVisible.set(false)
-            // 先展示退出仪式（叠加在拦截页上方，无缝过渡）
             showDismissCeremony(
                 packageName = packageName,
-                themeId = currentThemeId,
+                destination = DismissDestination.HOME,
+                isLimitTheme = isLimitTheme,
+                offerPositiveDestination = true,
                 onDismissCompleted = { onDismiss() }
             )
-            // 稍后再移除拦截页（等退出仪式胶囊动画弹出后，此时用户只看到仪式胶囊）
-            mainHandler.postDelayed({ removeInterceptViewInternal() }, 350)
+            mainHandler.postDelayed({ removeInterceptViewInternal() }, 300)
             Unit
         }
 
-        val composeView = createComposeView {
-            if (currentThemeId == "zen") {
-                // 禅模式：使用极简全屏拦截页（无内部调整弹窗，点击直接跳转设置页）
-                ZenInterceptOverlayScreen(
-                    appName = appName,
-                    todayUsedSeconds = todayUsedSeconds,
-                    dailyLimitMinutes = dailyLimitMinutes,
-                    remainingModifyCount = remainingModifyCount,
-                    onReset = resetCallbackSimple,
-                    onContinue = { purpose ->
-                        removeInterceptViewInternal()
-                        onContinue(purpose)
-                    },
-                    onDismiss = dismissWithCeremony
-                )
-            } else {
-                // simple / default 等主题：统一走 InterceptOverlayScreen
-                // 内部有 ResetLimitDialog 弹窗，携带用户选择的新时长
-                InterceptOverlayScreen(
-                    appName = appName,
+        val openOwnAppWithCeremony: (() -> Unit)? = onOpenOwnApp?.let { open ->
+            {
+                pendingInterruptStore.clear(packageName)
+                isInterceptVisible.set(false)
+                showDismissCeremony(
                     packageName = packageName,
-                    dailyLimitMinutes = dailyLimitMinutes,
-                    weeklyLimitMinutes = weeklyLimitMinutes,
-                    todayUsedSeconds = todayUsedSeconds,
-                    weekUsedSeconds = weekUsedSeconds,
-                    todayRecords = todayRecords,
-                    capsuleTargetPosition = capsuleTargetPos,
-                    remainingModifyCount = remainingModifyCount,
-                    themeId = currentThemeId,
-                    isDarkTheme = isDarkTheme,
-                    onReset = resetCallbackWithValue,
-                    onContinue = { purpose ->
-                        removeInterceptViewInternal()
-                        onContinue(purpose)
-                    },
-                    onDismiss = dismissWithCeremony
+                    destination = DismissDestination.OWN_APP,
+                    isLimitTheme = isLimitTheme,
+                    offerPositiveDestination = false,
+                    onDismissCompleted = { open() }
                 )
+                mainHandler.postDelayed({ removeInterceptViewInternal() }, 300)
+                Unit
             }
+        }
+
+        val resumeCallback: (() -> Unit)? =
+            if (pendingInterrupt != null && onSessionResumed != null) {
+                {
+                    val interrupt = pendingInterrupt
+                    scope.launch {
+                        val session = sessionManager.resumeInterruptedSession(interrupt)
+                        mainHandler.post {
+                            if (session != null) {
+                                removeInterceptViewInternal()
+                                isInterceptVisible.set(false)
+                                onSessionResumed(session)
+                            } else {
+                                // 恢复失败：清快照并重开标准拦截（无继续条）
+                                pendingInterruptStore.clear(packageName)
+                                removeInterceptViewInternal()
+                                isInterceptVisible.set(true)
+                                showInterceptInternal(
+                                    packageName, appName, dailyLimitMinutes, weeklyLimitMinutes,
+                                    todayUsedSeconds, weekUsedSeconds, todayRecords,
+                                    remainingModifyCount, onContinue, onDismiss,
+                                    onOpenOwnApp = onOpenOwnApp,
+                                    pendingInterrupt = null,
+                                    onSessionResumed = onSessionResumed,
+                                    sessionLimitEnabled = sessionLimitEnabled,
+                                    defaultSessionLimitMinutes = defaultSessionLimitMinutes,
+                                    intentQualityCheckEnabled = intentQualityCheckEnabled,
+                                    intentBlockKeywords = intentBlockKeywords,
+                                    impulseCount = impulseCount,
+                                    enterCount = enterCount,
+                                    dismissCount = dismissCount,
+                                    recentPurposes = recentPurposes
+                                )
+                            }
+                        }
+                    }
+                }
+            } else null
+
+        val composeView = createComposeView {
+            InterceptOverlayScreen(
+                appName = appName,
+                packageName = packageName,
+                dailyLimitMinutes = dailyLimitMinutes,
+                weeklyLimitMinutes = weeklyLimitMinutes,
+                todayUsedSeconds = todayUsedSeconds,
+                weekUsedSeconds = weekUsedSeconds,
+                todayRecords = todayRecords,
+                capsuleTargetPosition = capsuleTargetPos,
+                remainingModifyCount = remainingModifyCount,
+                themeId = "simple",
+                isDarkTheme = isDarkTheme,
+                sessionLimitEnabled = sessionLimitEnabled,
+                defaultSessionLimitMinutes = defaultSessionLimitMinutes,
+                intentQualityCheckEnabled = intentQualityCheckEnabled,
+                intentBlockKeywords = intentBlockKeywords,
+                pendingInterrupt = pendingInterrupt,
+                onReset = resetCallbackWithValue,
+                onContinue = { decision ->
+                    // 开始新的一次：丢弃未闭环快照
+                    pendingInterruptStore.clear(packageName)
+                    removeInterceptViewInternal()
+                    onContinue(decision)
+                },
+                onResumePrevious = resumeCallback,
+                onDismiss = dismissWithCeremony,
+                onOpenOwnApp = openOwnAppWithCeremony,
+                impulseCount = impulseCount,
+                enterCount = enterCount,
+                dismissCount = dismissCount,
+                recentPurposes = recentPurposes
+            )
         }
 
         val params = WindowManager.LayoutParams(
@@ -344,6 +513,7 @@ class OverlayManager @Inject constructor(
         onDismiss: () -> Unit,
         onReset: (() -> Unit)? = null,
         onContinueOverLimit: (() -> Unit)? = null,
+        onOpenOwnApp: (() -> Unit)? = null,
         showAd: Boolean = false
     ) {
         isInterceptVisible.set(true)
@@ -355,12 +525,77 @@ class OverlayManager @Inject constructor(
                 // 广告播放期间 dismissIntercept() 可能被监控循环误触发（检测到 App 不在前台），
                 // 将 isInterceptVisible 重新置为 true，确保超限页能够正常展示
                 isInterceptVisible.set(true)
-                showLimitReachedInternal(packageName, onDismiss, onReset, onContinueOverLimit)
+                showLimitReachedInternal(packageName, onDismiss, onReset, onContinueOverLimit, onOpenOwnApp)
             })
             return
         }
 
-        showLimitReachedInternal(packageName, onDismiss, onReset, onContinueOverLimit)
+        showLimitReachedInternal(packageName, onDismiss, onReset, onContinueOverLimit, onOpenOwnApp)
+    }
+
+    /**
+     * 时段锁硬挡页。优先级高于日限与意图门。
+     * 不提供破界入口；解锁只能在配置里关闭时段（生效中关闭会过门槛）。
+     */
+    fun showPeriodLock(
+        packageName: String,
+        appName: String,
+        windowLabel: String,
+        daysLabel: String,
+        commitment: String,
+        remainingUnlockLabel: String,
+        onDismiss: () -> Unit,
+        onOpenOwnApp: (() -> Unit)? = null
+    ) {
+        isInterceptVisible.set(true)
+        interceptTargetPackage = packageName
+
+        mainHandler.post {
+            if (!isInterceptVisible.get()) return@post
+            removeInterceptViewInternal()
+
+            val isDark = appPreferences.isDarkThemeEnabled()
+            val composeView = createComposeView {
+                PeriodLockOverlayScreen(
+                    windowLabel = windowLabel,
+                    daysLabel = daysLabel,
+                    commitment = commitment,
+                    remainingUnlockLabel = remainingUnlockLabel,
+                    appName = appName,
+                    isDarkTheme = isDark,
+                    onDismiss = {
+                        isInterceptVisible.set(false)
+                        onDismiss()
+                        mainHandler.postDelayed({ removeInterceptViewInternal() }, 600)
+                    },
+                    onOpenOwnApp = onOpenOwnApp?.let { open ->
+                        {
+                            isInterceptVisible.set(false)
+                            open()
+                            mainHandler.postDelayed({ removeInterceptViewInternal() }, 600)
+                        }
+                    }
+                )
+            }
+
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+            }
+            try {
+                windowManager.addView(composeView, params)
+                interceptView = composeView
+            } catch (e: Exception) {
+                e.printStackTrace()
+                isInterceptVisible.set(false)
+            }
+        }
     }
 
     /**
@@ -370,13 +605,13 @@ class OverlayManager @Inject constructor(
         packageName: String,
         onDismiss: () -> Unit,
         onReset: (() -> Unit)? = null,
-        onContinueOverLimit: (() -> Unit)? = null
+        onContinueOverLimit: (() -> Unit)? = null,
+        onOpenOwnApp: (() -> Unit)? = null
     ) {
         scope.launch {
             val now = System.currentTimeMillis()
             val todayUsed = usageRecordRepository.getDailyUsageSeconds(packageName, now)
             val remainingModifyCount = appLimitRepository.getRemainingModifyCount(packageName)
-            val currentThemeId = appPreferences.getInterceptThemeId()
 
             mainHandler.post {
                 // 如果在异步加载数据期间已被取消，放弃展示
@@ -402,43 +637,35 @@ class OverlayManager @Inject constructor(
 
                 val isDarkThemeLimit = appPreferences.isDarkThemeEnabled()
                 val composeView = createComposeView {
-                    if (currentThemeId == "zen") {
-                        // 禅模式：极简超限页
-                        ZenLimitReachedOverlayScreen(
-                            todayUsedSeconds = todayUsed,
-                            remainingModifyCount = remainingModifyCount,
-                            onReset = limitResetCallback,
-                            onDismiss = {
+                    LimitReachedOverlayScreen(
+                        todayUsedSeconds = todayUsed,
+                        remainingModifyCount = remainingModifyCount,
+                        themeId = "simple",
+                        isDarkTheme = isDarkThemeLimit,
+                        onReset = limitResetCallback,
+                        onDismiss = {
+                            // 先执行 onDismiss（pressHomeButton），让被拦截 App 先退出到后台，
+                            // 再延迟移除拦截页 View，确保用户在视觉上不会看到 App 界面
+                            isInterceptVisible.set(false)
+                            onDismiss()
+                            mainHandler.postDelayed({ removeInterceptViewInternal() }, 600)
+                        },
+                        onOpenOwnApp = onOpenOwnApp?.let { open ->
+                            {
                                 isInterceptVisible.set(false)
-                                onDismiss()
+                                open()
                                 mainHandler.postDelayed({ removeInterceptViewInternal() }, 600)
                             }
-                        )
-                    } else {
-                        // simple / default 等主题：统一走 LimitReachedOverlayScreen
-                        LimitReachedOverlayScreen(
-                            todayUsedSeconds = todayUsed,
-                            remainingModifyCount = remainingModifyCount,
-                            themeId = currentThemeId,
-                            isDarkTheme = isDarkThemeLimit,
-                            onReset = limitResetCallback,
-                            onDismiss = {
-                                // 先执行 onDismiss（pressHomeButton），让被拦截 App 先退出到后台，
-                                // 再延迟移除拦截页 View，确保用户在视觉上不会看到 App 界面
+                        },
+                        onContinueOverLimit = if (onContinueOverLimit != null) {
+                            {
+                                // 用户明确选择超限继续：立即关闭超限页，由外部 Service 开启续记 session
                                 isInterceptVisible.set(false)
-                                onDismiss()
-                                mainHandler.postDelayed({ removeInterceptViewInternal() }, 600)
-                            },
-                            onContinueOverLimit = if (onContinueOverLimit != null) {
-                                {
-                                    // 用户明确选择超限继续：立即关闭超限页，由外部 Service 开启续记 session
-                                    isInterceptVisible.set(false)
-                                    removeInterceptViewInternal()
-                                    onContinueOverLimit()
-                                }
-                            } else null
-                        )
-                    }
+                                removeInterceptViewInternal()
+                                onContinueOverLimit()
+                            }
+                        } else null
+                    )
                 }
 
                 val params = WindowManager.LayoutParams(
@@ -458,6 +685,56 @@ class OverlayManager @Inject constructor(
                     e.printStackTrace()
                     isInterceptVisible.set(false)
                 }
+            }
+        }
+    }
+
+    /**
+     * 单次意图时长到点收口页。
+     * 会话暂不结束：离开时再收口（可带可选正念对照）。续时已前移到胶囊。
+     */
+    fun showSessionLimitReached(
+        packageName: String,
+        appName: String,
+        purpose: String?,
+        committedMinutes: Int,
+        onConfirm: (mindfulnessLevel: Int?, note: String?) -> Unit
+    ) {
+        isInterceptVisible.set(true)
+        interceptTargetPackage = packageName
+        mainHandler.post {
+            if (!isInterceptVisible.get()) return@post
+            removeInterceptViewInternal()
+            val isDark = appPreferences.isDarkThemeEnabled()
+            val composeView = createComposeView {
+                SessionLimitReachedOverlayScreen(
+                    appName = appName,
+                    purpose = purpose,
+                    committedMinutes = committedMinutes,
+                    isDarkTheme = isDark,
+                    onConfirm = { level, note ->
+                        isInterceptVisible.set(false)
+                        onConfirm(level, note)
+                        mainHandler.postDelayed({ removeInterceptViewInternal() }, 600)
+                    }
+                )
+            }
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+            }
+            try {
+                windowManager.addView(composeView, params)
+                interceptView = composeView
+            } catch (e: Exception) {
+                e.printStackTrace()
+                isInterceptVisible.set(false)
             }
         }
     }
@@ -557,7 +834,12 @@ class OverlayManager @Inject constructor(
     }
 
     /**
-     * 显示小胶囊浮窗，同时清除"拦截展示中"标志
+     * 显示小胶囊浮窗，同时清除"拦截展示中"标志。
+     *
+     * 入场策略：
+     * - 意图门在场：窄条 → 展开横幅停留 → 收成迷你
+     * - 纯时长锁：圆环种子（呼吸点）→ 气泡展开成迷你
+     * - 超限续记：轻淡入（仪表亮起），不做仪式
      */
     fun showCapsule(session: UsageSession, playEnterAnimation: Boolean = true) {
         isInterceptVisible.set(false)
@@ -567,71 +849,125 @@ class OverlayManager @Inject constructor(
 
             capsuleAppName.value = session.appName
             capsuleAppPackageName.value = session.packageName
-            capsuleSessionSeconds.value = 0L
-            capsuleDailyRemainingSeconds.value = session.dailyRemainingSeconds
-            capsuleDailyLimitSeconds.value = session.dailyLimitSeconds
+            capsuleSessionSeconds.value = session.currentSessionSeconds
+            capsuleDailyRemainingSeconds.value = session.budgetRemainingSeconds.let {
+                if (it == Long.MAX_VALUE) 0L else it
+            }
+            capsuleDailyLimitSeconds.value = when {
+                session.hasSessionLimit -> session.effectiveSessionLimitSeconds
+                else -> session.dailyLimitSeconds
+            }
             capsulePurpose.value = session.purpose
             capsuleIsPaused.value = false  // 显示时默认非暂停
+            capsuleIsOverLimit.value = session.isOverLimitSession
+            capsuleHasIntentGate.value = session.hasIntentGate
+            capsuleHasTimeLock.value = session.hasTimeLock || session.hasSessionLimit
+            capsuleHasSessionLimit.value = session.hasSessionLimit
+            capsuleCanExtend.value = session.canOfferSessionExtension
+            capsuleShowUsedSeconds.value = appPreferences.isCapsuleUsedShowSeconds()
+            capsuleMiniCompact.value = appPreferences.isCapsuleMiniCompact()
 
             capsuleWakeUp = null
 
-            val hasCeremony = playEnterAnimation && !session.purpose.isNullOrBlank()
-            val currentThemeId = appPreferences.getInterceptThemeId()
+            // 超限续记：轻淡入；纯时长锁走圆环气泡展开（由 CapsuleOverlayView 承接）
+            val quietInstrumentEnter = session.isOverLimitSession
+            val effectivePlayEnter = playEnterAnimation && !quietInstrumentEnter
 
-            if (hasCeremony) {
-                val ceremonyComposeView = createComposeView {
-                    CeremonyOverlayView(
-                        purposeText = session.purpose ?: "",
-                        themeId = currentThemeId,
-                        onFinished = {
-                            mainHandler.post {
-                                removeCeremonyViewInternal()
-                                addCapsuleView(session, playEnterAnimation = true)
-                            }
-                        }
-                    )
-                }
+            // 意图确认：意图门 + 有意图文案时短亮托底；常驻形态始终是文字锚点
+            val playIntentSeal = effectivePlayEnter &&
+                session.hasIntentGate &&
+                !session.purpose.isNullOrBlank()
+            capsuleExpanded.value = false
 
-                val ceremonyParams = WindowManager.LayoutParams(
-                    WindowManager.LayoutParams.MATCH_PARENT,
-                    WindowManager.LayoutParams.MATCH_PARENT,
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                    PixelFormat.TRANSLUCENT
-                ).apply {
-                    gravity = Gravity.TOP or Gravity.START
-                }
-
-                try {
-                    windowManager.addView(ceremonyComposeView, ceremonyParams)
-                    ceremonyView = ceremonyComposeView
-                    startCapsuleTimer(session)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    addCapsuleView(session, playEnterAnimation = playEnterAnimation)
-                }
-            } else {
-                addCapsuleView(session, playEnterAnimation = playEnterAnimation)
-            }
+            addCapsuleView(
+                session = session,
+                playEnterAnimation = effectivePlayEnter,
+                softReveal = quietInstrumentEnter && playEnterAnimation,
+                playIntentSeal = playIntentSeal
+            )
         }
     }
 
     /**
      * 将胶囊切换到暂停状态：
-     * - 光盘停止旋转
-     * - 显示"已暂停"文字
-     * - 点击胶囊可回到app
-     *
-     * 注意：此方法不移除胶囊View，只改变状态。
-     *
-     * @param returnToAppAction 点击胶囊时执行的"回到app"动作
+     * - 进度环变冷；离开倒计时默认收起
+     * - [awayCountdownSeconds] != null 时进入离开倒计时（含意图门切走）
+     * - 点按主体回到 App；「结束」由命中区单独处理
      */
-    fun pauseCapsule(returnToAppAction: () -> Unit) {
+    fun pauseCapsule(
+        returnToAppAction: () -> Unit,
+        awayCountdownSeconds: Long? = null
+    ) {
         mainHandler.post {
-            capsuleIsPaused.value = true
-            returnToAppCallback = returnToAppAction
+            applyPausedState(returnToAppAction, awayCountdownSeconds)
+        }
+    }
+
+    /**
+     * 原子展示暂停胶囊（含离开倒计时），避免 showCapsule + pauseCapsule 两次 post 竞态：
+     * show 末尾会把 isPaused 置 false / away 置 -1，若与 pause 交错会导致倒计时 UI 不更新。
+     */
+    fun showPausedCapsule(
+        session: UsageSession,
+        returnToAppAction: () -> Unit,
+        awayCountdownSeconds: Long
+    ) {
+        isInterceptVisible.set(false)
+        mainHandler.post {
+            removeCapsuleViewInternal()
+            removeCeremonyViewInternal()
+
+            capsuleAppName.value = session.appName
+            capsuleAppPackageName.value = session.packageName
+            capsuleSessionSeconds.value = session.currentSessionSeconds
+            capsuleDailyRemainingSeconds.value = session.budgetRemainingSeconds.let {
+                if (it == Long.MAX_VALUE) 0L else it
+            }
+            capsuleDailyLimitSeconds.value = when {
+                session.hasSessionLimit -> session.effectiveSessionLimitSeconds
+                else -> session.dailyLimitSeconds
+            }
+            capsulePurpose.value = session.purpose
+            capsuleIsOverLimit.value = session.isOverLimitSession
+            capsuleHasIntentGate.value = session.hasIntentGate
+            capsuleHasTimeLock.value = session.hasTimeLock || session.hasSessionLimit
+            capsuleHasSessionLimit.value = session.hasSessionLimit
+            capsuleCanExtend.value = session.canOfferSessionExtension
+            capsuleShowUsedSeconds.value = appPreferences.isCapsuleUsedShowSeconds()
+            capsuleMiniCompact.value = appPreferences.isCapsuleMiniCompact()
+            capsuleWakeUp = null
+
+            applyPausedState(returnToAppAction, awayCountdownSeconds)
+            addCapsuleView(
+                session = session,
+                playEnterAnimation = false,
+                softReveal = false,
+                playIntentSeal = false
+            )
+        }
+    }
+
+    private fun applyPausedState(
+        returnToAppAction: () -> Unit,
+        awayCountdownSeconds: Long?
+    ) {
+        capsuleIsPaused.value = true
+        returnToAppCallback = returnToAppAction
+        capsuleExpanded.value = false
+        if (awayCountdownSeconds != null) {
+            capsuleAwayCountdownSeconds.value = awayCountdownSeconds.coerceAtLeast(0L)
+        } else {
+            capsuleAwayCountdownSeconds.value = -1L
+        }
+    }
+
+    /** 更新离开倒计时剩余秒数（锁屏冻结期间由 Service 停更） */
+    fun updateAwayCountdown(remainingSeconds: Long) {
+        val sec = remainingSeconds.coerceAtLeast(0L)
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            capsuleAwayCountdownSeconds.value = sec
+        } else {
+            mainHandler.post { capsuleAwayCountdownSeconds.value = sec }
         }
     }
 
@@ -639,6 +975,8 @@ class OverlayManager @Inject constructor(
     fun resumeCapsule() {
         mainHandler.post {
             capsuleIsPaused.value = false
+            capsuleExpanded.value = false
+            capsuleAwayCountdownSeconds.value = -1L
             returnToAppCallback = null
         }
     }
@@ -649,8 +987,13 @@ class OverlayManager @Inject constructor(
     /**
      * 创建并添加普通胶囊 View 到 WindowManager。
      */
-    private fun addCapsuleView(session: UsageSession, playEnterAnimation: Boolean) {
-        val currentThemeId = appPreferences.getInterceptThemeId()
+    private fun addCapsuleView(
+        session: UsageSession,
+        playEnterAnimation: Boolean,
+        softReveal: Boolean = false,
+        playIntentSeal: Boolean = false
+    ) {
+        val isDarkTheme = appPreferences.isDarkThemeEnabled()
         val composeView = createComposeView {
             CapsuleOverlayView(
                 sessionManager = null,
@@ -662,31 +1005,25 @@ class OverlayManager @Inject constructor(
                 purpose = capsulePurpose,
                 expanded = capsuleExpanded,
                 isPaused = capsuleIsPaused,
-                themeId = currentThemeId,
-                onToggleExpand = {
-                    if (capsuleIsPaused.value) {
-                        // 暂停状态下点击：回到app
-                        returnToAppCallback?.invoke()
-                    } else {
-                        capsuleExpanded.value = !capsuleExpanded.value
-                    }
+                isOverLimit = capsuleIsOverLimit,
+                hasIntentGate = capsuleHasIntentGate,
+                hasTimeLock = capsuleHasTimeLock,
+                hasSessionLimit = capsuleHasSessionLimit,
+                canOfferExtension = capsuleCanExtend,
+                showUsedSeconds = capsuleShowUsedSeconds,
+                miniCompact = capsuleMiniCompact,
+                awayCountdownSeconds = capsuleAwayCountdownSeconds,
+                isDarkTheme = isDarkTheme,
+                onToggleExpand = { toggleCapsuleExpanded() },
+                onEndSession = { note, mindfulnessLevel, openToAnchor ->
+                    finishManualEndSession(
+                        note = note,
+                        mindfulnessLevel = mindfulnessLevel,
+                        openToAnchor = openToAnchor
+                    )
                 },
-                onEndSession = { effectScore, note ->
-                    // 在结束前先读取 recordId，endSession 会清空 session
-                    val endingRecordId = sessionManager.currentSession.value?.recordId
-                    removeCapsuleViewInternal()
-                    scope.launch {
-                        sessionManager.endSession(
-                            reason = UsageRecordEntity.EndReason.MANUAL,
-                            note = note,
-                            effectScore = effectScore
-                        )
-                        // 手动结束后，无论是否有目的，都触发 HomeScreen 高亮引导
-                        if (endingRecordId != null) {
-                            onManualEndWithPurpose?.invoke(endingRecordId)
-                        }
-                    }
-                    onManualEndSession?.invoke()
+                onExtendSession = { minutes ->
+                    onExtendSession?.invoke(minutes)
                 },
                 onReturnToApp = {
                     returnToAppCallback?.invoke()
@@ -695,71 +1032,198 @@ class OverlayManager @Inject constructor(
                 onRegisterShowConfirm = { fn -> capsuleShowConfirm = fn },
                 onRegisterWarnFiveMin = { fn -> capsuleWarnFiveMin = fn },
                 onRegisterStartCountdown = { fn -> capsuleStartCountdown = fn },
-                onExtendLimit = { extraMinutes ->
-                    scope.launch { sessionManager.extendDailyLimit(extraMinutes) }
+                onRegisterStopAction = { fn -> capsuleRequestEnd = fn },
+                onRegisterSkipEntrance = { fn -> capsuleSkipEntrance = fn },
+                onStopHitRectChanged = { rect -> capsuleStopHitRect = rect },
+                onEndDialogVisibilityChanged = { open ->
+                    capsuleEndDialogOpen = open
+                    isCapsuleDialogBlocking.set(open)
+                    setCapsuleFocusableForInput(open)
+                    if (open) {
+                        // 贴边收起时弹窗会随 WRAP_CONTENT 变宽，中心偏移导致大半跑出屏幕
+                        centerCapsuleForDialog()
+                    } else if (!capsuleExpanded.value) {
+                        restoreCapsuleAfterDialog()
+                    }
                 },
                 onConfirmDialogOpen = {
-                    // 确认弹窗打开：暂停计时（仅前台场景，app 仍在前台但用户在考虑是否结束）
+                    // 同步置位，避免 LaunchedEffect 与监控轮询之间的空窗被误 resume
+                    isCapsuleDialogBlocking.set(true)
                     scope.launch { sessionManager.onAppGoBackground() }
-                    // 切换 Window 为可聚焦模式，让备注 TextField 能获得输入焦点（弹出软键盘）
-                    mainHandler.post {
-                        capsuleView?.let { view ->
-                            try {
-                                val lp = view.layoutParams as? WindowManager.LayoutParams ?: return@post
-                                lp.flags = lp.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
-                                windowManager.updateViewLayout(view, lp)
-                            } catch (_: Exception) {}
-                        }
-                    }
                 },
                 onConfirmDialogClose = {
-                    // 确认弹窗关闭（取消）：恢复计时
                     sessionManager.onAppReturnToForeground()
-                    // 恢复 Window 为不可聚焦模式，让触摸事件穿透（拖动胶囊正常工作）
-                    mainHandler.post {
-                        capsuleView?.let { view ->
-                            try {
-                                val lp = view.layoutParams as? WindowManager.LayoutParams ?: return@post
-                                lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                                windowManager.updateViewLayout(view, lp)
-                            } catch (_: Exception) {}
-                        }
+                },
+                onMiniSettled = {
+                    // 入场仪式从居中收起后，吸到偏好停靠点
+                    if (!capsuleExpanded.value) {
+                        mainHandler.postDelayed(snapAfterCollapseRunnable, 320L)
                     }
                 },
-                playEnterAnimation = playEnterAnimation
+                playEnterAnimation = playEnterAnimation,
+                softReveal = softReveal,
+                playIntentSeal = playIntentSeal
             )
         }
+
+        val density = context.resources.displayMetrics.density
+        val screenWidth = windowManager.currentWindowMetrics.bounds.width()
+        // 收起壳随内容分档 + 水平 padding 16dp；CENTER_HORIZONTAL 下的停靠 x
+        val compact = capsuleMiniCompact.value
+        val collapsedShellDp = when {
+            capsuleIsPaused.value -> if (compact) 176f else 200f
+            capsuleHasIntentGate.value && !capsulePurpose.value.isNullOrBlank() ->
+                if (compact) 192f else 216f
+            capsuleHasIntentGate.value -> if (compact) 142f else 160f
+            else -> if (compact) 130f else 148f
+        }
+        val collapsedViewW = ((collapsedShellDp + 16f) * density).toInt()
+        val dock = appPreferences.getCapsuleDockPosition()
+        val dockX = capsuleDockOffsetX(dock, screenWidth, collapsedViewW)
+        // 意图门入场横幅从居中长出；其余直接落在停靠点
+        val startCentered = playEnterAnimation && capsuleHasIntentGate.value
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = 0
-            y = 160
+            // CENTER_HORIZONTAL：x=0 即水平居中；宽度变化时系统保持居中（iOS 展开态）
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            x = if (startCentered) 0 else dockX
+            // 贴状态栏下缘，视觉上像从系统区长出
+            y = capsuleRestingYPx()
         }
+        capsuleParams = params
 
-        setupDragAndDrop(composeView, params) {
-            if (capsuleIsPaused.value) {
-                // 暂停态点击：回到app
-                returnToAppCallback?.invoke()
-            } else {
-                capsuleExpanded.value = !capsuleExpanded.value
+        val capsuleHost = createCapsuleTouchHost(
+            composeView = composeView,
+            params = params,
+            onClick = {
+                // 入场展开中：点按提前收起
+                // 暂停态：点按主体回来（「结束」由命中区单独处理）
+                // 迷你态：点按展开；展开态点胶囊本身不收起（点外侧才收）
+                when {
+                    capsuleSkipEntrance != null -> capsuleSkipEntrance?.invoke()
+                    capsuleIsPaused.value -> returnToAppCallback?.invoke()
+                    !capsuleExpanded.value -> toggleCapsuleExpanded()
+                }
             }
-        }
+        )
 
         try {
-            windowManager.addView(composeView, params)
-            capsuleView = composeView
+            windowManager.addView(capsuleHost, params)
+            capsuleView = capsuleHost
             if (capsuleUpdateJob == null || capsuleUpdateJob?.isActive == false) {
                 startCapsuleTimer(session)
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    /** 展开 ↔ 收起，并同步窗口水平位置（展开居中 / 收起贴边） */
+    private fun toggleCapsuleExpanded() {
+        val next = !capsuleExpanded.value
+        capsuleExpanded.value = next
+        syncCapsuleHorizontalForExpansion(next)
+    }
+
+    /** 结束确认 / 续时弹窗：窗口水平居中，避免贴边时弹窗大半出屏 */
+    private fun centerCapsuleForDialog() {
+        val view = capsuleView ?: return
+        val params = capsuleParams ?: return
+        mainHandler.removeCallbacks(snapAfterCollapseRunnable)
+        capsuleSnapAnimator?.cancel()
+        if (params.x != 0) {
+            params.x = 0
+            try {
+                windowManager.updateViewLayout(view, params)
+            } catch (_: Exception) { /* ignore */ }
+        }
+    }
+
+    /** 弹窗关闭且仍为收起态：还原停靠点 */
+    private fun restoreCapsuleAfterDialog() {
+        val view = capsuleView ?: return
+        val params = capsuleParams ?: return
+        params.y = capsuleRestingYPx()
+        try {
+            windowManager.updateViewLayout(view, params)
+        } catch (_: Exception) { /* ignore */ }
+        snapCapsuleToDock(view, params, forceDock = appPreferences.getCapsuleDockPosition())
+    }
+
+    /** 结束确认含备注输入时临时可聚焦，便于弹键盘；关闭后恢复不可聚焦。 */
+    private fun setCapsuleFocusableForInput(focusable: Boolean) {
+        val view = capsuleView ?: return
+        val params = capsuleParams ?: return
+        if (focusable) {
+            params.flags = params.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+            @Suppress("DEPRECATION")
+            params.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        } else {
+            params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            params.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED
+        }
+        try {
+            windowManager.updateViewLayout(view, params)
+        } catch (_: Exception) { /* ignore */ }
+    }
+
+    private fun syncCapsuleHorizontalForExpansion(expanded: Boolean) {
+        val view = capsuleView ?: return
+        val params = capsuleParams ?: return
+        mainHandler.removeCallbacks(snapAfterCollapseRunnable)
+        capsuleSnapAnimator?.cancel()
+        if (expanded) {
+            // 展开立刻归中；停靠点已在偏好中，收起后按偏好还原
+            capsuleSnapAnimator?.cancel()
+            if (params.x != 0) {
+                params.x = 0
+                try {
+                    windowManager.updateViewLayout(view, params)
+                } catch (_: Exception) { /* ignore */ }
+            }
+        } else {
+            // 等壳宽弹簧大致落定再贴边，避免宽横幅先甩到边缘
+            mainHandler.postDelayed(snapAfterCollapseRunnable, 360L)
+        }
+    }
+
+    private fun animateCapsuleTo(
+        view: View,
+        params: WindowManager.LayoutParams,
+        targetX: Int,
+        targetY: Int,
+        minDuration: Long = 80L,
+        maxDuration: Long = 280L
+    ) {
+        capsuleSnapAnimator?.cancel()
+        val startX = params.x
+        val startY = params.y
+        if (startX == targetX && startY == targetY) return
+        val distance = maxOf(
+            kotlin.math.abs(targetX - startX),
+            kotlin.math.abs(targetY - startY)
+        )
+        val duration = (distance / 100f * 40f).toLong().coerceIn(minDuration, maxDuration)
+        capsuleSnapAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            this.duration = duration
+            interpolator = DecelerateInterpolator(1.55f)
+            addUpdateListener { animator ->
+                val t = animator.animatedValue as Float
+                params.x = (startX + (targetX - startX) * t).toInt()
+                params.y = (startY + (targetY - startY) * t).toInt()
+                try {
+                    windowManager.updateViewLayout(view, params)
+                } catch (_: Exception) { cancel() }
+            }
+            start()
         }
     }
 
@@ -777,27 +1241,57 @@ class OverlayManager @Inject constructor(
                 if (s != null) {
                     val activeSeconds = s.currentSessionSeconds
                     capsuleSessionSeconds.value = activeSeconds
-                    val remaining = (s.dailyLimitSeconds - s.dailyUsedSeconds - activeSeconds).coerceAtLeast(0)
+                    val remaining = s.budgetRemainingSeconds.let {
+                        if (it == Long.MAX_VALUE) 0L else it
+                    }
                     capsuleDailyRemainingSeconds.value = remaining
-                    capsuleDailyLimitSeconds.value = s.dailyLimitSeconds
+                    capsuleDailyLimitSeconds.value = when {
+                        s.hasSessionLimit -> s.effectiveSessionLimitSeconds
+                        else -> s.dailyLimitSeconds
+                    }
+                    capsuleHasSessionLimit.value = s.hasSessionLimit
+                    capsuleCanExtend.value = s.canOfferSessionExtension
+                    capsuleHasTimeLock.value = s.hasTimeLock || s.hasSessionLimit
+                    capsuleShowUsedSeconds.value = appPreferences.isCapsuleUsedShowSeconds()
+                    capsuleMiniCompact.value = appPreferences.isCapsuleMiniCompact()
 
-                    // ── 预警触发（仅在有限制且非超限续记 session 时生效）──────────
-                    if (s.dailyLimitSeconds > 0 && !s.isOverLimitSession) {
-                        // 5 分钟预警：剩余首次降至 300 秒以下时触发
-                        if (!fiveMinWarned && remaining in 1L..300L) {
-                            fiveMinWarned = true
-                            mainHandler.post { capsuleWarnFiveMin?.invoke() }
-                        }
-                        // 1 分钟倒计时：剩余首次降至 60 秒以下时触发
-                        if (!countdownStarted && remaining in 1L..60L) {
+                    // ── 预警：优先会话预算，否则日预算；非超限续记 ──────────
+                    // 意图门单次时长：剩余 1 分钟且可续时，展开胶囊给出续时入口
+                    val hasBudget = s.hasSessionLimit || s.dailyLimitSeconds > 0
+                    val intentSessionBudget = s.hasIntentGate && s.hasSessionLimit
+                    if (intentSessionBudget && !s.isOverLimitSession) {
+                        if (!countdownStarted && remaining in 1L..60L && s.canOfferSessionExtension) {
                             countdownStarted = true
-                            mainHandler.post { capsuleStartCountdown?.invoke() }
+                            mainHandler.post {
+                                capsuleExpanded.value = true
+                                syncCapsuleHorizontalForExpansion(true)
+                                capsuleStartCountdown?.invoke()
+                            }
                         }
-                        // 延长后剩余时间重新超过 60 秒：重置倒计时标记，允许下次再次触发
                         if (countdownStarted && remaining > 60L) {
                             countdownStarted = false
                         }
-                        // 延长后剩余时间重新超过 300 秒：重置5分钟预警标记
+                    } else if (hasBudget && !s.isOverLimitSession && !intentSessionBudget) {
+                        if (!fiveMinWarned && remaining in 1L..300L) {
+                            fiveMinWarned = true
+                            mainHandler.post {
+                                capsuleExpanded.value = true
+                                syncCapsuleHorizontalForExpansion(true)
+                                capsuleWarnFiveMin?.invoke()
+                            }
+                        }
+                        if (!countdownStarted && remaining in 1L..60L) {
+                            countdownStarted = true
+                            mainHandler.post {
+                                capsuleExpanded.value = true
+                                syncCapsuleHorizontalForExpansion(true)
+                                capsuleStartCountdown?.invoke()
+                            }
+                        }
+                        // 续时后剩余重新拉开：允许再次预警
+                        if (countdownStarted && remaining > 60L) {
+                            countdownStarted = false
+                        }
                         if (fiveMinWarned && remaining > 300L) {
                             fiveMinWarned = false
                         }
@@ -808,74 +1302,184 @@ class OverlayManager @Inject constructor(
         }
     }
 
-    private fun setupDragAndDrop(view: View, params: WindowManager.LayoutParams, onClick: () -> Unit) {
-        var initialX = 0
-        var initialY = 0
-        var initialTouchX = 0f
-        var initialTouchY = 0f
-        var isDragging = false
+    /**
+     * 悬浮窗拖拽必须用 [WindowManager.updateViewLayout] 跟手。
+     *
+     * 用 [FrameLayout.onInterceptTouchEvent] 在 Compose 子 View 之前抢走手势：
+     * 仅收起态拦截（拖拽 + 「结束」命中区）；展开态 / 弹窗打开时不拦截，
+     * 以便 Compose clickable（「结束」「续一会儿」）正常响应。
+     *
+     * 坐标系：gravity 含 [Gravity.CENTER_HORIZONTAL]，params.x 为相对屏幕水平中心的偏移。
+     */
+    private fun createCapsuleTouchHost(
+        composeView: ComposeView,
+        params: WindowManager.LayoutParams,
+        onClick: () -> Unit
+    ): View {
+        val host = object : FrameLayout(context) {
+            private var initialX = 0
+            private var initialY = 0
+            private var initialTouchX = 0f
+            private var initialTouchY = 0f
+            private var isDragging = false
 
-        view.setOnTouchListener { v, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    capsuleWakeUp?.invoke()
-                    initialX = params.x
-                    initialY = params.y
-                    initialTouchX = event.rawX
-                    initialTouchY = event.rawY
-                    isDragging = false
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (event.rawX - initialTouchX).toInt()
-                    val dy = (event.rawY - initialTouchY).toInt()
-                    if (isDragging || Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                        isDragging = true
-                        params.x = initialX + dx
-                        params.y = initialY + dy
-                        try {
-                            windowManager.updateViewLayout(v, params)
-                        } catch (e: Exception) { /* ignore */ }
+            override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+                if (ev.actionMasked == MotionEvent.ACTION_OUTSIDE) {
+                    if (!capsuleEndDialogOpen) {
+                        when {
+                            capsuleSkipEntrance != null -> capsuleSkipEntrance?.invoke()
+                            capsuleExpanded.value -> toggleCapsuleExpanded()
+                        }
                     }
-                    true
+                    return true
                 }
-                MotionEvent.ACTION_UP -> {
-                    if (!isDragging) {
-                        onClick()
-                    } else {
-                        snapToEdge(v, params)
-                    }
-                    isDragging = false
-                    true
-                }
-                else -> false
+                return super.dispatchTouchEvent(ev)
             }
+
+            override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+                // 确认 / 续时弹窗：把触摸交给 Compose
+                if (capsuleEndDialogOpen) return false
+                // 展开态：交给 Compose 处理「结束」「续一会儿」等 clickable；
+                // 收起态仍由 Window 层拦截（拖拽 + 结束命中区）
+                if (capsuleExpanded.value) return false
+                return true
+            }
+
+            override fun onTouchEvent(event: MotionEvent): Boolean {
+                if (capsuleEndDialogOpen || capsuleExpanded.value) return false
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        capsuleSnapAnimator?.cancel()
+                        mainHandler.removeCallbacks(snapAfterCollapseRunnable)
+                        initialX = params.x
+                        initialY = params.y
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        translationX = 0f
+                        translationY = 0f
+                        isDragging = false
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val dx = (event.rawX - initialTouchX).toInt()
+                        val dy = (event.rawY - initialTouchY).toInt()
+                        if (isDragging || kotlin.math.abs(dx) > 10 || kotlin.math.abs(dy) > 10) {
+                            isDragging = true
+                            params.x = initialX + dx
+                            params.y = initialY + dy
+                            try {
+                                windowManager.updateViewLayout(this, params)
+                            } catch (_: Exception) { /* ignore */ }
+                        }
+                        return true
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        val wasDragging = isDragging
+                        isDragging = false
+                        if (wasDragging) {
+                            snapCapsuleToDock(this, params)
+                        } else if (event.actionMasked == MotionEvent.ACTION_UP) {
+                            capsuleWakeUp?.invoke()
+                            val stopHit = capsuleStopHitRect
+                            if (stopHit != null && stopHit.contains(event.x, event.y)) {
+                                capsuleRequestEnd?.invoke()
+                            } else {
+                                onClick()
+                            }
+                        }
+                        return true
+                    }
+                    else -> return false
+                }
+            }
+        }
+
+        // Compose attach 时从窗口根 View（本 host）查找 ViewTreeLifecycleOwner。
+        // 只设在子 ComposeView 上不够，会抛 "ViewTreeLifecycleOwner not found"。
+        host.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        val hostLifecycleOwner = OverlayLifecycleOwner().also { it.start() }
+        host.setViewTreeLifecycleOwner(hostLifecycleOwner)
+        host.setViewTreeViewModelStoreOwner(object : ViewModelStoreOwner {
+            override val viewModelStore = ViewModelStore()
+        })
+        host.setViewTreeSavedStateRegistryOwner(hostLifecycleOwner)
+
+        host.addView(
+            composeView,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        )
+        return host
+    }
+
+    /**
+     * 胶囊常驻 Y：贴状态栏下缘再留约 4dp。
+     * 不用塞进状态栏内部，避免与系统图标抢位。
+     */
+    private fun capsuleRestingYPx(): Int {
+        val density = context.resources.displayMetrics.density
+        val statusBarH = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            windowManager.currentWindowMetrics.windowInsets
+                .getInsetsIgnoringVisibility(android.view.WindowInsets.Type.statusBars())
+                .top
+        } else {
+            @Suppress("DEPRECATION")
+            val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+            if (resId > 0) context.resources.getDimensionPixelSize(resId)
+            else (24f * density).toInt()
+        }
+        return statusBarH + (4f * density).toInt()
+    }
+
+    /**
+     * 收起态吸到顶部左 / 中 / 右停靠点，并回到状态栏下缘高度。
+     * [forceDock] 非空时强制该侧（展开收起 / 弹窗还原）；否则按当前 x 就近判断并写回偏好。
+     */
+    private fun snapCapsuleToDock(
+        view: View,
+        params: WindowManager.LayoutParams,
+        forceDock: String? = null
+    ) {
+        val screenWidth = windowManager.currentWindowMetrics.bounds.width()
+        val viewWidth = view.width.takeIf { it > 0 } ?: 200
+        val dock = forceDock
+            ?: nearestCapsuleDock(params.x, screenWidth, viewWidth).also {
+                appPreferences.setCapsuleDockPosition(it)
+            }
+        val targetX = capsuleDockOffsetX(dock, screenWidth, viewWidth)
+        val targetY = capsuleRestingYPx()
+        animateCapsuleTo(view, params, targetX, targetY)
+    }
+
+    private fun capsuleDockOffsetX(dock: String, screenWidth: Int, viewWidth: Int): Int {
+        return when (AppPreferences.normalizeCapsuleDockPosition(dock)) {
+            AppPreferences.CAPSULE_DOCK_CENTER -> 0
+            AppPreferences.CAPSULE_DOCK_RIGHT -> (screenWidth - viewWidth) / 2
+            else -> -(screenWidth - viewWidth) / 2
         }
     }
 
-    private fun snapToEdge(view: View, params: WindowManager.LayoutParams) {
+    private fun nearestCapsuleDock(offsetX: Int, screenWidth: Int, viewWidth: Int): String {
+        val left = capsuleDockOffsetX(AppPreferences.CAPSULE_DOCK_LEFT, screenWidth, viewWidth)
+        val center = 0
+        val right = capsuleDockOffsetX(AppPreferences.CAPSULE_DOCK_RIGHT, screenWidth, viewWidth)
+        return listOf(
+            AppPreferences.CAPSULE_DOCK_LEFT to left,
+            AppPreferences.CAPSULE_DOCK_CENTER to center,
+            AppPreferences.CAPSULE_DOCK_RIGHT to right
+        ).minBy { kotlin.math.abs(offsetX - it.second) }.first
+    }
+
+    /** 拦截退场动画用的停靠点绝对中心 X（屏幕坐标） */
+    private fun capsuleDockAbsoluteCenterX(): Float {
         val screenWidth = windowManager.currentWindowMetrics.bounds.width()
-        val viewWidth = view.width.takeIf { it > 0 } ?: 200
-        val centerX = params.x + viewWidth / 2
-        val targetX = if (centerX < screenWidth / 2) 0 else screenWidth - viewWidth
-
-        val startX = params.x
-        if (startX == targetX) return
-
-        val distance = Math.abs(targetX - startX)
-        val duration = (distance / 100f * 40f).toLong().coerceIn(80L, 260L)
-
-        ValueAnimator.ofInt(startX, targetX).apply {
-            this.duration = duration
-            interpolator = DecelerateInterpolator(1.6f)
-            addUpdateListener { animator ->
-                params.x = animator.animatedValue as Int
-                try {
-                    windowManager.updateViewLayout(view, params)
-                } catch (e: Exception) { cancel() }
-            }
-            start()
-        }
+        val density = context.resources.displayMetrics.density
+        val approxW = ((160f + 16f) * density).toInt()
+        val dock = appPreferences.getCapsuleDockPosition()
+        val offsetX = capsuleDockOffsetX(dock, screenWidth, approxW)
+        return screenWidth / 2f + offsetX
     }
 
     private fun removeInterceptViewInternal() {
@@ -901,11 +1505,96 @@ class OverlayManager @Inject constructor(
         capsuleShowConfirm = null
         capsuleWarnFiveMin = null
         capsuleStartCountdown = null
+        capsuleSkipEntrance = null
         capsuleIsPaused.value = false
+        capsuleIsOverLimit.value = false
+        capsuleHasIntentGate.value = true
+        capsuleHasTimeLock.value = true
+        capsuleHasSessionLimit.value = false
+        capsuleCanExtend.value = false
+        capsuleAwayCountdownSeconds.value = -1L
         returnToAppCallback = null
+        mainHandler.removeCallbacks(snapAfterCollapseRunnable)
+        capsuleSnapAnimator?.cancel()
+        capsuleSnapAnimator = null
+        capsuleParams = null
+        capsuleRequestEnd = null
+        capsuleStopHitRect = null
+        capsuleEndDialogOpen = false
+        isCapsuleDialogBlocking.set(false)
         capsuleView?.let {
             try { windowManager.removeView(it) } catch (e: Exception) { }
             capsuleView = null
+        }
+    }
+
+    /**
+     * 手动结束会话的统一收口：写入 note / 正念程度（可选）、移除胶囊、回调 Service。
+     * @param openToAnchor 为 true 时走「结束并去心锚」
+     */
+    private fun finishManualEndSession(
+        note: String?,
+        mindfulnessLevel: Int?,
+        openToAnchor: Boolean = false
+    ) {
+        val session = sessionManager.currentSession.value
+        val endingRecordId = session?.recordId
+        val purposeHint = session?.purpose
+        val packageName = session?.packageName.orEmpty()
+        val reviewed = UsageRecordEntity.MindfulnessLevel.isValid(mindfulnessLevel)
+        val destination = when {
+            openToAnchor -> ManualEndDestination.OpenRecord
+            !reviewed -> ManualEndDestination.LegacyUnreviewed
+            mindfulnessLevel == UsageRecordEntity.MindfulnessLevel.ALIGNED ->
+                ManualEndDestination.HomeAligned
+            else -> ManualEndDestination.HomeDrifted
+        }
+        removeCapsuleViewInternal()
+        if (endingRecordId != null && destination != ManualEndDestination.LegacyUnreviewed) {
+            onManualEndSession?.invoke(endingRecordId, mindfulnessLevel, destination)
+            when (destination) {
+                ManualEndDestination.HomeAligned -> {
+                    mainHandler.postDelayed({
+                        playLeaveFeedback(
+                            LeaveFeedbackRequest(
+                                kind = LeaveFeedbackKind.SessionAligned,
+                                packageName = packageName,
+                                purposeHint = purposeHint
+                            ),
+                            onLeaveCompleted = {}
+                        )
+                    }, 420L)
+                }
+                ManualEndDestination.HomeDrifted -> {
+                    mainHandler.postDelayed({
+                        playLeaveFeedback(
+                            LeaveFeedbackRequest(
+                                kind = LeaveFeedbackKind.SessionDrifted,
+                                packageName = packageName
+                            ),
+                            onLeaveCompleted = {},
+                            onAction = {
+                                onManualEndSession?.invoke(
+                                    endingRecordId,
+                                    mindfulnessLevel,
+                                    ManualEndDestination.OpenRecord
+                                )
+                            }
+                        )
+                    }, 420L)
+                }
+                else -> Unit
+            }
+        }
+        scope.launch {
+            sessionManager.endSession(
+                reason = UsageRecordEntity.EndReason.MANUAL,
+                note = note,
+                mindfulnessLevel = mindfulnessLevel
+            )
+            if (endingRecordId != null && destination == ManualEndDestination.LegacyUnreviewed) {
+                onManualEndSession?.invoke(endingRecordId, null, destination)
+            }
         }
     }
 
@@ -915,6 +1604,8 @@ class OverlayManager @Inject constructor(
         mainHandler.post {
             removeAdViewInternal(cancel = true)  // 用户主动离开，强制取消广告，不再展示超限页
             removeInterceptViewInternal()
+            // 拦截期离开（Home / 强杀 / 切走）：门未进，不应残留该次相关胶囊
+            removeCapsuleViewInternal()
         }
     }
 
@@ -924,7 +1615,7 @@ class OverlayManager @Inject constructor(
     }
 
     /**
-     * 后台超时时触发胶囊内的「结束确认弹窗」。
+     * 后台超时时触发胶囊内的「后台超时确认弹窗」（与手动结束文案不同）。
      * 若胶囊已关闭（回调为 null），则直接返回 false，
      * 调用方应在 false 时自行静默结束会话。
      *
@@ -952,81 +1643,339 @@ class OverlayManager @Inject constructor(
     }
 
     /**
-     * 展示退出仪式浮窗（「获得勋章」全屏动画）。
+     * 门外离开后的肯定反馈（兼容入口）。
+     * 内部统一走 [playLeaveFeedback]。
      *
-     * 在用户点击「先不进去了」后调用：
-     * 1. 若该 App 在 2 分钟冷却窗口内再次触发，跳过动画直接执行 [onDismissCompleted]，
-     *    防止用户「刷」勋章 / 仪式动画变成噪音；
-     * 2. 否则异步查询今日累计克制次数，展示完整全屏勋章动画（约 2s）；
-     * 3. 动画播放完毕后更新冷却时间戳，再调用 [onDismissCompleted]（即 pressHome）。
-     *
-     * @param packageName         被拦截的 App 包名，用于冷却判断
-     * @param themeId             当前拦截主题 ID，联动配色
-     * @param onDismissCompleted  仪式动画结束后执行的回调（通常是 pressHomeButton）
+     * @param offerPositiveDestination 仅拦截页主动点「离开」为 true；Home 切走勿开
      */
     fun showDismissCeremony(
         packageName: String,
-        themeId: String,
+        destination: DismissDestination = DismissDestination.HOME,
+        isLimitTheme: Boolean = false,
+        offerPositiveDestination: Boolean = false,
         onDismissCompleted: () -> Unit
     ) {
-        // ── 冷却判断：2 分钟内同一 App 再次退出 → 跳过动画 ──────────────
-        val now = System.currentTimeMillis()
-        val lastTime = lastDismissCeremonyTime[packageName] ?: 0L
-        if (now - lastTime < dismissCeremonyCooldownMs) {
-            // 冷却期内：静默跳过，直接 pressHome
-            onDismissCompleted()
-            return
-        }
+        playLeaveFeedback(
+            request = LeaveFeedbackRequest(
+                kind = LeaveFeedbackKind.GateLight,
+                packageName = packageName,
+                destination = destination,
+                applyGateCooldown = true,
+                isLimitTheme = isLimitTheme,
+                offerPositiveDestination = offerPositiveDestination &&
+                    destination == DismissDestination.HOME
+            ),
+            onLeaveCompleted = onDismissCompleted
+        )
+    }
 
-        // ── 正常流程：展示完整勋章动画 ──────────────────────────────────
-        // 先查今日克制次数，然后在主线程展示动画（不阻塞 UI）
-        scope.launch {
-            // 数据库记录写入是在 onDismiss 之后（Service 写入极短记录），
-            // 这里先读当前值，展示的是"本次之前"的次数+1（乐观显示）
-            val countBefore = try {
-                usageRecordRepository.getDayDismissCount()
-            } catch (_: Exception) { 0 }
-            val displayCount = countBefore + 1   // 本次也算进去
-
-            mainHandler.post {
-                removeDismissCeremonyViewInternal()
-
-                val ceremonyComposeView = createComposeView {
-                    DismissCeremonyOverlayView(
-                        themeId = themeId,
-                        dismissCount = displayCount,
-                        onFinished = {
-                            mainHandler.post {
-                                removeDismissCeremonyViewInternal()
-                                // 动画完整播放完毕 → 记录冷却时间戳
-                                lastDismissCeremonyTime[packageName] = System.currentTimeMillis()
-                                onDismissCompleted()
-                            }
+    /**
+     * 统一离开反馈调度。
+     *
+     * Gate*：冷却 / 里程碑 / 轻条；Session*：轻条或直进心锚（由调用方先完成 leave）。
+     */
+    fun playLeaveFeedback(
+        request: LeaveFeedbackRequest,
+        onLeaveCompleted: () -> Unit,
+        onAction: (() -> Unit)? = null
+    ) {
+        when (request.kind) {
+            LeaveFeedbackKind.SessionToAnchor, LeaveFeedbackKind.GateSilent -> {
+                onLeaveCompleted()
+                return
+            }
+            LeaveFeedbackKind.SessionAligned, LeaveFeedbackKind.SessionDrifted -> {
+                val isDarkTheme = appPreferences.isDarkThemeEnabled()
+                val copy = leaveFeedbackCopy(request)
+                mainHandler.post {
+                    showLightLeaveAffirmation(
+                        copy = copy,
+                        isDarkTheme = isDarkTheme,
+                        onAction = onAction.takeIf {
+                            request.kind == LeaveFeedbackKind.SessionDrifted
                         }
                     )
                 }
+                onLeaveCompleted()
+                return
+            }
+            LeaveFeedbackKind.GateLight, LeaveFeedbackKind.GateMilestone -> Unit
+        }
 
-                val params = WindowManager.LayoutParams(
-                    WindowManager.LayoutParams.MATCH_PARENT,
-                    WindowManager.LayoutParams.MATCH_PARENT,
-                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                    PixelFormat.OPAQUE
-                ).apply {
-                    gravity = Gravity.TOP or Gravity.START
+        if (request.applyGateCooldown) {
+            val now = System.currentTimeMillis()
+            val lastTime = lastDismissCeremonyTime[request.packageName] ?: 0L
+            if (now - lastTime < dismissCeremonyCooldownMs) {
+                onLeaveCompleted()
+                return
+            }
+        }
+
+        scope.launch {
+            if (request.offerPositiveDestination) {
+                appPreferences.incrementExplicitGateLeaveCount()
+            }
+
+            val countBefore = try {
+                usageRecordRepository.getDayDismissCount()
+            } catch (_: Exception) {
+                0
+            }
+            val displayCount = if (request.dismissCount > 0) {
+                request.dismissCount
+            } else {
+                countBefore + 1
+            }
+            val resolved = request.copy(
+                dismissCount = displayCount,
+                kind = when {
+                    request.kind == LeaveFeedbackKind.GateMilestone ->
+                        LeaveFeedbackKind.GateMilestone
+                    request.destination == DismissDestination.HOME &&
+                        isDismissMilestone(displayCount) ->
+                        LeaveFeedbackKind.GateMilestone
+                    else -> LeaveFeedbackKind.GateLight
                 }
+            )
+            val isDarkTheme = appPreferences.isDarkThemeEnabled()
+            val enriched = buildGateAffirmationCopy(resolved)
 
-                try {
-                    windowManager.addView(ceremonyComposeView, params)
-                    dismissCeremonyView = ceremonyComposeView
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    // 展示失败时直接执行 pressHome，不卡住流程
-                    onDismissCompleted()
+            mainHandler.post {
+                if (resolved.kind == LeaveFeedbackKind.GateMilestone) {
+                    showFullDismissCeremony(
+                        dismissCount = displayCount,
+                        packageName = resolved.packageName,
+                        onDismissCompleted = {
+                            onLeaveCompleted()
+                            // 里程碑后若有归属/引导，再挂轻条（不挡勋章）
+                            if (enriched.actionLabel != null || enriched.moreLabel != null) {
+                                mainHandler.postDelayed({
+                                    showLightLeaveAffirmation(
+                                        copy = enriched,
+                                        isDarkTheme = isDarkTheme,
+                                        onAction = gateAffirmationAction(enriched),
+                                        onMoreChoice = gateAffirmationMoreAction(enriched),
+                                        onManage = gateAffirmationManageAction(enriched)
+                                    )
+                                }, 360L)
+                            }
+                        }
+                    )
+                } else {
+                    onLeaveCompleted()
+                    lastDismissCeremonyTime[resolved.packageName] = System.currentTimeMillis()
+                    mainHandler.postDelayed({
+                        showLightLeaveAffirmation(
+                            copy = enriched,
+                            isDarkTheme = isDarkTheme,
+                            onAction = gateAffirmationAction(enriched),
+                            onMoreChoice = gateAffirmationMoreAction(enriched),
+                            onManage = gateAffirmationManageAction(enriched)
+                        )
+                    }, 420L)
                 }
             }
+        }
+    }
+
+    private fun buildGateAffirmationCopy(request: LeaveFeedbackRequest): LeaveFeedbackCopy {
+        val base = leaveFeedbackCopy(request)
+        if (!request.offerPositiveDestination ||
+            request.destination != DismissDestination.HOME
+        ) {
+            return base
+        }
+        val all = appPreferences.getPositiveDestinations()
+        if (all.isEmpty()) {
+            return if (appPreferences.shouldOfferPositiveSetupNudge()) {
+                appPreferences.markPositiveSetupNudgeShown(
+                    appPreferences.getExplicitGateLeaveCount()
+                )
+                enrichGateCopyWithDestination(
+                    base = base,
+                    primary = null,
+                    displayChoices = emptyList(),
+                    setupNudge = true
+                )
+            } else {
+                base
+            }
+        }
+        val display = appPreferences.getPositiveDestinationsForDisplay()
+        val choices = display.mapNotNull { dest ->
+            val systemName = resolveAppLabel(dest.packageName) ?: return@mapNotNull null
+            LeaveDestinationChoice(
+                packageName = dest.packageName,
+                label = dest.displayLabel(systemName)
+            )
+        }
+        if (choices.isEmpty()) return base
+        val preferredPkg = appPreferences.getPreferredPositiveDestination()
+        val primary = choices.firstOrNull { it.packageName == preferredPkg } ?: choices.first()
+        return enrichGateCopyWithDestination(
+            base = base,
+            primary = primary,
+            displayChoices = choices,
+            setupNudge = false,
+            totalConfigured = all.size
+        )
+    }
+
+    private fun resolveAppLabel(packageName: String): String? {
+        return try {
+            val pm = context.packageManager
+            val info = pm.getApplicationInfo(packageName, 0)
+            pm.getApplicationLabel(info).toString()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun gateAffirmationAction(copy: LeaveFeedbackCopy): (() -> Unit)? {
+        return when {
+            copy.opensSettings -> {
+                { onOpenPositiveDestinationSettings?.invoke() }
+            }
+            !copy.primaryPackageName.isNullOrBlank() -> {
+                {
+                    val pkg = copy.primaryPackageName
+                    appPreferences.setPreferredPositiveDestination(pkg)
+                    onLaunchPositiveApp?.invoke(pkg)
+                }
+            }
+            else -> null
+        }
+    }
+
+    private fun gateAffirmationMoreAction(
+        copy: LeaveFeedbackCopy
+    ): ((LeaveDestinationChoice) -> Unit)? {
+        if (copy.moreChoices.isEmpty() && !copy.showManageLink) return null
+        return { choice ->
+            appPreferences.setPreferredPositiveDestination(choice.packageName)
+            onLaunchPositiveApp?.invoke(choice.packageName)
+        }
+    }
+
+    private fun gateAffirmationManageAction(copy: LeaveFeedbackCopy): (() -> Unit)? {
+        if (!copy.showManageLink && !copy.opensSettings) return null
+        return { onOpenPositiveDestinationSettings?.invoke() }
+    }
+
+    private fun showFullDismissCeremony(
+        dismissCount: Int,
+        packageName: String,
+        onDismissCompleted: () -> Unit
+    ) {
+        removeDismissCeremonyViewInternal()
+
+        val ceremonyComposeView = createComposeView {
+            DismissCeremonyOverlayView(
+                dismissCount = dismissCount,
+                onFinished = {
+                    mainHandler.post {
+                        removeDismissCeremonyViewInternal()
+                        lastDismissCeremonyTime[packageName] = System.currentTimeMillis()
+                        onDismissCompleted()
+                    }
+                }
+            )
+        }
+
+        // 可点跳过：不加 FLAG_NOT_TOUCHABLE
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.OPAQUE
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+        }
+
+        try {
+            windowManager.addView(ceremonyComposeView, params)
+            dismissCeremonyView = ceremonyComposeView
+        } catch (e: Exception) {
+            e.printStackTrace()
+            onDismissCompleted()
+        }
+    }
+
+    private fun showLightLeaveAffirmation(
+        copy: LeaveFeedbackCopy,
+        isDarkTheme: Boolean,
+        onAction: (() -> Unit)?,
+        onMoreChoice: ((LeaveDestinationChoice) -> Unit)? = null,
+        onManage: (() -> Unit)? = null
+    ) {
+        removeDismissCeremonyViewInternal()
+        if (copy.title.isBlank()) return
+
+        val touchable = onAction != null || onMoreChoice != null || onManage != null
+        val composeView = createComposeView {
+            DismissAffirmationOverlay(
+                copy = copy,
+                isDarkTheme = isDarkTheme,
+                onAction = onAction?.let { action ->
+                    {
+                        mainHandler.post {
+                            removeDismissCeremonyViewInternal()
+                            action()
+                        }
+                    }
+                },
+                onMoreChoice = onMoreChoice?.let { more ->
+                    { choice ->
+                        mainHandler.post {
+                            removeDismissCeremonyViewInternal()
+                            more(choice)
+                        }
+                    }
+                },
+                onManage = onManage?.let { manage ->
+                    {
+                        mainHandler.post {
+                            removeDismissCeremonyViewInternal()
+                            manage()
+                        }
+                    }
+                },
+                onFinished = {
+                    mainHandler.post { removeDismissCeremonyViewInternal() }
+                }
+            )
+        }
+
+        // 可点轻条：顶部 WRAP_CONTENT，避免全屏挡桌面触控；不可点仍全屏透传
+        val flags = if (touchable) {
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        } else {
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        }
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            if (touchable) WindowManager.LayoutParams.WRAP_CONTENT
+            else WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            flags,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+        }
+
+        try {
+            windowManager.addView(composeView, params)
+            dismissCeremonyView = composeView
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

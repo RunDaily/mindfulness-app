@@ -1,16 +1,15 @@
 package com.life.mindfulnessapp.service
 
+import com.life.mindfulnessapp.data.PendingInterruptStore
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
-import com.life.mindfulnessapp.data.repository.AccountRepository
 import com.life.mindfulnessapp.data.repository.AppLimitRepository
 import com.life.mindfulnessapp.data.repository.UsageRecordRepository
+import com.life.mindfulnessapp.domain.model.IntentKind
+import com.life.mindfulnessapp.domain.model.PendingInterrupt
+import com.life.mindfulnessapp.domain.model.SessionLimitPolicy
 import com.life.mindfulnessapp.domain.model.UsageSession
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,27 +20,31 @@ import javax.inject.Singleton
 class SessionManager @Inject constructor(
     private val appLimitRepository: AppLimitRepository,
     private val usageRecordRepository: UsageRecordRepository,
-    private val accountRepository: AccountRepository
+    private val pendingInterruptStore: PendingInterruptStore
 ) {
-    // 用于后台同步的独立 CoroutineScope（不绑定任何 Lifecycle）
-    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _currentSession = MutableStateFlow<UsageSession?>(null)
     val currentSession: StateFlow<UsageSession?> = _currentSession
 
     /**
-     * 开始一个新的使用会话
-     * @param purpose 使用目的（由拦截页用户属入的目的，null 表示未填写）
+     * 开始一个新的使用会话。
+     *
+     * @param purpose 使用意图文案；无意图门直进时可为 null
+     * @param intentKind 意图类型；新路径多为 [IntentKind.PURPOSEFUL]
+     * @param sessionLimitMinutes 本次会话上限（分钟）；0 = 不设单次上限
      */
     suspend fun startSession(
         packageName: String,
         appName: String,
-        purpose: String? = null
+        purpose: String? = null,
+        intentKind: IntentKind? = null,
+        sessionLimitMinutes: Int = 0
     ): UsageSession? {
-        // 已有相同 App 的会话，不重复创建
         val existing = _currentSession.value
         if (existing != null && existing.packageName == packageName) {
             return existing
         }
+
+        pendingInterruptStore.clear(packageName)
 
         val now = System.currentTimeMillis()
         val limit = appLimitRepository.getAppLimit(packageName) ?: return null
@@ -49,13 +52,27 @@ class SessionManager @Inject constructor(
         val dailyUsed = usageRecordRepository.getDailyUsageSeconds(packageName, now)
         val weeklyUsed = usageRecordRepository.getWeeklyUsageSeconds(packageName, now)
 
-        // 创建数据库记录（进行中状态），同时写入使用目的
+        val resolvedKind = intentKind
+            ?: if (!purpose.isNullOrBlank()) IntentKind.PURPOSEFUL else null
+        val clampedSessionMinutes = if (sessionLimitMinutes > 0) {
+            val dailyRemaining = SessionLimitPolicy.dailyRemainingMinutes(
+                limit.effectiveDailyLimitMinutes(),
+                dailyUsed
+            )
+            SessionLimitPolicy.clampSessionMinutes(sessionLimitMinutes, dailyRemaining)
+        } else {
+            0
+        }
+
         val recordId = usageRecordRepository.insertRecord(
             UsageRecordEntity(
                 packageName = packageName,
                 startTime = now,
                 endTime = -1L,
-                purpose = purpose
+                purpose = purpose,
+                intentKind = resolvedKind?.name,
+                sessionLimitMinutes = clampedSessionMinutes,
+                sessionExtensionMinutes = 0
             )
         )
 
@@ -64,13 +81,105 @@ class SessionManager @Inject constructor(
             packageName = packageName,
             appName = appName,
             startTime = now,
-            dailyLimitSeconds = limit.dailyLimitMinutes * 60L,
+            dailyLimitSeconds = limit.effectiveDailyLimitMinutes() * 60L,
             dailyUsedSeconds = dailyUsed,
-            weeklyLimitSeconds = limit.weeklyLimitMinutes * 60L,
+            weeklyLimitSeconds = limit.effectiveWeeklyLimitMinutes() * 60L,
             weeklyUsedSeconds = weeklyUsed,
-            purpose = purpose
+            purpose = purpose,
+            intentKind = resolvedKind,
+            sessionLimitSeconds = clampedSessionMinutes * 60L,
+            requireIntentOnOpen = limit.requireIntentOnOpen,
+            timeLimitEnabled = limit.timeLimitEnabled,
+            intentReviewEnabled = limit.intentReviewEnabled
         )
         _currentSession.value = session
+        return session
+    }
+
+    /**
+     * 恢复一次未标准闭环的会话：重新打开原记录，接着累计时长，保留原目的与会话契约。
+     */
+    suspend fun resumeInterruptedSession(pending: PendingInterrupt): UsageSession? {
+        val existing = _currentSession.value
+        if (existing != null && existing.packageName == pending.packageName) {
+            pendingInterruptStore.clear(pending.packageName)
+            return existing
+        }
+
+        val limit = appLimitRepository.getAppLimit(pending.packageName) ?: return null
+        val record = usageRecordRepository.getRecordById(pending.recordId)
+        val now = System.currentTimeMillis()
+
+        val accumulated = if (record != null) {
+            maxOf(record.durationSeconds, pending.durationSeconds)
+        } else {
+            pending.durationSeconds
+        }
+
+        val resolvedKind = pending.intentKind
+            ?: IntentKind.fromStorage(record?.intentKind)
+            ?: if (!(pending.purpose ?: record?.purpose).isNullOrBlank()) IntentKind.PURPOSEFUL else null
+        val sessionLimitMin = when {
+            pending.sessionLimitMinutes > 0 -> pending.sessionLimitMinutes
+            (record?.sessionLimitMinutes ?: 0) > 0 -> record!!.sessionLimitMinutes
+            else -> 0
+        }
+        val extensionMin = when {
+            pending.sessionExtensionMinutes > 0 -> pending.sessionExtensionMinutes
+            (record?.sessionExtensionMinutes ?: 0) > 0 -> record!!.sessionExtensionMinutes
+            else -> 0
+        }
+
+        val recordId = if (record != null) {
+            usageRecordRepository.updateRecord(
+                record.copy(
+                    endTime = -1L,
+                    durationSeconds = 0L,
+                    endReason = UsageRecordEntity.EndReason.UNKNOWN,
+                    intentKind = resolvedKind?.name ?: record.intentKind,
+                    sessionLimitMinutes = sessionLimitMin,
+                    sessionExtensionMinutes = extensionMin
+                )
+            )
+            record.id
+        } else {
+            usageRecordRepository.insertRecord(
+                UsageRecordEntity(
+                    packageName = pending.packageName,
+                    startTime = (pending.endedAt - accumulated * 1000L).coerceAtMost(pending.endedAt),
+                    endTime = -1L,
+                    purpose = pending.purpose,
+                    intentKind = resolvedKind?.name,
+                    sessionLimitMinutes = sessionLimitMin,
+                    sessionExtensionMinutes = extensionMin
+                )
+            )
+        }
+
+        val dailyUsed = usageRecordRepository.getDailyUsageSeconds(pending.packageName, now)
+        val weeklyUsed = usageRecordRepository.getWeeklyUsageSeconds(pending.packageName, now)
+
+        val session = UsageSession(
+            recordId = recordId,
+            packageName = pending.packageName,
+            appName = pending.appName,
+            startTime = now,
+            dailyLimitSeconds = limit.effectiveDailyLimitMinutes() * 60L,
+            dailyUsedSeconds = dailyUsed,
+            weeklyLimitSeconds = limit.effectiveWeeklyLimitMinutes() * 60L,
+            weeklyUsedSeconds = weeklyUsed,
+            accumulatedActiveSeconds = accumulated,
+            purpose = pending.purpose ?: record?.purpose,
+            intentKind = resolvedKind,
+            sessionLimitSeconds = sessionLimitMin * 60L,
+            sessionExtensionSeconds = extensionMin * 60L,
+            sessionExtensionUsed = extensionMin > 0,
+            requireIntentOnOpen = limit.requireIntentOnOpen,
+            timeLimitEnabled = limit.timeLimitEnabled,
+            intentReviewEnabled = limit.intentReviewEnabled
+        )
+        _currentSession.value = session
+        pendingInterruptStore.clear(pending.packageName)
         return session
     }
 
@@ -78,7 +187,6 @@ class SessionManager @Inject constructor(
     fun onAppGoBackground() {
         val session = _currentSession.value ?: return
         val now = System.currentTimeMillis()
-        // 将当前段的时长加入累计值，并标记进入后台
         val currentSegmentSeconds = (now - session.startTime) / 1000
         _currentSession.value = session.copy(
             isInBackground = true,
@@ -93,24 +201,21 @@ class SessionManager @Inject constructor(
         _currentSession.value = session.copy(
             isInBackground = false,
             backgroundSinceMs = 0L,
-            startTime = System.currentTimeMillis()  // 重置「当前段」起点
+            startTime = System.currentTimeMillis()
         )
     }
 
     /**
-     * 结束当前会话并持久化记录，若已登录则后台静默同步到云端
-     * @param reason 结束原因
-     * @param note 用户在结束弹框填写的备注（null 表示未填写）
-     * @param effectScore 用户对本次使用效果的自评分 0-10（null 表示未评分）
+     * 结束当前会话并持久化到本机数据库。
      */
     suspend fun endSession(
         reason: String,
         note: String? = null,
+        mindfulnessLevel: Int? = null,
         effectScore: Int? = null
     ) {
         val session = _currentSession.value ?: return
         val now = System.currentTimeMillis()
-        // 使用有效前台时长（排除后台时间），而非原始时间差
         val duration = session.currentSessionSeconds
 
         usageRecordRepository.updateRecord(
@@ -122,49 +227,75 @@ class SessionManager @Inject constructor(
                 durationSeconds = duration,
                 endReason = reason,
                 purpose = session.purpose,
+                intentKind = session.intentKind?.name,
+                sessionLimitMinutes = (session.sessionLimitSeconds / 60L).toInt(),
+                sessionExtensionMinutes = (session.sessionExtensionSeconds / 60L).toInt(),
                 note = note?.takeIf { it.isNotBlank() },
-                effectScore = effectScore
+                effectScore = effectScore,
+                mindfulnessLevel = mindfulnessLevel?.takeIf {
+                    UsageRecordEntity.MindfulnessLevel.isValid(it)
+                }
             )
         )
         _currentSession.value = null
 
-        // 若用户已登录，后台静默上传本次会话数据到云端（失败不影响正常使用）
-        if (accountRepository.isLoggedIn) {
-            syncScope.launch {
-                accountRepository.syncSessions()
+        when {
+            reason == UsageRecordEntity.EndReason.MANUAL ||
+                reason == UsageRecordEntity.EndReason.LIMIT_REACHED ||
+                reason == UsageRecordEntity.EndReason.SESSION_LIMIT_REACHED -> {
+                pendingInterruptStore.clear(session.packageName)
+            }
+            session.requireIntentOnOpen &&
+                UsageRecordEntity.EndReason.shouldOfferResumeConfirm(reason) &&
+                duration >= MIN_DURATION_FOR_RESUME_CONFIRM_SEC -> {
+                pendingInterruptStore.save(
+                    PendingInterrupt(
+                        packageName = session.packageName,
+                        recordId = session.recordId,
+                        appName = session.appName,
+                        endReason = reason,
+                        purpose = session.purpose,
+                        intentKind = session.intentKind,
+                        sessionLimitMinutes = (session.sessionLimitSeconds / 60L).toInt(),
+                        sessionExtensionMinutes = (session.sessionExtensionSeconds / 60L).toInt(),
+                        durationSeconds = duration,
+                        endedAt = now
+                    )
+                )
+            }
+            else -> {
+                pendingInterruptStore.clear(session.packageName)
             }
         }
     }
 
     /**
      * 开启「超限续记」会话：用户在超限页关闭后 App 仍在前台时调用。
-     *
-     * 与普通 [startSession] 的区别：
-     *   - 不校验是否已有相同 App 的会话（调用方已先 endSession）
-     *   - 写入数据库记录时 purpose 固定为 null（超限继续，不需要用户填写目的）
-     *   - 返回的 [UsageSession.isOverLimitSession] = true，
-     *     监控循环检测到超限时不会再次弹出超限页
-     *
-     * @param packageName 被监控 App 包名
-     * @param appName     App 显示名称
-     * @return 创建成功的会话，若无法获取限额则返回 null
+     * 保留原意图文案，避免时间轴意图叙事断层。
      */
     suspend fun startOverLimitSession(
         packageName: String,
-        appName: String
+        appName: String,
+        purpose: String? = null,
+        intentKind: IntentKind? = null
     ): UsageSession? {
         val now = System.currentTimeMillis()
         val limit = appLimitRepository.getAppLimit(packageName) ?: return null
 
+        pendingInterruptStore.clear(packageName)
+
         val dailyUsed = usageRecordRepository.getDailyUsageSeconds(packageName, now)
         val weeklyUsed = usageRecordRepository.getWeeklyUsageSeconds(packageName, now)
+        val trimmedPurpose = purpose?.trim()?.takeIf { it.isNotEmpty() }
 
         val recordId = usageRecordRepository.insertRecord(
             UsageRecordEntity(
                 packageName = packageName,
                 startTime = now,
                 endTime = -1L,
-                purpose = null
+                purpose = trimmedPurpose,
+                intentKind = intentKind?.name,
+                sessionLimitMinutes = 0
             )
         )
 
@@ -173,12 +304,16 @@ class SessionManager @Inject constructor(
             packageName = packageName,
             appName = appName,
             startTime = now,
-            dailyLimitSeconds = limit.dailyLimitMinutes * 60L,
+            dailyLimitSeconds = limit.effectiveDailyLimitMinutes() * 60L,
             dailyUsedSeconds = dailyUsed,
-            weeklyLimitSeconds = limit.weeklyLimitMinutes * 60L,
+            weeklyLimitSeconds = limit.effectiveWeeklyLimitMinutes() * 60L,
             weeklyUsedSeconds = weeklyUsed,
-            purpose = null,
-            isOverLimitSession = true
+            purpose = trimmedPurpose,
+            intentKind = intentKind,
+            isOverLimitSession = true,
+            requireIntentOnOpen = limit.requireIntentOnOpen,
+            timeLimitEnabled = true,
+            intentReviewEnabled = limit.intentReviewEnabled
         )
         _currentSession.value = session
         return session
@@ -190,27 +325,48 @@ class SessionManager @Inject constructor(
     }
 
     /**
-     * 延长当前会话的每日限额（用户在倒计时胶囊中主动申请延时时调用）。
+     * 为当前会话授予一次续时（session grant，不改每日限额）。
+     * 仅允许一次；由胶囊临近结束时用户手输分钟触发。
      *
-     * 同时更新：
-     *   1. 内存中的 [UsageSession.dailyLimitSeconds]，让胶囊计时立即反映新剩余时长
-     *   2. 数据库中的 App 限制记录，确保本次延时对 Service 监控循环也生效
-     *
-     * 注意：此操作**不消耗**今日修改机会（修改机会仅用于用户主动「重新设定目标」场景）。
-     *
-     * @param extraMinutes 要延长的分钟数（如 5、10、15）
-     * @return true = 成功；false = 无活跃会话或无法获取限额
+     * @param extraMinutes 要延长的分钟数
+     * @return true = 成功
+     */
+    suspend fun extendSessionOnce(extraMinutes: Int): Boolean {
+        val session = _currentSession.value ?: return false
+        if (!session.canOfferSessionExtension) return false
+        if (extraMinutes <= 0) return false
+
+        val newExtensionSeconds = extraMinutes * 60L
+        val record = usageRecordRepository.getRecordById(session.recordId)
+        if (record != null) {
+            usageRecordRepository.updateRecord(
+                record.copy(sessionExtensionMinutes = extraMinutes)
+            )
+        }
+
+        _currentSession.value = session.copy(
+            sessionExtensionSeconds = newExtensionSeconds,
+            sessionExtensionUsed = true
+        )
+        return true
+    }
+
+    /**
+     * 旧路径：永久延长每日限额。新续时请用 [extendSessionOnce]。
+     * 保留给无会话上限、仅日锁预警的兜底场景。
      */
     suspend fun extendDailyLimit(extraMinutes: Int): Boolean {
         val session = _currentSession.value ?: return false
+        // 有会话上限时走 session grant
+        if (session.hasSessionLimit) {
+            return extendSessionOnce(extraMinutes)
+        }
         val limit = appLimitRepository.getAppLimit(session.packageName) ?: return false
 
         val newDailyLimitMinutes = limit.dailyLimitMinutes + extraMinutes
-        // 更新数据库（不消耗 modifyCount，使用原始 insert/update 路径）
         appLimitRepository.saveAppLimit(
             limit.copy(dailyLimitMinutes = newDailyLimitMinutes)
         )
-        // 更新内存 session，让胶囊剩余时长立即刷新
         _currentSession.value = session.copy(
             dailyLimitSeconds = newDailyLimitMinutes * 60L
         )
@@ -220,4 +376,9 @@ class SessionManager @Inject constructor(
     fun hasActiveSession(): Boolean = _currentSession.value != null
 
     fun getCurrentPackage(): String? = _currentSession.value?.packageName
+
+    companion object {
+        /** 短于此时长的异常结束不弹出下次确认（避免误触噪音） */
+        const val MIN_DURATION_FOR_RESUME_CONFIRM_SEC = 5L
+    }
 }

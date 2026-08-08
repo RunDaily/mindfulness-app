@@ -29,12 +29,29 @@ class AppLimitRepository @Inject constructor(
 
     suspend fun getEnabledPackageNames(): List<String> = dao.getEnabledPackageNames()
 
-    suspend fun saveAppLimit(appLimit: AppLimitEntity) = dao.insertOrUpdate(appLimit)
+    suspend fun saveAppLimit(appLimit: AppLimitEntity) =
+        dao.insertOrUpdate(appLimit.copy(weeklyLimitMinutes = 0))
+
+    /** 新加入监控时分配的下一个 sortOrder */
+    suspend fun nextSortOrder(): Int = dao.getMaxSortOrder() + 1
+
+    /**
+     * 按给定包名顺序重写 [AppLimitEntity.sortOrder]（0..n-1）。
+     * 首页坑位与管理列表共用此顺序。
+     */
+    suspend fun updateSortOrders(orderedPackageNames: List<String>) {
+        orderedPackageNames.forEachIndexed { index, packageName ->
+            dao.updateSortOrder(packageName, index)
+        }
+    }
 
     suspend fun deleteAppLimit(packageName: String) = dao.deleteByPackageName(packageName)
 
     suspend fun setEnabled(packageName: String, enabled: Boolean) =
         dao.setEnabled(packageName, enabled)
+
+    /** 一次性清掉历史每周上限（功能已下线） */
+    suspend fun clearAllWeeklyLimits() = dao.clearAllWeeklyLimits()
 
     /**
      * 获取今日剩余可修改次数（跨天自动重置）
@@ -51,13 +68,13 @@ class AppLimitRepository @Inject constructor(
      * 重新设定 App 限制时长（消耗一次今日修改机会）
      * @param packageName 应用包名
      * @param newDailyLimitMinutes 新的每日限制（分钟）
-     * @param newWeeklyLimitMinutes 新的每周限制（分钟），0 表示不限制
+     * @param newWeeklyLimitMinutes 已废弃，始终写入 0
      * @return true 表示修改成功，false 表示今日次数已用完
      */
     suspend fun resetAppLimit(
         packageName: String,
         newDailyLimitMinutes: Int,
-        newWeeklyLimitMinutes: Int
+        newWeeklyLimitMinutes: Int = 0
     ): Boolean {
         val entity = dao.getAppLimit(packageName) ?: return false
         val todayStr = dateFormat.format(Date())
@@ -68,7 +85,7 @@ class AppLimitRepository @Inject constructor(
         dao.updateLimitWithModifyCount(
             packageName = packageName,
             dailyLimitMinutes = newDailyLimitMinutes,
-            weeklyLimitMinutes = newWeeklyLimitMinutes,
+            weeklyLimitMinutes = 0,
             dailyModifyCount = usedCount + 1,
             lastModifiedDate = todayStr
         )

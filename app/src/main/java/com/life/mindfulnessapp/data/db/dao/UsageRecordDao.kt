@@ -83,11 +83,15 @@ interface UsageRecordDao {
     @Query("UPDATE usage_records SET note = :note WHERE id = :id")
     suspend fun updateNote(id: Long, note: String?)
 
+    /** 同时更新备注与对照档位 */
+    @Query("UPDATE usage_records SET note = :note, mindfulnessLevel = :mindfulnessLevel WHERE id = :id")
+    suspend fun updateNoteAndMindfulness(id: Long, note: String?, mindfulnessLevel: Int?)
+
     /** 仅更新单条记录的效果评分字段 */
     @Query("UPDATE usage_records SET effectScore = :score WHERE id = :id")
     suspend fun updateEffectScore(id: Long, score: Int?)
 
-    /** 同时更新备注和效果评分（结束弹框提交时调用）*/
+    /** 同时更新备注和效果评分 */
     @Query("UPDATE usage_records SET note = :note, effectScore = :score WHERE id = :id")
     suspend fun updateNoteAndScore(id: Long, note: String?, score: Int?)
 
@@ -107,7 +111,8 @@ interface UsageRecordDao {
     // ── 新增：深度洞察所需查询 ──────────────────────────────────────────────────
 
     /**
-     * 查询某时间段内指定 App 的打开次数（即记录条数）
+     * 查询某时间段内指定 App 的打开次数（即记录条数）。
+     * 排除系统用量种子，种子不是一次真实打开。
      */
     @Query("""
         SELECT COUNT(*) FROM usage_records
@@ -115,11 +120,13 @@ interface UsageRecordDao {
         AND startTime >= :startMs
         AND startTime < :endMs
         AND endTime > 0
+        AND endReason != 'SEED_FROM_SYSTEM'
     """)
     suspend fun getOpenCount(packageName: String, startMs: Long, endMs: Long): Int
 
     /**
-     * 查询某时间段内指定 App 最长单次使用时长（秒）
+     * 查询某时间段内指定 App 最长单次使用时长（秒）。
+     * 排除系统用量种子，避免把「加入前累计」当成最长会话。
      */
     @Query("""
         SELECT COALESCE(MAX(durationSeconds), 0) FROM usage_records
@@ -127,6 +134,7 @@ interface UsageRecordDao {
         AND startTime >= :startMs
         AND startTime < :endMs
         AND endTime > 0
+        AND endReason != 'SEED_FROM_SYSTEM'
     """)
     suspend fun getLongestSession(packageName: String, startMs: Long, endMs: Long): Long
 
@@ -232,8 +240,32 @@ interface UsageRecordDao {
     ): List<UsageRecordEntity>
 
     /**
-     * 查询某天内「克制退出」的次数：
-     * purpose 为空 + durationSeconds <= 20 秒，视为用户在拦截页选择了离开。
+     * 查询指定 App 近期填写过的 purpose（按时间倒序，含重复）。
+     * 去重与条数截断在 Repository 完成，保证「最近先出现」的顺序。
+     */
+    @Query("""
+        SELECT purpose AS purpose
+        FROM usage_records
+        WHERE packageName = :packageName
+        AND purpose IS NOT NULL
+        AND purpose != ''
+        AND endTime > 0
+        ORDER BY startTime DESC
+        LIMIT :fetchLimit
+    """)
+    suspend fun getRecentPurposesRaw(
+        packageName: String,
+        fetchLimit: Int
+    ): List<PurposeOnly>
+
+    /** Room 查询投影：意图文案 */
+    data class PurposeOnly(
+        val purpose: String
+    )
+
+    /**
+     * 查询某天内「门外停下」的次数：意图门拦住后离开。
+     * 兼容旧数据：APP_CLOSED + duration=0。
      */
     @Query("""
         SELECT COUNT(*) FROM usage_records
@@ -241,12 +273,16 @@ interface UsageRecordDao {
         AND startTime < :dayEndMs
         AND endTime > 0
         AND purpose IS NULL
-        AND durationSeconds <= 20
+        AND (
+            endReason = 'GATE_DISMISS'
+            OR endReason = 'GATE_DISMISS_OWN_APP'
+            OR (durationSeconds = 0 AND endReason = 'APP_CLOSED')
+        )
     """)
     suspend fun getDayDismissCount(dayStartMs: Long, dayEndMs: Long): Int
 
     /**
-     * 查询指定时间点之后的所有已完成记录（用于云端同步）。
+     * 查询指定时间点之后的所有已完成记录。
      */
     @Query("""
         SELECT * FROM usage_records
@@ -257,7 +293,7 @@ interface UsageRecordDao {
     suspend fun getAllCompletedRecordsSince(sinceMs: Long): List<UsageRecordEntity>
 
     /**
-     * 查询某一天内指定 App 的所有已完成记录，按开始时间正序。
+     * 查询某一天内指定 App 的所有已完成记录，按开始时间倒序（最新在上）。
      * 用于详情页日历联动列表，显示某天的使用明细。
      */
     @Query("""
@@ -266,9 +302,9 @@ interface UsageRecordDao {
         AND startTime >= :dayStartMs
         AND startTime < :dayEndMs
         AND endTime > 0
-        ORDER BY startTime ASC
+        ORDER BY startTime DESC
     """)
-    suspend fun getDayRecordsForAppAsc(
+    suspend fun getDayRecordsForAppDesc(
         packageName: String,
         dayStartMs: Long,
         dayEndMs: Long

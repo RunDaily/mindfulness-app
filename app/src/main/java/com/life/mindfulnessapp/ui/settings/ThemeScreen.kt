@@ -23,20 +23,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.life.mindfulnessapp.ui.theme.*
 
 // ════════════════════════════════════════════════════════════════════════════
-//  ThemeScreen  ·  独立主题设置页
+//  ThemeScreen  ·  独立主题设置页（MVP：仅日间 / 夜间）
 // ════════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun ThemeScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
-    interceptThemeId: String = "default",
-    onThemeSelected: (String) -> Unit = {},
-    onNavigateToVip: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
     val isDarkTheme by viewModel.isDarkTheme.collectAsState()
 
-    // ── 动态颜色 ──────────────────────────────────────────────────────────
     val bgColor       = if (isDarkTheme) NightBg           else DayBg
     val cardColor     = if (isDarkTheme) NightCardBg        else DayCardBg
     val textPrimary   = if (isDarkTheme) NightTextPrimary   else DayTextPrimary
@@ -54,7 +50,6 @@ fun ThemeScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // ── 顶部导航栏 ────────────────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -85,11 +80,8 @@ fun ThemeScreen(
                 modifier = Modifier.padding(horizontal = 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // ══════════════════════════════════════════════════
-            //  1. 外观模式（日间 / 夜间）
-            // ══════════════════════════════════════════════════
             ThemeSectionLabel(text = "外观模式", textColor = textSecondary)
 
             AppearanceSelectorCard(
@@ -102,31 +94,19 @@ fun ThemeScreen(
                 accentGreen = accentGreen
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(Modifier.height(12.dp))
 
-            // ══════════════════════════════════════════════════
-            //  2. 拦截风格（3 种，无 VIP 门禁）
-            // ══════════════════════════════════════════════════
-            ThemeSectionLabel(text = "拦截风格", textColor = textSecondary)
-
-            InterceptModeSelector(
-                selectedThemeId = interceptThemeId,
-                cardColor = cardColor,
-                borderColor = borderColor,
-                textPrimary = textPrimary,
-                textSecondary = textSecondary,
-                accentGreen = accentGreen,
-                onThemeSelected = onThemeSelected
+            Text(
+                text = "拦截页、胶囊与主界面会跟随外观模式切换日间 / 夜间配色。",
+                fontSize = 12.sp,
+                color = textSecondary.copy(alpha = 0.55f),
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(Modifier.height(32.dp))
         }
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════════
-//  外观模式选择卡片
-// ════════════════════════════════════════════════════════════════════════════
 
 @Composable
 private fun AppearanceSelectorCard(
@@ -148,7 +128,6 @@ private fun AppearanceSelectorCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // 当前模式 icon + 标签
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -182,11 +161,10 @@ private fun AppearanceSelectorCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
             HorizontalDivider(color = dividerColor)
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(Modifier.height(14.dp))
 
-            // 日 / 夜 两个大按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -243,7 +221,6 @@ private fun AppearanceOptionButton(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // 预览色条
             Box(
                 modifier = Modifier
                     .width(52.dp)
@@ -274,117 +251,13 @@ private fun AppearanceOptionButton(
     }
 }
 
-
-// ════════════════════════════════════════════════════════════════════════════
-//  拦截风格选择（3 种模式）
-// ════════════════════════════════════════════════════════════════════════════
-
-private data class InterceptMode(
-    val id: String,
-    val name: String,
-    val emoji: String,
-    val description: String,
-    val accentColor: Color,
-    val bgColor: Color
-)
-
-private val INTERCEPT_MODES = listOf(
-    InterceptMode(
-        id          = "simple",
-        name        = "极简",
-        emoji       = "◻",
-        description = "iOS 风格，日/夜双模，纯色背景，无多余装饰",
-        accentColor = Color(0xFF007AFF),
-        bgColor     = Color(0xFFF2F2F7)
-    ),
-    InterceptMode(
-        id          = "default",
-        name        = "正念",
-        emoji       = "🌿",
-        description = "绿色引导，有意识地停下来思考",
-        accentColor = Color(0xFF3DDC84),
-        bgColor     = Color(0xFF0D1117)
-    ),
-    InterceptMode(
-        id          = "zen",
-        name        = "禅",
-        emoji       = "◯",
-        description = "极简黑白，一句话、一次呼吸",
-        accentColor = Color(0xFFCCCCCC),
-        bgColor     = Color(0xFF0A0A0A)
-    ),
-)
-
-@Composable
-private fun InterceptModeSelector(
-    selectedThemeId: String,
-    cardColor: Color,
-    borderColor: Color,
-    textPrimary: Color,
-    textSecondary: Color,
-    accentGreen: Color,
-    onThemeSelected: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        INTERCEPT_MODES.forEach { mode ->
-            val isSelected = mode.id == selectedThemeId
-            val borderW = if (isSelected) 2.dp else 1.dp
-            val borderC = if (isSelected) mode.accentColor else borderColor.copy(alpha = 0.4f)
-            val bgAlpha = if (isSelected) 0.12f else 0.05f
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(mode.accentColor.copy(alpha = bgAlpha))
-                    .border(borderW, borderC, RoundedCornerShape(14.dp))
-                    .clickable { onThemeSelected(mode.id) }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Text(text = mode.emoji, fontSize = 26.sp)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = mode.name,
-                        fontSize = 15.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) mode.accentColor else textPrimary
-                    )
-                    Text(
-                        text = mode.description,
-                        fontSize = 12.sp,
-                        color = textSecondary.copy(alpha = if (isSelected) 0.85f else 0.55f)
-                    )
-                }
-                if (isSelected) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = mode.accentColor,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-//  小工具
-// ════════════════════════════════════════════════════════════════════════════
-
 @Composable
 private fun ThemeSectionLabel(text: String, textColor: Color) {
     Text(
-        text = text.uppercase(),
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Bold,
-        color = textColor.copy(alpha = 0.5f),
-        letterSpacing = 1.2.sp,
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+        text = text,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        color = textColor.copy(alpha = 0.55f),
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
     )
 }

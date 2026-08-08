@@ -3,17 +3,14 @@ package com.life.mindfulnessapp.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.life.mindfulnessapp.data.AppPreferences
-import com.life.mindfulnessapp.data.repository.QuoteRepository
 import com.life.mindfulnessapp.data.repository.UsageRecordRepository
 import com.life.mindfulnessapp.data.repository.VipRepository
-import com.life.mindfulnessapp.data.repository.VipResult
 import com.life.mindfulnessapp.domain.usecase.CheckPermissionsUseCase
 import com.life.mindfulnessapp.domain.usecase.PermissionStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,8 +20,7 @@ class SettingsViewModel @Inject constructor(
     private val checkPermissionsUseCase: CheckPermissionsUseCase,
     private val appPreferences: AppPreferences,
     private val usageRecordRepository: UsageRecordRepository,
-    private val vipRepository: VipRepository,
-    private val quoteRepository: QuoteRepository
+    private val vipRepository: VipRepository
 ) : ViewModel() {
 
     private val _permissionStatus = MutableStateFlow(PermissionStatus(false, false, false))
@@ -32,18 +28,6 @@ class SettingsViewModel @Inject constructor(
 
     private val _isServiceRunning = MutableStateFlow(true)
     val isServiceRunning: StateFlow<Boolean> = _isServiceRunning
-
-    /** 每日简报推送开关状态（直接来自 AppPreferences 的 StateFlow） */
-    val dailyBriefEnabled: StateFlow<Boolean> = appPreferences.dailyBriefEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
-
-    /** 简报推送时间：小时（0~23） */
-    val dailyBriefHour: StateFlow<Int> = appPreferences.dailyBriefHour
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 21)
-
-    /** 简报推送时间：分钟（0~59） */
-    val dailyBriefMinute: StateFlow<Int> = appPreferences.dailyBriefMinute
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     /** 主题模式：true = 夜间，false = 日间 */
     val isDarkTheme: StateFlow<Boolean> = appPreferences.isDarkTheme
@@ -59,6 +43,34 @@ class SettingsViewModel @Inject constructor(
     /** 加强保活开关：开启后额外运行一个独立守护前台服务 */
     val enhancedKeepAlive: StateFlow<Boolean> = appPreferences.enhancedKeepAlive
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    /** 胶囊已用时长是否显示到秒 */
+    val capsuleUsedShowSeconds: StateFlow<Boolean> = appPreferences.capsuleUsedShowSeconds
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    /** 迷你胶囊尺寸档：standard / compact，默认 standard */
+    val capsuleMiniSize: StateFlow<String> = appPreferences.capsuleMiniSize
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            AppPreferences.CAPSULE_MINI_SIZE_STANDARD
+        )
+
+    /** 胶囊停靠位置：left / center / right，默认 left */
+    val capsuleDockPosition: StateFlow<String> = appPreferences.capsuleDockPosition
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            AppPreferences.CAPSULE_DOCK_LEFT
+        )
+
+    /** 意图门离开倒计时秒数（60 / 120 / 300） */
+    val awayCountdownSeconds: StateFlow<Int> = appPreferences.awayCountdownSeconds
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            AppPreferences.DEFAULT_AWAY_COUNTDOWN_SECONDS
+        )
 
     fun refreshPermissions() {
         viewModelScope.launch {
@@ -78,16 +90,20 @@ class SettingsViewModel @Inject constructor(
         appPreferences.setEnhancedKeepAlive(enabled)
     }
 
-    fun setDailyBriefEnabled(enabled: Boolean) {
-        appPreferences.setDailyBriefEnabled(enabled)
+    fun setCapsuleUsedShowSeconds(enabled: Boolean) {
+        appPreferences.setCapsuleUsedShowSeconds(enabled)
     }
 
-    fun setDailyBriefHour(hour: Int) {
-        appPreferences.setDailyBriefHour(hour)
+    fun setCapsuleMiniSize(size: String) {
+        appPreferences.setCapsuleMiniSize(size)
     }
 
-    fun setDailyBriefMinute(minute: Int) {
-        appPreferences.setDailyBriefMinute(minute)
+    fun setCapsuleDockPosition(position: String) {
+        appPreferences.setCapsuleDockPosition(position)
+    }
+
+    fun setAwayCountdownSeconds(seconds: Int) {
+        appPreferences.setAwayCountdownSeconds(seconds)
     }
 
     /** 切换主题模式（true = 夜间，false = 日间）*/
@@ -95,71 +111,18 @@ class SettingsViewModel @Inject constructor(
         appPreferences.setDarkTheme(dark)
     }
 
-    // ── 格言推送 ─────────────────────────────────────────────────────────────
-
-    /** 格言推送开关 */
-    val quoteReminderEnabled: StateFlow<Boolean> = appPreferences.quoteReminderEnabled
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-    /** 格言推送间隔（小时）：2 / 4 / 8 */
-    val quoteReminderIntervalHours: StateFlow<Int> = appPreferences.quoteReminderIntervalHours
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 4)
-
-    /** 格言推送起始时间（小时，0~23） */
-    val quoteReminderStartHour: StateFlow<Int> = appPreferences.quoteReminderStartHour
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 8)
-
-    /** 用户收藏的格言数量（Flow，实时更新，用于判断是否达到开启门槛） */
-    val favoriteCount: StateFlow<Int> = quoteRepository.getAllFavorites()
-        .map { it.size }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    fun setQuoteReminderEnabled(enabled: Boolean) {
-        appPreferences.setQuoteReminderEnabled(enabled)
-    }
-
-    fun setQuoteReminderIntervalHours(hours: Int) {
-        appPreferences.setQuoteReminderIntervalHours(hours)
-    }
-
-    fun setQuoteReminderStartHour(hour: Int) {
-        appPreferences.setQuoteReminderStartHour(hour)
-    }
-
     // ── 清除本地数据 ────────────────────────────────────────────────────────
 
     private val _isClearingData = MutableStateFlow(false)
     val isClearingData: StateFlow<Boolean> = _isClearingData
 
-    /** 清除本地全部使用记录（不影响限额设置和账号信息）*/
+    /** 清除本地全部使用记录（不影响限额设置）*/
     fun clearLocalUsageData(onDone: () -> Unit = {}) {
         viewModelScope.launch {
             _isClearingData.value = true
             usageRecordRepository.deleteAllRecords()
             _isClearingData.value = false
             onDone()
-        }
-    }
-
-    // ── 激活码兑换 ────────────────────────────────────────────────────────
-
-    private val _isRedeemingCode = MutableStateFlow(false)
-    /** 是否正在兑换激活码（用于显示加载状态） */
-    val isRedeemingCode: StateFlow<Boolean> = _isRedeemingCode
-
-    /**
-     * 使用激活码开通会员。
-     * @param code 用户输入的激活码
-     * @param onResult 结果回调：(isSuccess, message)
-     */
-    fun redeemActivationCode(code: String, onResult: (isSuccess: Boolean, message: String) -> Unit) {
-        viewModelScope.launch {
-            _isRedeemingCode.value = true
-            when (val result = vipRepository.redeemActivationCode(code)) {
-                is VipResult.Success -> onResult(true, result.message)
-                is VipResult.Error   -> onResult(false, result.message)
-            }
-            _isRedeemingCode.value = false
         }
     }
 }

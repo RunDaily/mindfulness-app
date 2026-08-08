@@ -1,27 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
     <!-- 悬浮窗权限 -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- 使用情况访问权限（需用户手动授权） -->
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
-        tools:ignore="ProtectedPermissions" />
-    <!-- 前台服务 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" /> <!-- 使用情况访问权限（需用户手动授权） -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" /> <!-- 前台服务 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <!-- 开机自启 -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- 查询已安装的包 -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-        tools:ignore="QueryAllPackagesPermission" />
-    <!-- 震动反馈 -->
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- 通知权限 (Android 13+) -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- 忽略电池优化 -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <!-- 网络访问（数据同步） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" /> <!-- 开机自启 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" /> <!-- 查询已安装的包 -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" /> <!-- 震动反馈 -->
+    <uses-permission android:name="android.permission.VIBRATE" /> <!-- 通知权限 (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!-- 忽略电池优化 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" /> <!-- 网络访问（数据同步） -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -32,11 +25,13 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MindfulnessApp"
-        android:networkSecurityConfig="@xml/network_security_config">
-
+        android:theme="@style/Theme.MindfulnessApp">
+        <activity
+            android:name=".test_compose.ComposeActivity"
+            android:exported="false" />
         <!-- 主界面 -->
         <activity
             android:name=".MainActivity"
@@ -46,11 +41,10 @@
             android:theme="@style/Theme.MindfulnessApp">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
-
-        <!-- 核心监控前台服务 -->
+        </activity> <!-- 核心监控前台服务 -->
         <service
             android:name=".service.MonitorForegroundService"
             android:exported="false"
@@ -58,9 +52,7 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="monitorForegroundApp" />
-        </service>
-
-        <!-- 加强保活：独立守护前台服务（用户可选开启） -->
+        </service> <!-- 加强保活：独立守护前台服务（用户可选开启） -->
         <service
             android:name=".service.WatchdogForegroundService"
             android:exported="false"
@@ -68,9 +60,7 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="watchdogService" />
-        </service>
-
-        <!-- 开机自启 Receiver -->
+        </service> <!-- 开机自启 Receiver -->
         <receiver
             android:name=".receiver.BootReceiver"
             android:exported="true">
@@ -79,7 +69,6 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-
         <!--
             Hilt WorkManager 初始化器：
             禁用 WorkManager 默认的 ContentProvider 自动初始化，改为在 Application 中手动初始化。
@@ -95,7 +84,6 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
-
     </application>
 
 </manifest>

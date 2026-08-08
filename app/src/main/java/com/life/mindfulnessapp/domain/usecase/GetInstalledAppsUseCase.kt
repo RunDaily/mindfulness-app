@@ -39,8 +39,11 @@ class GetInstalledAppsUseCase @Inject constructor(
             .toSet()
 
         // 将已安装的 App 映射为 AppInfo
+        // 同一包名可能有多个 launcher Activity（如美团扫卡等），需按包名去重，
+        // 否则 LazyColumn 以 packageName 为 key 时会抛 IllegalArgumentException
         val installedAppInfos = launcherApps
             .filter { it.activityInfo.packageName != ownPackage }
+            .distinctBy { it.activityInfo.packageName }
             .map { resolveInfo ->
                 val pkg = resolveInfo.activityInfo.packageName
                 val monitoredEntry = monitoredMap[pkg]
@@ -53,6 +56,19 @@ class GetInstalledAppsUseCase @Inject constructor(
                     weeklyLimitMinutes = monitoredEntry?.weeklyLimitMinutes ?: 0,
                     timeLimitEnabled = monitoredEntry?.timeLimitEnabled ?: true,
                     overTimeMessage = monitoredEntry?.overTimeMessage ?: "",
+                    usageCovenant = monitoredEntry?.usageCovenant ?: "",
+                    remindCovenantOnOpen = monitoredEntry?.remindCovenantOnOpen ?: true,
+                    requireIntentOnOpen = monitoredEntry?.requireIntentOnOpen ?: true,
+                    sessionLimitEnabled = monitoredEntry?.sessionLimitEnabled ?: true,
+                    intentQualityCheckEnabled = monitoredEntry?.intentQualityCheckEnabled ?: false,
+                    intentBlockKeywordsJson = monitoredEntry?.intentBlockKeywordsJson ?: "",
+                    defaultSessionLimitMinutes = monitoredEntry?.defaultSessionLimitMinutes ?: 15,
+                    intentReviewEnabled = monitoredEntry?.intentReviewEnabled ?: false,
+                    dailyOpenLimitEnabled = monitoredEntry?.dailyOpenLimitEnabled ?: false,
+                    dailyOpenLimit = monitoredEntry?.dailyOpenLimit ?: 5,
+                    periodLockEnabled = monitoredEntry?.periodLockEnabled ?: false,
+                    periodWindowsJson = monitoredEntry?.periodWindowsJson ?: "",
+                    periodLockCommitment = monitoredEntry?.periodLockCommitment ?: "",
                     isUninstalled = false
                 )
             }
@@ -70,6 +86,19 @@ class GetInstalledAppsUseCase @Inject constructor(
                     weeklyLimitMinutes = limit.weeklyLimitMinutes,
                     timeLimitEnabled = limit.timeLimitEnabled,
                     overTimeMessage = limit.overTimeMessage,
+                    usageCovenant = limit.usageCovenant,
+                    remindCovenantOnOpen = limit.remindCovenantOnOpen,
+                    requireIntentOnOpen = limit.requireIntentOnOpen,
+                    sessionLimitEnabled = limit.sessionLimitEnabled,
+                    intentQualityCheckEnabled = limit.intentQualityCheckEnabled,
+                    intentBlockKeywordsJson = limit.intentBlockKeywordsJson,
+                    defaultSessionLimitMinutes = limit.defaultSessionLimitMinutes,
+                    intentReviewEnabled = limit.intentReviewEnabled,
+                    dailyOpenLimitEnabled = limit.dailyOpenLimitEnabled,
+                    dailyOpenLimit = limit.dailyOpenLimit,
+                    periodLockEnabled = limit.periodLockEnabled,
+                    periodWindowsJson = limit.periodWindowsJson,
+                    periodLockCommitment = limit.periodLockCommitment,
                     isUninstalled = true
                 )
             }
@@ -81,5 +110,66 @@ class GetInstalledAppsUseCase @Inject constructor(
                     .thenByDescending { it.isMonitored }
                     .thenBy { it.appName }
             )
+    }
+
+    /** 只解析单个包名，供监控配置页使用，避免整机扫一遍。 */
+    suspend fun getApp(packageName: String): AppInfo? = withContext(Dispatchers.IO) {
+        if (packageName == context.packageName) return@withContext null
+        val pm = context.packageManager
+        val limit = appLimitRepository.getAppLimit(packageName)
+        try {
+            val app = pm.getApplicationInfo(packageName, 0)
+            AppInfo(
+                packageName = packageName,
+                appName = pm.getApplicationLabel(app).toString(),
+                icon = pm.getApplicationIcon(app),
+                isMonitored = limit != null && limit.isEnabled,
+                dailyLimitMinutes = limit?.dailyLimitMinutes ?: 60,
+                weeklyLimitMinutes = limit?.weeklyLimitMinutes ?: 0,
+                timeLimitEnabled = limit?.timeLimitEnabled ?: true,
+                overTimeMessage = limit?.overTimeMessage ?: "",
+                usageCovenant = limit?.usageCovenant ?: "",
+                remindCovenantOnOpen = limit?.remindCovenantOnOpen ?: true,
+                requireIntentOnOpen = limit?.requireIntentOnOpen ?: true,
+                sessionLimitEnabled = limit?.sessionLimitEnabled ?: true,
+                intentQualityCheckEnabled = limit?.intentQualityCheckEnabled ?: false,
+                intentBlockKeywordsJson = limit?.intentBlockKeywordsJson ?: "",
+                defaultSessionLimitMinutes = limit?.defaultSessionLimitMinutes ?: 15,
+                intentReviewEnabled = limit?.intentReviewEnabled ?: false,
+                dailyOpenLimitEnabled = limit?.dailyOpenLimitEnabled ?: false,
+                dailyOpenLimit = limit?.dailyOpenLimit ?: 5,
+                periodLockEnabled = limit?.periodLockEnabled ?: false,
+                periodWindowsJson = limit?.periodWindowsJson ?: "",
+                periodLockCommitment = limit?.periodLockCommitment ?: "",
+                isUninstalled = false
+            )
+        } catch (_: PackageManager.NameNotFoundException) {
+            limit?.takeIf { it.isEnabled }?.let { entity ->
+                AppInfo(
+                    packageName = entity.packageName,
+                    appName = entity.appName,
+                    icon = null,
+                    isMonitored = true,
+                    dailyLimitMinutes = entity.dailyLimitMinutes,
+                    weeklyLimitMinutes = entity.weeklyLimitMinutes,
+                    timeLimitEnabled = entity.timeLimitEnabled,
+                    overTimeMessage = entity.overTimeMessage,
+                    usageCovenant = entity.usageCovenant,
+                    remindCovenantOnOpen = entity.remindCovenantOnOpen,
+                    requireIntentOnOpen = entity.requireIntentOnOpen,
+                    sessionLimitEnabled = entity.sessionLimitEnabled,
+                    intentQualityCheckEnabled = entity.intentQualityCheckEnabled,
+                    intentBlockKeywordsJson = entity.intentBlockKeywordsJson,
+                    defaultSessionLimitMinutes = entity.defaultSessionLimitMinutes,
+                    intentReviewEnabled = entity.intentReviewEnabled,
+                    dailyOpenLimitEnabled = entity.dailyOpenLimitEnabled,
+                    dailyOpenLimit = entity.dailyOpenLimit,
+                    periodLockEnabled = entity.periodLockEnabled,
+                    periodWindowsJson = entity.periodWindowsJson,
+                    periodLockCommitment = entity.periodLockCommitment,
+                    isUninstalled = true
+                )
+            }
+        }
     }
 }

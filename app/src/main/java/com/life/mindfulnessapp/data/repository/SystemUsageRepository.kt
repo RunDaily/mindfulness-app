@@ -127,6 +127,38 @@ class SystemUsageRepository @Inject constructor(
     }
 
     /**
+     * 今日之前连续 [days] 个完整自然日的系统使用总秒数（不含今天）。
+     * 用于系锚时冻结「前一周」对照基线。
+     */
+    suspend fun getPrecedingCompleteDaysUsageSeconds(
+        packageName: String,
+        days: Int = 7
+    ): Long {
+        val (todayStart, _) = UsageRecordRepository.getDayRange(System.currentTimeMillis())
+        return getPrecedingCompleteDaysUsageSecondsBefore(packageName, todayStart, days)
+    }
+
+    /**
+     * [beforeDayStartMs] 之前连续 [days] 个完整自然日的系统使用总秒数（不含该日）。
+     */
+    suspend fun getPrecedingCompleteDaysUsageSecondsBefore(
+        packageName: String,
+        beforeDayStartMs: Long,
+        days: Int = 7
+    ): Long = withContext(Dispatchers.IO) {
+        if (days <= 0) return@withContext 0L
+        val map = getLast14DayUsageMap(packageName)
+        val dayMs = 24 * 60 * 60 * 1000L
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        var total = 0L
+        for (i in 1..days) {
+            val key = sdf.format(java.util.Date(beforeDayStartMs - i * dayMs))
+            total += map[key] ?: 0L
+        }
+        total
+    }
+
+    /**
      * 获取指定 App 在指定时间段内的按小时使用分布（用于热力图）。
      *
      * 通过逐事件扫描 MOVE_TO_FOREGROUND / MOVE_TO_BACKGROUND 事件，

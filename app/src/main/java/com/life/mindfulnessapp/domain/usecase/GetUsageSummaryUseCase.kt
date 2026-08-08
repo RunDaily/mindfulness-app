@@ -52,15 +52,17 @@ class GetUsageSummaryUseCase @Inject constructor(
                 limit.appName
             }
 
+            val effectiveDaily = limit.effectiveDailyLimitMinutes()
+            val effectiveWeekly = limit.effectiveWeeklyLimitMinutes()
             AppUsageSummary(
                 packageName = limit.packageName,
                 appName = appName,
                 todaySeconds = todaySeconds,
                 weekSeconds = weekSeconds,
-                dailyLimitSeconds = limit.dailyLimitMinutes * 60L,
-                weeklyLimitSeconds = limit.weeklyLimitMinutes * 60L,
-                dailyLimitMinutes = limit.dailyLimitMinutes,
-                weeklyLimitMinutes = limit.weeklyLimitMinutes
+                dailyLimitSeconds = effectiveDaily * 60L,
+                weeklyLimitSeconds = effectiveWeekly * 60L,
+                dailyLimitMinutes = effectiveDaily,
+                weeklyLimitMinutes = effectiveWeekly
             )
         }.sortedByDescending { it.todaySeconds }
     }

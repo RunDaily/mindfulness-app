@@ -14,6 +14,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -36,18 +37,25 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.collectAsState
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
 import com.life.mindfulnessapp.data.repository.FALLBACK_QUOTES
 import com.life.mindfulnessapp.data.repository.QuoteRepository
+import com.life.mindfulnessapp.domain.model.PendingInterrupt
+import com.life.mindfulnessapp.domain.model.RecentPurpose
 import com.life.mindfulnessapp.domain.usecase.GetAppHistoryUsageUseCase
+import com.life.mindfulnessapp.ui.theme.CapabilityForm
+import com.life.mindfulnessapp.ui.theme.CapabilityKind
+import com.life.mindfulnessapp.ui.theme.CapabilityMark
+import com.life.mindfulnessapp.ui.theme.LogoGreen
+import com.life.mindfulnessapp.ui.theme.LogoGreenBright
 import com.life.mindfulnessapp.ui.theme.MindfulnessAppTheme
+import com.life.mindfulnessapp.ui.theme.MonitorCapability
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -55,7 +63,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
-
 /** 胶囊目标位置（屏幕坐标系，用于退场动画定位） */
 data class CapsuleTargetPosition(
     val x: Float,
@@ -105,13 +112,11 @@ data class InterceptThemeConfig(
 )
 
 /**
- * 根据主题 ID 和明暗模式返回对应的主题配置。
- * [isDark] = true 为夜间，false 为日间。
+ * MVP 仅保留极简拦截风格。
+ * [themeId] 保留以兼容旧调用，已忽略；[isDark] = true 为夜间，false 为日间。
  */
-fun getInterceptThemeConfig(themeId: String, isDark: Boolean = true): InterceptThemeConfig = when (themeId) {
-
-    // ── iOS 极简主题 ──────────────────────────────────────────────────────────
-    "simple" -> if (isDark) InterceptThemeConfig(
+fun getInterceptThemeConfig(themeId: String = "simple", isDark: Boolean = true): InterceptThemeConfig =
+    if (isDark) InterceptThemeConfig(
         // 夜间：纯黑 + 白字
         bgColor                 = Color(0xFF000000),
         surfaceColor            = Color(0xFF1C1C1E),
@@ -119,7 +124,8 @@ fun getInterceptThemeConfig(themeId: String, isDark: Boolean = true): InterceptT
         textPrimary             = Color(0xFFFFFFFF),
         textSecondary           = Color(0xFF8E8E93),
         textTertiary            = Color(0xFF48484A),
-        accentColor             = Color(0xFF0A84FF),
+        // 与 App 品牌绿统一（勿用系统蓝，避免拦截/胶囊两套强调色）
+        accentColor             = LogoGreenBright,
         accentForeground        = Color(0xFFFFFFFF),
         limitAccentColor        = Color(0xFFFF453A),
         limitAccentForeground   = Color(0xFFFFFFFF),
@@ -127,20 +133,20 @@ fun getInterceptThemeConfig(themeId: String, isDark: Boolean = true): InterceptT
         limitTitleText          = "时间到了",
         dismissButtonText       = "好的，离开",
         capsuleBgColor          = Color(0xF0000000),
-        capsuleAccentColor      = Color(0xFF0A84FF),
-        capsuleStopButtonColor  = Color(0xFF0A84FF),
+        capsuleAccentColor      = LogoGreenBright,
+        capsuleStopButtonColor  = LogoGreenBright,
         ceremonyBgColor         = Color(0xFF1C1C1E),
         ceremonyTextColor       = Color(0xFFFFFFFF),
         ceremonySubLabelColor   = Color(0xFF8E8E93)
     ) else InterceptThemeConfig(
-        // 日间：纯白 + 深字
+        // 日间：浅灰底 + 深字
         bgColor                 = Color(0xFFF2F2F7),
         surfaceColor            = Color(0xFFFFFFFF),
         dividerColor            = Color(0xFFD1D1D6),
         textPrimary             = Color(0xFF000000),
         textSecondary           = Color(0xFF6C6C70),
         textTertiary            = Color(0xFFAEAEB2),
-        accentColor             = Color(0xFF007AFF),
+        accentColor             = LogoGreen,
         accentForeground        = Color(0xFFFFFFFF),
         limitAccentColor        = Color(0xFFFF3B30),
         limitAccentForeground   = Color(0xFFFFFFFF),
@@ -148,59 +154,12 @@ fun getInterceptThemeConfig(themeId: String, isDark: Boolean = true): InterceptT
         limitTitleText          = "时间到了",
         dismissButtonText       = "好的，离开",
         capsuleBgColor          = Color(0xF0F2F2F7),
-        capsuleAccentColor      = Color(0xFF007AFF),
-        capsuleStopButtonColor  = Color(0xFF007AFF),
+        capsuleAccentColor      = LogoGreen,
+        capsuleStopButtonColor  = LogoGreen,
         ceremonyBgColor         = Color(0xFFFFFFFF),
         ceremonyTextColor       = Color(0xFF000000),
         ceremonySubLabelColor   = Color(0xFF6C6C70)
     )
-
-    // ── 禅主题（仅深色）────────────────────────────────────────────────────────
-    "zen" -> InterceptThemeConfig(
-        bgColor                 = Color(0xFF0A0A0A),
-        surfaceColor            = Color(0xFF141414),
-        dividerColor            = Color(0xFF222222),
-        textPrimary             = Color(0xFFE8E8E8),
-        textSecondary           = Color(0xFF888888),
-        textTertiary            = Color(0xFF444444),
-        accentColor             = Color(0xFFE8E8E8),
-        accentForeground        = Color(0xFF000000),
-        limitAccentColor        = Color(0xFFAAAAAA),
-        limitAccentForeground   = Color(0xFF000000),
-        titleText               = "停下来",
-        limitTitleText          = "时间到了",
-        dismissButtonText       = "离开",
-        capsuleBgColor          = Color(0xF0111111),
-        capsuleAccentColor      = Color(0xFFDDDDDD),
-        capsuleStopButtonColor  = Color(0xFF666666),
-        ceremonyBgColor         = Color(0xFF141414),
-        ceremonyTextColor       = Color(0xFFE8E8E8),
-        ceremonySubLabelColor   = Color(0xFFAAAAAA)
-    )
-
-    // ── 默认主题（正念绿，仅深色）──────────────────────────────────────────────
-    else -> InterceptThemeConfig(
-        bgColor                 = Color(0xFF111318),
-        surfaceColor            = Color(0xFF1E2130),
-        dividerColor            = Color(0xFF273045),
-        textPrimary             = Color(0xFFF0F4F8),
-        textSecondary           = Color(0xFF8E99B0),
-        textTertiary            = Color(0xFF4A5468),
-        accentColor             = Color(0xFF3DDC84),
-        accentForeground        = Color(0xFF000000),
-        limitAccentColor        = Color(0xFFFF6B4A),
-        limitAccentForeground   = Color(0xFF000000),
-        titleText               = "停一下",
-        limitTitleText          = "时间到了",
-        dismissButtonText       = "好的，我去做别的事",
-        capsuleBgColor          = Color(0xF01A1E2A),
-        capsuleAccentColor      = Color(0xFF3DDC84),
-        capsuleStopButtonColor  = Color(0xFF27AE60),
-        ceremonyBgColor         = Color(0xFF1A2030),
-        ceremonyTextColor       = Color(0xFF6AECA0),
-        ceremonySubLabelColor   = Color(0xFF3DDC84).copy(alpha = 0.70f)
-    )
-}
 
 // ── 时间格式化辅助 ────────────────────────────────────────────────────────────
 
@@ -240,12 +199,35 @@ fun InterceptOverlayScreen(
     remainingModifyCount: Int = 0,
     themeId: String = "default",
     isDarkTheme: Boolean = true,
+    /** 是否启用单次时长契约 */
+    sessionLimitEnabled: Boolean = true,
+    /** 默认单次时长（分钟） */
+    defaultSessionLimitMinutes: Int = 15,
+    /** 是否启用意图关键词检验 */
+    intentQualityCheckEnabled: Boolean = false,
+    /** 用户自定义限制关键词 */
+    intentBlockKeywords: List<String> = emptyList(),
+    /** 该 App 去重后的最近意图（最多 3 条），点选填入，不自动进入 */
+    recentPurposes: List<RecentPurpose> = emptyList(),
+    /** 未标准闭环快照：上方「最近操作」条，展示相对时刻并可一键继续 */
+    pendingInterrupt: PendingInterrupt? = null,
+    /** 今日冲动次数（含本次） */
+    impulseCount: Int = 1,
+    /** 今日放行进入次数 */
+    enterCount: Int = 0,
+    /** 今日克制次数 */
+    dismissCount: Int = 0,
     onReset: ((newDailyMinutes: Int, newWeeklyMinutes: Int) -> Unit)? = null,
-    onContinue: (purpose: String?) -> Unit,
-    onDismiss: () -> Unit
+    onContinue: (com.life.mindfulnessapp.domain.model.InterceptEnterDecision) -> Unit,
+    /** 用户选择「继续上次」 */
+    onResumePrevious: (() -> Unit)? = null,
+    onDismiss: () -> Unit,
+    /** 离开后打开心锚（可选去处；null 则不展示该入口） */
+    onOpenOwnApp: (() -> Unit)? = null
 ) {
-    val themeConfig = remember(themeId, isDarkTheme) { getInterceptThemeConfig(themeId, isDarkTheme) }
-    val isSimpleTheme = themeId == "simple"
+    val themeConfig = remember(isDarkTheme) { getInterceptThemeConfig(isDark = isDarkTheme) }
+    // MVP：固定极简风格（日/夜由 isDarkTheme 驱动）
+    val isSimpleTheme = true
 
     val todayUsedMinutes = todayUsedSeconds / 60
     val dailyLimitSeconds = dailyLimitMinutes * 60L
@@ -253,8 +235,14 @@ fun InterceptOverlayScreen(
     val isOverDailyLimit = dailyLimitSeconds > 0 && todayUsedSeconds >= dailyLimitSeconds
     val isOverWeeklyLimit = weeklyLimitSeconds > 0 && weekUsedSeconds >= weeklyLimitSeconds
     val isOverLimit = isOverDailyLimit || isOverWeeklyLimit
+    /** 生效限额 > 0 即时长锁开（调用方已传入 effective*） */
+    val timeLimitActive = dailyLimitMinutes > 0 || weeklyLimitMinutes > 0
     val dailyProgress = if (dailyLimitMinutes > 0)
         (todayUsedMinutes.toFloat() / dailyLimitMinutes).coerceAtMost(1f) else 0f
+    val weeklyProgress = if (weeklyLimitMinutes > 0) {
+        (weekUsedSeconds / 60f / weeklyLimitMinutes).coerceAtMost(1f)
+    } else 0f
+    val includesPreMonitorUsage = todayRecords.any { it.isSeed }
 
     val context = LocalContext.current
 
@@ -267,23 +255,27 @@ fun InterceptOverlayScreen(
         entryPoint.quoteRepository()
     }
     var quote by remember { mutableStateOf(DISPLAY_FALLBACK_QUOTES.random()) }
-    // 收藏状态（跟随当前显示的 quote.first 实时查询）
-    val isFavorited by quoteRepository.isFavorite(quote.first).collectAsState(initial = false)
-
-    var intentText by remember { mutableStateOf("") }
-    val confirmedPurpose: String? = if (intentText.isNotBlank()) intentText.trim() else null
 
     var showResetDialog by remember { mutableStateOf(false) }
 
     // ── 退场动画 ──────────────────────────────────────────────────────────────
+    // isExiting：确认进入 → 缩向胶囊
+    // isLeaveDismissing：点离开 → 内容下沉 + 背景淡出（放下，不钻进）
     var isExiting by remember { mutableStateOf(false) }
+    var isLeaveDismissing by remember { mutableStateOf(false) }
     val exitProgress = remember { Animatable(0f) }
+    val leaveProgress = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
     var isDismissing by remember { mutableStateOf(false) }
 
     suspend fun playExitAnimation() {
         isExiting = true
         exitProgress.animateTo(1f, animationSpec = tween(520, easing = FastOutSlowInEasing))
+    }
+
+    suspend fun playLeaveDismissAnimation() {
+        isLeaveDismissing = true
+        leaveProgress.animateTo(1f, animationSpec = tween(260, easing = FastOutSlowInEasing))
     }
 
     val screenCenterOffset = remember {
@@ -303,9 +295,13 @@ fun InterceptOverlayScreen(
             if (!isExiting) 0f else (targetPos.x - screenCenterOffset.x) * exitProgress.value
         }
     }
-    val translateY by remember(screenCenterOffset, targetPos) {
+    val translateY by remember(screenCenterOffset, targetPos, isLeaveDismissing) {
         derivedStateOf {
-            if (!isExiting) 0f else (targetPos.y - screenCenterOffset.y) * exitProgress.value
+            when {
+                isLeaveDismissing -> leaveProgress.value * 36f
+                isExiting -> (targetPos.y - screenCenterOffset.y) * exitProgress.value
+                else -> 0f
+            }
         }
     }
     val scaleValue by remember(isExiting) {
@@ -314,14 +310,24 @@ fun InterceptOverlayScreen(
     val cornerRadius by remember(isExiting) {
         derivedStateOf { if (!isExiting) 0f else exitProgress.value * 26f }
     }
-    val bgAlpha by remember(isExiting) {
-        derivedStateOf { if (!isExiting) 1f else 1f - exitProgress.value * 0.7f }
+    val bgAlpha by remember(isExiting, isLeaveDismissing) {
+        derivedStateOf {
+            when {
+                isLeaveDismissing -> 1f - leaveProgress.value
+                isExiting -> 1f - exitProgress.value * 0.7f
+                else -> 1f
+            }
+        }
+    }
+    val contentAlpha by remember(isLeaveDismissing) {
+        derivedStateOf {
+            if (!isLeaveDismissing) 1f else 1f - leaveProgress.value * 0.85f
+        }
     }
 
     // ── 入场动画 ──────────────────────────────────────────────────────────────
     var showContent by remember { mutableStateOf(false) }
     val iconScale = remember { Animatable(0f) }
-    var cooldownRemaining by remember { mutableIntStateOf(COOLDOWN_SECONDS) }
     val bgEnterAlpha = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
@@ -329,20 +335,6 @@ fun InterceptOverlayScreen(
         delay(60)
         showContent = true
         iconScale.animateTo(1f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium))
-    }
-
-    LaunchedEffect(Unit) {
-        repeat(COOLDOWN_SECONDS) {
-            delay(1000)
-            cooldownRemaining--
-        }
-    }
-
-    LaunchedEffect(confirmedPurpose) {
-        if (confirmedPurpose != null && cooldownRemaining > COOLDOWN_WITH_PURPOSE) {
-            delay(300)
-            cooldownRemaining = cooldownRemaining.coerceAtMost(COOLDOWN_WITH_PURPOSE)
-        }
     }
 
     MindfulnessAppTheme(darkTheme = isDarkTheme) {
@@ -367,175 +359,104 @@ fun InterceptOverlayScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .imePadding()
-                    .verticalScroll(rememberScrollState())
                     .graphicsLayer {
                         scaleX = scaleValue
                         scaleY = scaleValue
                         translationX = translateX
                         translationY = translateY
+                        alpha = contentAlpha
                         shape = RoundedCornerShape(cornerRadius.dp)
                         clip = true
                     }
                     .padding(horizontal = if (isSimpleTheme) 24.dp else 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(Modifier.height(if (isSimpleTheme) 48.dp else 32.dp))
+                Spacer(Modifier.height(20.dp))
 
-                // ── 区域1：App 图标 + 名称 ────────────────────────────────────
-                AnimatedVisibility(
-                    visible = showContent,
-                    enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 3 }
-                ) {
-                    if (isSimpleTheme) {
-                        SimpleAppHeader(
-                            appName = appName,
-                            packageName = packageName,
-                            iconScale = iconScale.value,
-                            isOverLimit = isOverLimit,
-                            themeConfig = themeConfig
-                        )
-                    } else {
-                        CompactAppHeader(
-                            appName = appName,
-                            packageName = packageName,
-                            iconScale = iconScale.value,
-                            isOverLimit = isOverLimit,
-                            themeConfig = themeConfig
-                        )
-                    }
-                }
-                if (!showContent) Spacer(Modifier.height(72.dp))
-
-                Spacer(Modifier.height(if (isSimpleTheme) 32.dp else 20.dp))
-
-                // ── 区域2：使用数据展示 ────────────────────────────────────────
-                AnimatedVisibility(
-                    visible = showContent && !isExiting,
-                    enter = fadeIn(tween(350)) + slideInVertically(tween(350)) { it / 2 },
-                    exit = fadeOut(tween(150))
-                ) {
-                    if (isSimpleTheme) {
-                        SimpleUsageStats(
-                            todayUsedSeconds = todayUsedSeconds,
-                            dailyLimitMinutes = dailyLimitMinutes,
-                            dailyProgress = dailyProgress,
-                            isOverLimit = isOverLimit,
-                            themeConfig = themeConfig
-                        )
-                    } else {
-                        UsageTripleStats(
-                            todayUsedSeconds = todayUsedSeconds,
-                            dailyLimitMinutes = dailyLimitMinutes,
-                            dailyProgress = dailyProgress,
-                            isOverLimit = isOverLimit,
-                            themeConfig = themeConfig
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(if (isSimpleTheme) 24.dp else 10.dp))
-
-                // ── 区域3：名言区 ────────────────────────────────────────────
-                AnimatedVisibility(
-                    visible = showContent && !isExiting,
-                    enter = fadeIn(tween(500)),
-                    exit = fadeOut(tween(150))
-                ) {
-                    if (isSimpleTheme) {
-                        SimpleQuoteSection(
-                            quote = quote.first,
-                            author = quote.second,
-                            isOverLimit = isOverLimit,
-                            themeConfig = themeConfig,
-                            isFavorited = isFavorited,
-                            onFavorite = {
-                                coroutineScope.launch {
-                                    if (isFavorited) quoteRepository.removeFavorite(quote.first)
-                                    else quoteRepository.addFavorite(quote.first, quote.second)
-                                }
-                            }
-                        )
-                    } else {
-                        QuoteSection(
-                            quote = quote.first,
-                            author = quote.second,
-                            accentColor = if (isOverLimit) themeConfig.limitAccentColor else themeConfig.accentColor,
-                            isFavorited = isFavorited,
-                            onFavorite = {
-                                coroutineScope.launch {
-                                    if (isFavorited) quoteRepository.removeFavorite(quote.first)
-                                    else quoteRepository.addFavorite(quote.first, quote.second)
-                                }
-                            }
-                        )
-                    }
-                }
-
-                // 入场后从后端加载名言
                 LaunchedEffect(Unit) {
                     try {
                         quote = quoteRepository.getRandomQuote()
                     } catch (_: Exception) { /* 保留兜底 */ }
                 }
 
-                Spacer(Modifier.height(if (isSimpleTheme) 32.dp else 24.dp))
-
-                // ── 区域4：操作区 ─────────────────────────────────────────────
+                // ── App 身份：轻量横排 ───────────────────────────────────────
                 AnimatedVisibility(
-                    visible = showContent && !isExiting,
-                    enter = fadeIn(tween(400)) + slideInVertically(tween(400)) { it / 2 },
-                    exit = fadeOut(tween(150))
+                    visible = showContent,
+                    enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { it / 3 }
                 ) {
-                    if (isSimpleTheme) {
-                        SimpleActionSection(
-                            isOverLimit = isOverLimit,
-                            intentText = intentText,
-                            confirmedPurpose = confirmedPurpose,
-                            cooldownRemaining = cooldownRemaining,
-                            isExiting = isExiting,
-                            isDismissing = isDismissing,
-                            remainingModifyCount = remainingModifyCount,
-                            themeConfig = themeConfig,
-                            onIntentChange = { intentText = it },
-                            onEnterWithPurpose = {
-                                coroutineScope.launch {
-                                    playExitAnimation()
-                                    onContinue(confirmedPurpose)
-                                }
-                            },
-                            onDismiss = {
-                                isDismissing = true
-                                onDismiss()
-                            },
-                            onShowResetDialog = { showResetDialog = true }
-                        )
-                    } else {
-                        ActionSection(
-                            isOverLimit = isOverLimit,
-                            intentText = intentText,
-                            confirmedPurpose = confirmedPurpose,
-                            cooldownRemaining = cooldownRemaining,
-                            isExiting = isExiting,
-                            isDismissing = isDismissing,
-                            remainingModifyCount = remainingModifyCount,
-                            themeConfig = themeConfig,
-                            onIntentChange = { intentText = it },
-                            onEnterWithPurpose = {
-                                coroutineScope.launch {
-                                    playExitAnimation()
-                                    onContinue(confirmedPurpose)
-                                }
-                            },
-                            onDismiss = {
-                                isDismissing = true
-                                onDismiss()
-                            },
-                            onShowResetDialog = { showResetDialog = true }
-                        )
-                    }
+                    SimpleAppHeader(
+                        appName = appName,
+                        packageName = packageName,
+                        iconScale = iconScale.value,
+                        themeConfig = themeConfig
+                    )
                 }
+                if (!showContent) Spacer(Modifier.height(48.dp))
 
-                Spacer(Modifier.height(48.dp))
+                Spacer(Modifier.height(16.dp))
+
+                // ── 一体决策流（内部上滚 + 动作吸底）────────────────────────
+                AnimatedVisibility(
+                    visible = showContent && !isExiting && !isLeaveDismissing,
+                    enter = fadeIn(tween(400)) + slideInVertically(tween(400)) { it / 2 },
+                    exit = fadeOut(tween(150)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    InterceptDecisionContent(
+                        themeConfig = themeConfig,
+                        dailyLimitMinutes = dailyLimitMinutes,
+                        weeklyLimitMinutes = weeklyLimitMinutes,
+                        todayUsedSeconds = todayUsedSeconds,
+                        weekUsedSeconds = weekUsedSeconds,
+                        includesPreMonitorUsage = includesPreMonitorUsage,
+                        sessionLimitEnabled = sessionLimitEnabled,
+                        defaultSessionLimitMinutes = defaultSessionLimitMinutes,
+                        intentQualityCheckEnabled = intentQualityCheckEnabled,
+                        intentBlockKeywords = intentBlockKeywords,
+                        pendingInterrupt = pendingInterrupt,
+                        isExiting = isExiting,
+                        isDismissing = isDismissing,
+                        impulseCount = impulseCount,
+                        enterCount = enterCount,
+                        dismissCount = dismissCount,
+                        quote = quote.first,
+                        quoteAuthor = quote.second,
+                        recentPurposes = recentPurposes,
+                        modifier = Modifier.fillMaxSize(),
+                        onEnter = { decision ->
+                            coroutineScope.launch {
+                                playExitAnimation()
+                                onContinue(decision)
+                            }
+                        },
+                        onResumePrevious = onResumePrevious?.let { resume ->
+                            {
+                                isDismissing = true
+                                resume()
+                            }
+                        },
+                        onDismiss = {
+                            if (!isDismissing) {
+                                isDismissing = true
+                                coroutineScope.launch {
+                                    playLeaveDismissAnimation()
+                                    onDismiss()
+                                }
+                            }
+                        },
+                        onOpenOwnApp = onOpenOwnApp?.let { open ->
+                            {
+                                if (!isDismissing) {
+                                    isDismissing = true
+                                    coroutineScope.launch {
+                                        playLeaveDismissAnimation()
+                                        open()
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
             }
         }
 
@@ -560,13 +481,12 @@ fun InterceptOverlayScreen(
 //  iOS 极简风格子组件
 // ════════════════════════════════════════════════════════════════════════════
 
-/** iOS 极简头部：大号 App 图标居中，App 名称下方，副标题提示 */
+/** 拦截页 App 身份：轻量横排，不与用量大数字抢第一眼 */
 @Composable
 private fun SimpleAppHeader(
     appName: String,
     packageName: String,
     iconScale: Float,
-    isOverLimit: Boolean,
     themeConfig: InterceptThemeConfig
 ) {
     val context = LocalContext.current
@@ -578,109 +498,169 @@ private fun SimpleAppHeader(
     }
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .scale(iconScale),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // App 图标（大号，圆角方形）
-        Box(
-            modifier = Modifier
-                .scale(iconScale)
-                .size(72.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(themeConfig.surfaceColor),
-            contentAlignment = Alignment.Center
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            if (appIcon != null) {
-                val bitmap = remember(appIcon) { appIcon.toBitmap(144, 144).asImageBitmap() }
-                androidx.compose.foundation.Image(
-                    bitmap = bitmap,
-                    contentDescription = appName,
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                )
-            } else {
-                Text(
-                    text = appName.take(1),
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = themeConfig.textPrimary
-                )
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(themeConfig.surfaceColor),
+                contentAlignment = Alignment.Center
+            ) {
+                if (appIcon != null) {
+                    val bitmap = remember(appIcon) { appIcon.toBitmap(72, 72).asImageBitmap() }
+                    androidx.compose.foundation.Image(
+                        bitmap = bitmap,
+                        contentDescription = appName,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(9.dp))
+                    )
+                } else {
+                    Text(
+                        text = appName.take(1),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = themeConfig.textPrimary
+                    )
+                }
             }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = appName,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = themeConfig.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-
-        // App 名称
+        Spacer(Modifier.height(6.dp))
         Text(
-            text = appName,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = themeConfig.textPrimary,
-            textAlign = TextAlign.Center
-        )
-
-        // 副标题
-        Text(
-            text = if (isOverLimit) "今天的时间已经用完了" else "打开前，先想一想",
-            fontSize = 15.sp,
-            color = if (isOverLimit) themeConfig.limitAccentColor else themeConfig.textSecondary,
-            textAlign = TextAlign.Center
+            text = "打开前，先想一想",
+            fontSize = 12.sp,
+            color = themeConfig.textSecondary.copy(alpha = 0.9f)
         )
     }
 }
 
-/** iOS 极简用量统计：大号数字 + 分割线 */
+/**
+ * 仅意图门：用量降成一行淡提示，不抢「这一次为什么」的焦点。
+ */
 @Composable
-private fun SimpleUsageStats(
+private fun IntentOnlyUsageHint(
     todayUsedSeconds: Long,
-    dailyLimitMinutes: Int,
-    dailyProgress: Float,
-    isOverLimit: Boolean,
+    includesPreMonitorUsage: Boolean,
     themeConfig: InterceptThemeConfig
 ) {
-    val accentColor = if (isOverLimit) themeConfig.limitAccentColor else themeConfig.accentColor
-    val usageText = formatSecondsToText(todayUsedSeconds)
-    val limitText = if (dailyLimitMinutes > 0) "限额 ${formatMinutes(dailyLimitMinutes)}" else null
-
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        // 大号时长数字
         Text(
-            text = usageText,
-            fontSize = 48.sp,
-            fontWeight = FontWeight.Light,
-            color = accentColor,
-            letterSpacing = (-1).sp
+            text = "今日已用 ${formatSecondsToText(todayUsedSeconds)}",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = themeConfig.textTertiary.copy(alpha = 0.9f),
+            textAlign = TextAlign.Center
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically
+        if (includesPreMonitorUsage) {
+            Text(
+                text = "含加入前今日使用",
+                fontSize = 11.sp,
+                color = themeConfig.textTertiary.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+/**
+ * 意图 + 时长锁：独立「时长锁」区块（偏紧凑，不抢意图门）。
+ * 文案顺序：标签（今日还剩）→ 剩余 → 已用/限 → 进度条。
+ */
+@Composable
+private fun SimpleUsageStats(
+    todayUsedSeconds: Long,
+    weekUsedSeconds: Long,
+    dailyLimitMinutes: Int,
+    weeklyLimitMinutes: Int,
+    dailyProgress: Float,
+    weeklyProgress: Float,
+    isOverLimit: Boolean,
+    includesPreMonitorUsage: Boolean = false,
+    themeConfig: InterceptThemeConfig
+) {
+    val accentColor = if (isOverLimit) themeConfig.limitAccentColor else themeConfig.accentColor
+    val useDaily = dailyLimitMinutes > 0
+    val limitSeconds = if (useDaily) dailyLimitMinutes * 60L else weeklyLimitMinutes * 60L
+    val usedSeconds = if (useDaily) todayUsedSeconds else weekUsedSeconds
+    val remainingSeconds = (limitSeconds - usedSeconds).coerceAtLeast(0L)
+    val progress = if (useDaily) dailyProgress else weeklyProgress
+
+    val heroText = when {
+        isOverLimit -> "已用完"
+        else -> formatSecondsToText(remainingSeconds)
+    }
+    val heroLabel = when {
+        isOverLimit && useDaily -> "今日额度"
+        isOverLimit -> "本周期额"
+        useDaily -> "今日还剩"
+        else -> "本周还剩"
+    }
+    val detailText = buildString {
+        append("已用 ${formatSecondsToText(usedSeconds)}")
+        append(" · 限 ${formatMinutes(if (useDaily) dailyLimitMinutes else weeklyLimitMinutes)}")
+    }
+
+    InterceptSectionCard(
+        themeConfig = themeConfig,
+        borderColor = accentColor.copy(alpha = if (isOverLimit) 0.45f else 0.22f),
+        compact = true
+    ) {
+        InterceptCapabilitySectionHeader(
+            kind = CapabilityKind.TimeLock,
+            tint = accentColor.copy(alpha = 0.85f)
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
-                text = "今日已用",
-                fontSize = 13.sp,
+                text = heroLabel,
+                fontSize = 12.sp,
                 color = themeConfig.textSecondary
             )
-            if (limitText != null) {
+            Text(
+                text = heroText,
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Light,
+                color = accentColor,
+                letterSpacing = (-0.5).sp
+            )
+            Text(
+                text = detailText,
+                fontSize = 12.sp,
+                color = themeConfig.textTertiary
+            )
+            if (includesPreMonitorUsage) {
                 Text(
-                    text = "·",
-                    fontSize = 13.sp,
-                    color = themeConfig.textTertiary
-                )
-                Text(
-                    text = limitText,
-                    fontSize = 13.sp,
+                    text = "含加入前今日使用",
+                    fontSize = 11.sp,
                     color = themeConfig.textTertiary
                 )
             }
-        }
 
-        // 进度条（仅有限额时显示）
-        if (dailyLimitMinutes > 0) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(6.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -690,7 +670,7 @@ private fun SimpleUsageStats(
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(dailyProgress)
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(1.5.dp))
                         .background(accentColor)
@@ -700,82 +680,103 @@ private fun SimpleUsageStats(
     }
 }
 
-/** iOS 极简名言区：仅文字，无卡片边框 */
+/** 拦截页能力分区外框：浅底 + 描边，形成包裹感 */
 @Composable
-private fun SimpleQuoteSection(
+private fun InterceptSectionCard(
+    themeConfig: InterceptThemeConfig,
+    borderColor: Color = themeConfig.dividerColor,
+    compact: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(if (compact) 12.dp else 14.dp))
+            .background(themeConfig.surfaceColor.copy(alpha = 0.92f))
+            .border(1.dp, borderColor, RoundedCornerShape(if (compact) 12.dp else 14.dp))
+            .padding(
+                horizontal = if (compact) 12.dp else 14.dp,
+                vertical = if (compact) 10.dp else 14.dp
+            ),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 12.dp),
+        content = content
+    )
+}
+
+/** 拦截页能力分区标头：能力 icon +「能力名·开启中」 */
+@Composable
+private fun InterceptCapabilitySectionHeader(
+    kind: CapabilityKind,
+    tint: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        CapabilityMark(
+            kind = kind,
+            form = CapabilityForm.Standard,
+            tint = tint,
+            size = 16.dp
+        )
+        Text(
+            text = "${MonitorCapability.label(kind)}·开启中",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = tint,
+            letterSpacing = 0.3.sp
+        )
+    }
+}
+
+/** 拦截页底部名言页脚：弱氛围，不抢决策 */
+@Composable
+private fun SimpleQuoteFooter(
     quote: String,
     author: String,
-    isOverLimit: Boolean,
-    themeConfig: InterceptThemeConfig,
-    isFavorited: Boolean = false,
-    onFavorite: () -> Unit = {}
+    themeConfig: InterceptThemeConfig
 ) {
-    val haptic = LocalHapticFeedback.current
     AnimatedContent(
         targetState = quote to author,
         transitionSpec = { fadeIn(tween(320)) togetherWith fadeOut(tween(200)) },
-        label = "quote_anim"
+        label = "quote_footer_anim"
     ) { (q, a) ->
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // 分割线
             HorizontalDivider(
-                color = themeConfig.dividerColor,
-                thickness = 0.5.dp
+                color = themeConfig.dividerColor.copy(alpha = 0.55f),
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
-            Spacer(Modifier.height(4.dp))
             Text(
                 text = q,
-                fontSize = 16.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Light,
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                color = themeConfig.textSecondary,
-                lineHeight = 26.sp,
-                letterSpacing = 0.3.sp
+                color = themeConfig.textTertiary.copy(alpha = 0.85f),
+                lineHeight = 20.sp,
+                letterSpacing = 0.2.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (a.isNotBlank()) {
-                    Text(
-                        text = a,
-                        fontSize = 12.sp,
-                        color = themeConfig.textTertiary
-                    )
-                } else {
-                    Spacer(Modifier.weight(1f))
-                }
-                // 收藏心形按钮
-                Icon(
-                    imageVector = if (isFavorited) Icons.Filled.Favorite
-                    else Icons.Filled.FavoriteBorder,
-                    contentDescription = if (isFavorited) "取消收藏" else "收藏",
-                    tint = if (isFavorited)
-                        Color(0xFFE05C6A)
-                    else
-                        themeConfig.textTertiary.copy(alpha = 0.5f),
-                    modifier = Modifier
-                        .size(18.dp)
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onFavorite()
-                        }
+            if (a.isNotBlank()) {
+                Text(
+                    text = a,
+                    fontSize = 11.sp,
+                    color = themeConfig.textTertiary.copy(alpha = 0.55f),
+                    textAlign = TextAlign.Center
                 )
             }
-            Spacer(Modifier.height(4.dp))
-            HorizontalDivider(
-                color = themeConfig.dividerColor,
-                thickness = 0.5.dp
-            )
         }
     }
 }
 
-/** iOS 极简操作区 */
+/** iOS 极简操作区：独立「意图门」区块 */
 @Composable
 private fun SimpleActionSection(
     isOverLimit: Boolean,
@@ -786,112 +787,121 @@ private fun SimpleActionSection(
     isDismissing: Boolean,
     remainingModifyCount: Int,
     themeConfig: InterceptThemeConfig,
+    recentPurposes: List<RecentPurpose> = emptyList(),
+    pendingInterrupt: PendingInterrupt? = null,
     onIntentChange: (String) -> Unit,
     onEnterWithPurpose: () -> Unit,
+    onResumePrevious: (() -> Unit)? = null,
     onDismiss: () -> Unit,
+    onOpenOwnApp: (() -> Unit)? = null,
     onShowResetDialog: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
     val accentColor = if (isOverLimit) themeConfig.limitAccentColor else themeConfig.accentColor
     val accentFg = if (isOverLimit) themeConfig.limitAccentForeground else themeConfig.accentForeground
     val buttonEnabled = !isExiting && !isDismissing && cooldownRemaining == 0
+    val hasPurpose = confirmedPurpose != null
+    val leaveEnabled = !isExiting && !isDismissing
+    val canResume = pendingInterrupt != null && onResumePrevious != null && !isExiting && !isDismissing
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (!isOverLimit) {
-            // 目的输入框
-            SimpleIntentInput(
-                intentText = intentText,
+            InterceptSectionCard(
                 themeConfig = themeConfig,
-                onIntentChange = onIntentChange
-            )
+                borderColor = accentColor.copy(alpha = 0.28f)
+            ) {
+                InterceptCapabilitySectionHeader(
+                    kind = CapabilityKind.IntentGate,
+                    tint = accentColor.copy(alpha = 0.85f)
+                )
 
-            // 主按钮：离开
-            Button(
-                onClick = {
+                SimpleIntentInput(
+                    intentText = intentText,
+                    themeConfig = themeConfig,
+                    recentPurposes = recentPurposes,
+                    pendingInterrupt = pendingInterrupt,
+                    resumeEnabled = canResume,
+                    onResume = onResumePrevious?.let { resume ->
+                        {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            resume()
+                        }
+                    },
+                    onIntentChange = onIntentChange
+                )
+
+                val enterLabel = when {
+                    cooldownRemaining > 0 -> "等待 ${cooldownRemaining}秒…"
+                    !hasPurpose -> "写下意图后进入"
+                    pendingInterrupt != null -> "确认，开始新的一次"
+                    else -> "确认进入"
+                }
+                val enterReady = buttonEnabled && hasPurpose
+                Button(
+                    onClick = {
+                        if (enterReady) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onEnterWithPurpose()
+                        }
+                    },
+                    enabled = enterReady,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (enterReady) accentColor
+                        else themeConfig.bgColor.copy(alpha = 0.35f),
+                        disabledContainerColor = themeConfig.bgColor.copy(alpha = 0.35f)
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                ) {
+                    Text(
+                        text = enterLabel,
+                        fontSize = 17.sp,
+                        fontWeight = if (enterReady) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (enterReady) accentFg else themeConfig.textTertiary
+                    )
+                }
+            }
+
+            QuietLeaveDestinations(
+                themeConfig = themeConfig,
+                enabled = leaveEnabled,
+                onDismiss = {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onDismiss()
                 },
-                enabled = !isExiting && !isDismissing,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = accentColor,
-                    disabledContainerColor = themeConfig.dividerColor
-                ),
-                shape = RoundedCornerShape(14.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-            ) {
-                Text(
-                    text = "先不进去了",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = accentFg
-                )
-            }
-
-            // 次要按钮：有目的进入（冷静期/目的锁定）
-            val enterLabel = when {
-                cooldownRemaining > 0 -> "等待 ${cooldownRemaining}秒…"
-                confirmedPurpose == null -> "写下意图后进入"
-                else -> "确认，有目的地进入"
-            }
-            Button(
-                onClick = {
-                    if (buttonEnabled && confirmedPurpose != null) {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onEnterWithPurpose()
+                onOpenOwnApp = onOpenOwnApp?.let { open ->
+                    {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        open()
                     }
-                },
-                enabled = buttonEnabled && confirmedPurpose != null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = themeConfig.surfaceColor,
-                    disabledContainerColor = themeConfig.surfaceColor
-                ),
-                shape = RoundedCornerShape(14.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-            ) {
-                Text(
-                    text = enterLabel,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = if (buttonEnabled && confirmedPurpose != null)
-                        themeConfig.textPrimary
-                    else
-                        themeConfig.textTertiary
-                )
-            }
+                }
+            )
 
         } else {
-            // 超限：主按钮离开
-            Button(
-                onClick = {
-                    if (!isExiting && !isDismissing) onDismiss()
+            QuietLeaveDestinations(
+                themeConfig = themeConfig,
+                enabled = leaveEnabled,
+                leaveLabel = "好的，离开",
+                emphasized = true,
+                accentColor = accentColor,
+                accentFg = accentFg,
+                onDismiss = {
+                    if (leaveEnabled) onDismiss()
                 },
-                enabled = !isExiting && !isDismissing,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                shape = RoundedCornerShape(14.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-            ) {
-                Text(
-                    text = "好的，离开",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = accentFg
-                )
-            }
+                onOpenOwnApp = onOpenOwnApp?.let { open ->
+                    {
+                        if (leaveEnabled) open()
+                    }
+                }
+            )
 
-            // 可选：重设目标
             if (remainingModifyCount > 0) {
                 TextButton(
                     onClick = { onShowResetDialog() },
@@ -915,16 +925,130 @@ private fun SimpleActionSection(
     }
 }
 
+/**
+ * 离开路径：弱化呈现，不抢意图门主决策。
+ * 普通拦截用文字链；超限时 [emphasized] 略抬一点可点性。
+ */
+@Composable
+private fun QuietLeaveDestinations(
+    themeConfig: InterceptThemeConfig,
+    enabled: Boolean,
+    onDismiss: () -> Unit,
+    onOpenOwnApp: (() -> Unit)?,
+    leaveLabel: String = "回到桌面",
+    emphasized: Boolean = false,
+    accentColor: Color = themeConfig.accentColor,
+    accentFg: Color = themeConfig.accentForeground
+) {
+    if (emphasized) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Button(
+                onClick = onDismiss,
+                enabled = enabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = accentColor,
+                    disabledContainerColor = themeConfig.dividerColor
+                ),
+                shape = RoundedCornerShape(14.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+            ) {
+                Text(
+                    text = leaveLabel,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = accentFg
+                )
+            }
+            if (onOpenOwnApp != null) {
+                TextButton(
+                    onClick = onOpenOwnApp,
+                    enabled = enabled,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "打开心锚",
+                        fontSize = 13.sp,
+                        color = themeConfig.textTertiary
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Text(
+            text = "不想进去了",
+            fontSize = 11.sp,
+            color = themeConfig.textTertiary.copy(alpha = 0.75f)
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(
+                onClick = onDismiss,
+                enabled = enabled,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = leaveLabel,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = themeConfig.textSecondary.copy(alpha = 0.85f)
+                )
+            }
+            if (onOpenOwnApp != null) {
+                Text(
+                    text = "·",
+                    fontSize = 13.sp,
+                    color = themeConfig.textTertiary.copy(alpha = 0.5f)
+                )
+                TextButton(
+                    onClick = onOpenOwnApp,
+                    enabled = enabled,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "打开心锚",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = themeConfig.textSecondary.copy(alpha = 0.85f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+
 /** iOS 极简意图输入框 */
 @Composable
 private fun SimpleIntentInput(
     intentText: String,
     themeConfig: InterceptThemeConfig,
+    recentPurposes: List<RecentPurpose> = emptyList(),
+    pendingInterrupt: PendingInterrupt? = null,
+    resumeEnabled: Boolean = false,
+    onResume: (() -> Unit)? = null,
     onIntentChange: (String) -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
             text = "此刻打开它，是为了什么？",
@@ -937,7 +1061,7 @@ private fun SimpleIntentInput(
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
-                    "写下你的意图（可选）",
+                    "用一句话写下这次的目的",
                     fontSize = 15.sp,
                     color = themeConfig.textTertiary
                 )
@@ -954,6 +1078,187 @@ private fun SimpleIntentInput(
                 unfocusedContainerColor = themeConfig.surfaceColor
             )
         )
+        RecentIntentChips(
+            recentPurposes = recentPurposes,
+            selectedText = intentText,
+            themeConfig = themeConfig,
+            pendingInterrupt = pendingInterrupt,
+            resumeEnabled = resumeEnabled,
+            onResume = onResume,
+            onSelect = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onIntentChange(it.take(40))
+            }
+        )
+    }
+}
+
+/**
+ * 最近意图区。
+ * - 已闭环：单行扁 tag（只点选填入）
+ * - 未闭环：「最近意图」下先放操作 clip（意图 + 几分钟前 + 轻量继续），再放扁 tag
+ */
+@Composable
+private fun RecentIntentChips(
+    recentPurposes: List<RecentPurpose>,
+    selectedText: String,
+    themeConfig: InterceptThemeConfig,
+    pendingInterrupt: PendingInterrupt? = null,
+    resumeEnabled: Boolean = false,
+    onResume: (() -> Unit)? = null,
+    onSelect: (String) -> Unit
+) {
+    val showResume = pendingInterrupt != null && onResume != null
+    val pendingPurpose = pendingInterrupt?.purpose?.trim().orEmpty()
+    val filteredRecent = if (showResume && pendingPurpose.isNotEmpty()) {
+        recentPurposes.filterNot { it.purpose == pendingPurpose }
+    } else {
+        recentPurposes
+    }
+    if (!showResume && filteredRecent.isEmpty()) return
+
+    val current = selectedText.trim()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "最近意图",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = themeConfig.textTertiary.copy(alpha = 0.85f),
+            letterSpacing = 0.3.sp
+        )
+
+        if (showResume) {
+            val interrupt = pendingInterrupt
+            val resume = onResume
+            if (interrupt != null && resume != null) {
+                ResumeOperationChip(
+                    interrupt = interrupt,
+                    themeConfig = themeConfig,
+                    enabled = resumeEnabled,
+                    onResume = resume
+                )
+            }
+        }
+
+        if (filteredRecent.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                filteredRecent.forEach { item ->
+                    RecentIntentTag(
+                        text = item.purpose,
+                        selected = current == item.purpose,
+                        themeConfig = themeConfig,
+                        onClick = { onSelect(item.purpose) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** 快捷 tag：单行、偏扁，只承载意图文案 */
+@Composable
+private fun RecentIntentTag(
+    text: String,
+    selected: Boolean,
+    themeConfig: InterceptThemeConfig,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (selected) themeConfig.accentColor.copy(alpha = 0.14f)
+                else themeConfig.surfaceColor.copy(alpha = 0.9f)
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) themeConfig.accentColor.copy(alpha = 0.45f)
+                else themeConfig.dividerColor,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            color = if (selected) themeConfig.accentColor
+            else themeConfig.textSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/**
+ * 未闭环「最近操作」clip：宽度随内容，不拉满。
+ * 意图 + 相对时刻 + 轻量「继续」文字按钮。
+ */
+@Composable
+private fun ResumeOperationChip(
+    interrupt: PendingInterrupt,
+    themeConfig: InterceptThemeConfig,
+    enabled: Boolean,
+    onResume: () -> Unit
+) {
+    val accent = themeConfig.accentColor
+    val title = interrupt.purpose?.takeIf { it.isNotBlank() } ?: "上次未写意图"
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(accent.copy(alpha = 0.08f))
+            .border(1.dp, accent.copy(alpha = 0.28f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 10.dp, vertical = 7.dp)
+            .alpha(if (enabled) 1f else 0.45f),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = title,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = themeConfig.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 140.dp)
+        )
+        Text(
+            text = interrupt.timeAgoLabel(),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Normal,
+            color = themeConfig.textTertiary,
+            maxLines = 1
+        )
+        Button(
+            onClick = onResume,
+            enabled = enabled,
+            modifier = Modifier.height(26.dp),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = accent.copy(alpha = 0.55f),
+                contentColor = themeConfig.accentForeground,
+                disabledContainerColor = themeConfig.dividerColor,
+                disabledContentColor = themeConfig.textTertiary
+            ),
+            shape = RoundedCornerShape(7.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+        ) {
+            Text(
+                text = "继续",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 }
 
@@ -1045,6 +1350,7 @@ private fun UsageTripleStats(
     dailyLimitMinutes: Int,
     dailyProgress: Float,
     isOverLimit: Boolean,
+    includesPreMonitorUsage: Boolean = false,
     themeConfig: InterceptThemeConfig
 ) {
     val accentColor = if (isOverLimit) themeConfig.limitAccentColor else themeConfig.accentColor
@@ -1059,17 +1365,30 @@ private fun UsageTripleStats(
             .border(1.dp, borderColor, RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp, vertical = 16.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            StatItem(
-                value = formatSecondsToText(todayUsedSeconds),
-                label = "今日记录",
-                subLabel = if (dailyLimitMinutes > 0) "限 ${formatMinutes(dailyLimitMinutes)}" else null,
-                valueColor = accentColor
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                StatItem(
+                    value = formatSecondsToText(todayUsedSeconds),
+                    label = "今日正念时长",
+                    subLabel = if (dailyLimitMinutes > 0) "限 ${formatMinutes(dailyLimitMinutes)}" else null,
+                    valueColor = accentColor
+                )
+            }
+            if (includesPreMonitorUsage) {
+                Text(
+                    text = "含加入前今日使用",
+                    fontSize = 11.sp,
+                    color = themeConfig.textTertiary
+                )
+            }
         }
     }
 }
@@ -1113,11 +1432,8 @@ private fun StatItem(
 private fun QuoteSection(
     quote: String,
     author: String,
-    accentColor: Color,
-    isFavorited: Boolean = false,
-    onFavorite: () -> Unit = {}
+    accentColor: Color
 ) {
-    val haptic = LocalHapticFeedback.current
     AnimatedContent(
         targetState = quote to author,
         transitionSpec = { fadeIn(tween(320)) togetherWith fadeOut(tween(200)) },
@@ -1151,33 +1467,11 @@ private fun QuoteSection(
                     lineHeight = 26.sp,
                     letterSpacing = 0.3.sp
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = a,
-                        fontSize = 12.sp,
-                        color = accentColor.copy(alpha = 0.6f)
-                    )
-                    // 收藏心形按钮
-                    Icon(
-                        imageVector = if (isFavorited) Icons.Filled.Favorite
-                        else Icons.Filled.FavoriteBorder,
-                        contentDescription = if (isFavorited) "取消收藏" else "收藏",
-                        tint = if (isFavorited)
-                            Color(0xFFE05C6A)
-                        else
-                            accentColor.copy(alpha = 0.4f),
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onFavorite()
-                            }
-                    )
-                }
+                Text(
+                    text = a,
+                    fontSize = 12.sp,
+                    color = accentColor.copy(alpha = 0.6f)
+                )
             }
         }
     }
@@ -1193,6 +1487,7 @@ private fun ActionSection(
     isDismissing: Boolean,
     remainingModifyCount: Int,
     themeConfig: InterceptThemeConfig,
+    recentPurposes: List<RecentPurpose> = emptyList(),
     onIntentChange: (String) -> Unit,
     onEnterWithPurpose: () -> Unit,
     onDismiss: () -> Unit,
@@ -1250,6 +1545,8 @@ private fun ActionSection(
                     buttonEnabled = buttonEnabled && confirmedPurpose != null,
                     accentColor = accentColor,
                     accentForeground = accentFg,
+                    themeConfig = themeConfig,
+                    recentPurposes = recentPurposes,
                     onIntentChange = onIntentChange,
                     onEnter = onEnterWithPurpose
                 )
@@ -1307,6 +1604,8 @@ private fun PurposeInputExpanded(
     buttonEnabled: Boolean,
     accentColor: Color,
     accentForeground: Color,
+    themeConfig: InterceptThemeConfig,
+    recentPurposes: List<RecentPurpose> = emptyList(),
     onIntentChange: (String) -> Unit,
     onEnter: () -> Unit
 ) {
@@ -1328,7 +1627,7 @@ private fun PurposeInputExpanded(
             onValueChange = onIntentChange,
             modifier = Modifier.fillMaxWidth(),
             label = { Text("我想要…", fontSize = 13.sp, color = accentColor.copy(alpha = 0.45f)) },
-            placeholder = { Text("写下此刻打开它的原因", fontSize = 14.sp, color = _OldTextMuted) },
+            placeholder = { Text("用一句话写下这次的目的", fontSize = 14.sp, color = _OldTextMuted) },
             singleLine = true,
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -1342,6 +1641,16 @@ private fun PurposeInputExpanded(
                 focusedContainerColor   = _OldDarkSurface,
                 unfocusedContainerColor = _OldDarkSurface
             )
+        )
+
+        RecentIntentChips(
+            recentPurposes = recentPurposes,
+            selectedText = intentText,
+            themeConfig = themeConfig,
+            onSelect = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onIntentChange(it.take(40))
+            }
         )
 
         val enterLabel = when {
@@ -1418,7 +1727,7 @@ private fun ResetLimitDialog(
                     color = themeConfig.textPrimary
                 )
                 Text(
-                    "今日已用 ${formatMinutes(todayUsedMinutes)}",
+                    "今日正念时长 ${formatMinutes(todayUsedMinutes)}",
                     fontSize = 12.sp,
                     color = themeConfig.textSecondary
                 )
@@ -1473,7 +1782,7 @@ private fun ResetLimitDialog(
                 }
                 if (newDailyMinutes < todayUsedMinutes) {
                     Text(
-                        "⚠️ 低于今日已用时长，设定后将立即超限",
+                        "⚠️ 低于今日正念时长，设定后将立即超限",
                         fontSize = 12.sp,
                         color = themeConfig.limitAccentColor,
                         lineHeight = 16.sp

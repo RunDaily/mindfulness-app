@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,12 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
 }
+
+val localProperties = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val deepseekApiKey: String = localProperties.getProperty("DEEPSEEK_API_KEY", "")
 
 android {
     namespace = "com.life.mindfulnessapp"
@@ -18,6 +26,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // DeepSeek：从根目录 local.properties 读取，勿写入仓库
+        buildConfigField("String", "DEEPSEEK_API_KEY", "\"${deepseekApiKey.replace("\"", "\\\"")}\"")
+        buildConfigField("String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com/\"")
+        buildConfigField("String", "DEEPSEEK_MODEL", "\"deepseek-chat\"")
     }
 
     buildTypes {
@@ -58,10 +71,15 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.reorderable)
 
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.activity)
+    implementation(libs.androidx.constraintlayout)
     ksp(libs.androidx.room.compiler)
 
     // DataStore

@@ -8,6 +8,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +19,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -42,24 +47,22 @@ import kotlin.math.PI
 import kotlin.random.Random
 
 /**
- * 退出仪式：「获得勋章」全屏动画（精致版）
+ * 退出仪式：「守住了」全屏勋章动画（仅里程碑：今日第 5 / 每满 10 次）。
+ * 日常离开请用 [DismissAffirmationOverlay] 轻提示。
  *
- * 视觉层次（从后到前）：
- *  1. 深空背景 + 全屏金色 bloom 晕染
- *  2. 菱形+圆点混合粒子扩散
- *  3. 16条交替宽窄光芒射线（缓慢旋转）
- *  4. 勋章外环：双层浮雕圆环 + 点线装饰
- *  5. 勋章主体：圆形 + 径向渐变填充 + 内嵌星纹
- *  6. 顶部丝带挂钩
- *  7. 对勾：描绘动画（从无到有）
- *  8. 文字：主标题 + 装饰分割线 + 副标题
+ * 约 1.6–1.8s；任意点击可立即结束并离开。
  */
 @Composable
 fun DismissCeremonyOverlayView(
-    themeId: String = "default",
     dismissCount: Int = 1,
     onFinished: () -> Unit
 ) {
+    var finished by remember { mutableStateOf(false) }
+    fun finishOnce() {
+        if (finished) return
+        finished = true
+        onFinished()
+    }
     // ── 色彩体系 ──────────────────────────────────────────────────────────
     val gold        = Color(0xFFFFD166)   // 主金
     val goldLight   = Color(0xFFFFF3B0)   // 亮金（高光）
@@ -94,79 +97,81 @@ fun DismissCeremonyOverlayView(
     val particleSizes = remember { List(particleCount) { 2.5f + Random.nextFloat() * 3.5f } }
 
     LaunchedEffect(Unit) {
+        // 压缩节奏：主拍保留，总时长约 1.7s；跳过时 finishOnce 提前返回
+        launch { bgAlpha.animateTo(1f, tween(140, easing = FastOutSlowInEasing)) }
+        bloomAlpha.animateTo(0.25f, tween(260, easing = FastOutSlowInEasing))
+        if (finished) return@LaunchedEffect
 
-        // ══ Step 1 · 背景 + bloom 淡入 ════════════════════════════════════
-        launch { bgAlpha.animateTo(1f, tween(200, easing = FastOutSlowInEasing)) }
-        bloomAlpha.animateTo(0.25f, tween(400, easing = FastOutSlowInEasing))
-
-        // ══ Step 2 · 外环从外向内弹入 ════════════════════════════════════
-        delay(60L)
-        launch { outerRingAlpha.animateTo(1f, tween(220)) }
+        delay(40L)
+        if (finished) return@LaunchedEffect
+        launch { outerRingAlpha.animateTo(1f, tween(160)) }
         outerRingScale.animateTo(
             1f, spring(dampingRatio = 0.60f, stiffness = Spring.StiffnessMediumLow)
         )
+        if (finished) return@LaunchedEffect
 
-        // ══ Step 3 · 勋章主体弹出 ════════════════════════════════════════
-        delay(40L)
-        launch { medalAlpha.animateTo(1f, tween(160)) }
-        launch { ribbonAlpha.animateTo(1f, tween(260, delayMillis = 80)) }
+        delay(30L)
+        if (finished) return@LaunchedEffect
+        launch { medalAlpha.animateTo(1f, tween(120)) }
+        launch { ribbonAlpha.animateTo(1f, tween(180, delayMillis = 40)) }
         medalScale.animateTo(
             1f, spring(dampingRatio = 0.48f, stiffness = Spring.StiffnessMedium)
         )
+        if (finished) return@LaunchedEffect
 
-        // ══ Step 4 · 射线淡入 + 旋转 ════════════════════════════════════
-        launch { raysAlpha.animateTo(0.90f, tween(320)) }
+        launch { raysAlpha.animateTo(0.90f, tween(220)) }
         launch {
-            raysRotation.animateTo(30f, tween(2800, easing = LinearEasing))
+            raysRotation.animateTo(18f, tween(1600, easing = LinearEasing))
         }
 
-        // ══ Step 5 · 对勾「描绘」动画 ════════════════════════════════════
-        delay(80L)
-        checkProgress.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
+        delay(50L)
+        if (finished) return@LaunchedEffect
+        checkProgress.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
 
-        // ══ Step 6 · 粒子扩散 ════════════════════════════════════════════
         launch {
             particleProgress.forEachIndexed { i, anim ->
                 launch {
-                    delay(Random.nextLong(0, 180))
-                    anim.animateTo(1f, tween(700, easing = FastOutSlowInEasing))
+                    delay(Random.nextLong(0, 100))
+                    anim.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
                 }
             }
         }
 
-        // ══ Step 7 · 文字 + 分割线 滑入 ═════════════════════════════════
-        delay(100L)
-        launch { textAlpha.animateTo(1f, tween(380)) }
-        launch { textOffset.animateTo(0f, tween(400, easing = FastOutSlowInEasing)) }
-        dividerWidth.animateTo(1f, tween(500, easing = FastOutSlowInEasing))
+        delay(60L)
+        if (finished) return@LaunchedEffect
+        launch { textAlpha.animateTo(1f, tween(240)) }
+        launch { textOffset.animateTo(0f, tween(260, easing = FastOutSlowInEasing)) }
+        dividerWidth.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
 
-        // ══ Step 8 · bloom 脉冲（微弱呼吸感）════════════════════════════
         launch {
-            bloomAlpha.animateTo(0.40f, tween(600, easing = FastOutSlowInEasing))
-            bloomAlpha.animateTo(0.22f, tween(600, easing = FastOutSlowInEasing))
+            bloomAlpha.animateTo(0.36f, tween(320, easing = FastOutSlowInEasing))
+            bloomAlpha.animateTo(0.22f, tween(320, easing = FastOutSlowInEasing))
         }
 
-        // ══ Step 9 · 停留 ════════════════════════════════════════════════
-        delay(1000L)
+        delay(420L)
+        if (finished) return@LaunchedEffect
 
-        // ══ Step 10 · 整体淡出 ═══════════════════════════════════════════
-        launch { medalAlpha.animateTo(0f, tween(300)) }
-        launch { outerRingAlpha.animateTo(0f, tween(280)) }
-        launch { raysAlpha.animateTo(0f, tween(220)) }
-        launch { textAlpha.animateTo(0f, tween(260)) }
-        launch { ribbonAlpha.animateTo(0f, tween(260)) }
-        launch { bloomAlpha.animateTo(0f, tween(300)) }
-        bgAlpha.animateTo(0f, tween(340, easing = FastOutSlowInEasing))
+        launch { medalAlpha.animateTo(0f, tween(180)) }
+        launch { outerRingAlpha.animateTo(0f, tween(160)) }
+        launch { raysAlpha.animateTo(0f, tween(140)) }
+        launch { textAlpha.animateTo(0f, tween(160)) }
+        launch { ribbonAlpha.animateTo(0f, tween(160)) }
+        launch { bloomAlpha.animateTo(0f, tween(180)) }
+        bgAlpha.animateTo(0f, tween(200, easing = FastOutSlowInEasing))
 
-        delay(40L)
-        onFinished()
+        delay(20L)
+        finishOnce()
     }
 
     // ── 渲染 ──────────────────────────────────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgColor.copy(alpha = bgAlpha.value)),
+            .background(bgColor.copy(alpha = bgAlpha.value))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { finishOnce() },
         contentAlignment = Alignment.Center
     ) {
 
@@ -372,7 +377,7 @@ fun DismissCeremonyOverlayView(
             Spacer(Modifier.height(20.dp))
 
             Text(
-                text = "克制 · 已解锁",
+                text = "守住了",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = goldLight,
@@ -406,7 +411,10 @@ fun DismissCeremonyOverlayView(
             Spacer(Modifier.height(10.dp))
 
             Text(
-                text = if (dismissCount <= 1) "今日第 1 次守住了" else "今日已守住 $dismissCount 次",
+                text = when {
+                    dismissCount == 5 -> "今日第 5 次"
+                    else -> "今日已守住 $dismissCount 次"
+                },
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Normal,
                 color = Color(0xFF999999),

@@ -24,7 +24,7 @@ import javax.inject.Singleton
 // ════════════════════════════════════════════
 
 sealed class BillingResult2 {
-    /** 购买成功，purchaseToken 用于服务端二次验证 */
+    /** 购买成功，purchaseToken 用于本机激活 VIP */
     data class Success(
         val purchaseToken: String,
         val productId: String,
@@ -272,8 +272,8 @@ class BillingManager @Inject constructor(
     /**
      * 处理单笔购买：
      * 1. 仅在购买状态为 PURCHASED（已完成，非 PENDING）时处理
-     * 2. 广播购买令牌供 ViewModel → Repository → 服务端验证
-     * 3. 服务端验证成功后再 acknowledgePurchase，这是 Google Play 要求的顺序
+     * 2. 广播购买令牌供 ViewModel → Repository 在本机激活 VIP
+     * 3. 激活成功后再 acknowledgePurchase，这是 Google Play 要求的顺序
      */
     private suspend fun handlePurchase(purchase: Purchase) {
         if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) return
@@ -281,7 +281,7 @@ class BillingManager @Inject constructor(
         val productId = purchase.products.firstOrNull() ?: return
         val plan = VipPlan.entries.firstOrNull { it.productId == productId } ?: return
 
-        // 广播结果（ViewModel 收到后向自己的服务端验证）
+        // 广播结果（ViewModel 收到后在本机激活 VIP）
         _purchaseResultFlow.emit(
             BillingResult2.Success(
                 purchaseToken = purchase.purchaseToken,
@@ -292,7 +292,7 @@ class BillingManager @Inject constructor(
     }
 
     /**
-     * 服务端验证成功后，调用此方法确认购买。
+     * 本机激活 VIP 成功后，调用此方法确认购买。
      * Google Play 要求：INAPP 和 SUBS 商品都需在 3 天内 acknowledge，否则自动退款。
      */
     suspend fun acknowledgePurchase(purchaseToken: String): Boolean {

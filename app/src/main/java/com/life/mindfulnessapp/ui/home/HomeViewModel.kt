@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.life.mindfulnessapp.data.AppPreferences
 import com.life.mindfulnessapp.data.db.entity.AppLimitEntity
+import com.life.mindfulnessapp.data.db.entity.LimitResetEntity
+import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
 import com.life.mindfulnessapp.data.repository.AppLimitRepository
 import com.life.mindfulnessapp.data.repository.LimitResetRepository
 import com.life.mindfulnessapp.data.repository.UsageRecordRepository
@@ -13,15 +15,21 @@ import com.life.mindfulnessapp.data.repository.VipRepository
 import com.life.mindfulnessapp.data.repository.UsageRecordRepository.Companion.getDayRange
 import com.life.mindfulnessapp.domain.model.AppInfo
 import com.life.mindfulnessapp.domain.model.AppUsageSummary
+import com.life.mindfulnessapp.domain.model.IntentKind
 import com.life.mindfulnessapp.domain.model.TimelineEvent
+import com.life.mindfulnessapp.domain.model.UsageSession
+import com.life.mindfulnessapp.domain.model.WeeklyReportData
 import com.life.mindfulnessapp.domain.usecase.CheckPermissionsUseCase
 import com.life.mindfulnessapp.domain.usecase.GetInstalledAppsUseCase
 import com.life.mindfulnessapp.domain.usecase.GetUsageSummaryUseCase
+import com.life.mindfulnessapp.domain.usecase.GetWeekAwarenessUseCase
 import com.life.mindfulnessapp.domain.usecase.PermissionStatus
 import com.life.mindfulnessapp.service.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.isActive
@@ -29,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -39,7 +48,8 @@ class HomeViewModel @Inject constructor(
     private val limitResetRepository: LimitResetRepository,
     private val getInstalledAppsUseCase: GetInstalledAppsUseCase,
     private val vipRepository: VipRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val getWeekAwarenessUseCase: GetWeekAwarenessUseCase
 ) : ViewModel() {
 
     private val _usageSummaries = MutableStateFlow<List<AppUsageSummary>>(emptyList())
@@ -81,7 +91,7 @@ class HomeViewModel @Inject constructor(
         _showVipUpgradeDialog.value = false
     }
 
-    // ── 今日时间轴：合并 usage_records + limit_resets，按时间正序排列 ─────────
+    // ── 今日时间轴：合并 usage_records + limit_resets，按时间倒序排列 ─────────
 
     private val _todayTimeline = MutableStateFlow<List<TimelineEvent>>(emptyList())
     val todayTimeline: StateFlow<List<TimelineEvent>> = _todayTimeline
@@ -94,14 +104,6 @@ class HomeViewModel @Inject constructor(
     private val _pendingHighlightId = MutableStateFlow<Long?>(null)
     val pendingHighlightId: StateFlow<Long?> = _pendingHighlightId.asStateFlow()
 
-    /** 今日有意识地打开 App 的次数（即填写了使用目的的次数，purpose NOT NULL） */
-    val todayMindfulCount: StateFlow<Int> = run {
-        val (dayStart, dayEnd) = getDayRange(System.currentTimeMillis())
-        usageRecordRepository.getDayMindfulRecords(dayStart, dayEnd)
-            .map { it.size }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-    }
-
     /**
      * 当前进行中会话的实时有效秒数（已排除后台时间），每秒更新一次。
      * key = recordId，value = currentSessionSeconds；无活跃会话时为 null。
@@ -112,11 +114,26 @@ class HomeViewModel @Inject constructor(
     /** (recordId, currentSessionSeconds)，无活跃会话时为 null */
     val ongoingSessionSeconds: StateFlow<Pair<Long, Long>?> = _ongoingSessionSeconds
 
+    /** 今日页「本周觉察」轻入口摘要；无足够样本时为 null */
+    private val _weekAwarenessPeek = MutableStateFlow<WeeklyReportData?>(null)
+    val weekAwarenessPeek: StateFlow<WeeklyReportData?> = _weekAwarenessPeek
+
     init {
+        viewModelScope.launch {
+            // 每周上限已下线：清掉历史配置，避免继续按周拦截
+            appLimitRepository.clearAllWeeklyLimits()
+        }
         loadData()
         startAutoRefresh()
         observeTodayTimeline()
         startOngoingSessionTicker()
+        refreshWeekAwarenessPeek()
+    }
+
+    fun refreshWeekAwarenessPeek() {
+        viewModelScope.launch {
+            _weekAwarenessPeek.value = runCatching { getWeekAwarenessUseCase() }.getOrNull()
+        }
     }
 
     /**
@@ -140,6 +157,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _usageSummaries.value = getUsageSummaryUseCase()
             _permissionStatus.value = checkPermissionsUseCase()
+            _weekAwarenessPeek.value = runCatching { getWeekAwarenessUseCase() }.getOrNull()
         }
     }
 
@@ -164,23 +182,50 @@ class HomeViewModel @Inject constructor(
         _pendingHighlightId.value = null
     }
 
-    /** 更新某条使用记录的效果备注，传入 null 表示清空 */
+    /** 更新某条使用记录的复盘备注，传入 null 表示清空 */
     fun updateRecordNote(recordId: Long, note: String?) {
         viewModelScope.launch {
             usageRecordRepository.updateNote(recordId, note?.trim()?.ifBlank { null })
         }
     }
 
-    /** 修改已监控 App 的时限 */
-    fun updateAppLimit(packageName: String, newDailyMinutes: Int, newWeeklyMinutes: Int) {
+    /** 更新对照档位与备注（两维度独立，均可为空） */
+    fun updateRecordReview(recordId: Long, note: String?, mindfulnessLevel: Int?) {
+        viewModelScope.launch {
+            usageRecordRepository.updateNoteAndMindfulness(
+                recordId,
+                note?.trim()?.ifBlank { null },
+                mindfulnessLevel?.takeIf { UsageRecordEntity.MindfulnessLevel.isValid(it) }
+            )
+        }
+    }
+
+    /** 修改已监控 App 的时限与相关配置 */
+    fun updateAppLimit(
+        packageName: String,
+        newDailyMinutes: Int,
+        newWeeklyMinutes: Int,
+        timeLimitEnabled: Boolean? = null,
+        overTimeMessage: String? = null
+    ) {
         viewModelScope.launch {
             val existing = appLimitRepository.getAppLimit(packageName) ?: return@launch
             appLimitRepository.saveAppLimit(
                 existing.copy(
                     dailyLimitMinutes = newDailyMinutes,
-                    weeklyLimitMinutes = newWeeklyMinutes
+                    weeklyLimitMinutes = newWeeklyMinutes,
+                    timeLimitEnabled = timeLimitEnabled ?: existing.timeLimitEnabled,
+                    overTimeMessage = overTimeMessage ?: existing.overTimeMessage
                 )
             )
+            _usageSummaries.value = getUsageSummaryUseCase()
+        }
+    }
+
+    /** 移除监控 */
+    fun removeFromMonitor(packageName: String) {
+        viewModelScope.launch {
+            appLimitRepository.deleteAppLimit(packageName)
             _usageSummaries.value = getUsageSummaryUseCase()
         }
     }
@@ -214,6 +259,19 @@ class HomeViewModel @Inject constructor(
                     isMonitored = true,
                     dailyLimitMinutes = limit.dailyLimitMinutes,
                     weeklyLimitMinutes = limit.weeklyLimitMinutes,
+                    timeLimitEnabled = limit.timeLimitEnabled,
+                    overTimeMessage = limit.overTimeMessage,
+                    usageCovenant = limit.usageCovenant,
+                    remindCovenantOnOpen = limit.remindCovenantOnOpen,
+                    requireIntentOnOpen = limit.requireIntentOnOpen,
+                    sessionLimitEnabled = limit.sessionLimitEnabled,
+                    intentQualityCheckEnabled = limit.intentQualityCheckEnabled,
+                    intentBlockKeywordsJson = limit.intentBlockKeywordsJson,
+                    defaultSessionLimitMinutes = limit.defaultSessionLimitMinutes,
+                    intentReviewEnabled = limit.intentReviewEnabled,
+                    periodLockEnabled = limit.periodLockEnabled,
+                    periodWindowsJson = limit.periodWindowsJson,
+                    periodLockCommitment = limit.periodLockCommitment,
                     isUninstalled = isUninstalled
                 )
             }
@@ -248,6 +306,7 @@ class HomeViewModel @Inject constructor(
      * 监听今日使用记录、重设限额记录以及当前进行中的 session，合并成统一时间轴。
      *
      * 设计要点：
+     *   - 日界随日历滚动：跨午夜后自动切换到新一天（见 [todayRangeFlow]）。
      *   - getDayRecords 的 SQL 过滤了 endTime > 0，进行中的记录（endTime=-1）不会出现。
      *   - 因此额外合并 sessionManager.currentSession：若当前有活跃 session 且属于今天，
      *     则将其作为一条「进行中」的虚拟条目插入时间轴顶部，实时展示。
@@ -255,71 +314,135 @@ class HomeViewModel @Inject constructor(
      */
     private fun observeTodayTimeline() {
         viewModelScope.launch {
-            val (dayStart, dayEnd) = getDayRange(System.currentTimeMillis())
-
-            val usageFlow = usageRecordRepository.getDayRecords(dayStart, dayEnd)
-            val resetFlow = limitResetRepository.getResetsByPeriod(dayStart, dayEnd)
-
-            combine(usageFlow, resetFlow, sessionManager.currentSession) { usageRecords, resetRecords, activeSession ->
-                Triple(usageRecords, resetRecords, activeSession)
-            }.collect { (usageRecords, resetRecords, activeSession) ->
-                val usageEvents = withContext(Dispatchers.IO) {
-                    usageRecords.map { record ->
-                        TimelineEvent.UsageEvent(
-                            packageName = record.packageName,
-                            appName = resolveAppName(record.packageName),
-                            startTime = record.startTime,
-                            endTime = record.endTime,
-                            durationSeconds = record.durationSeconds,
-                            endReason = record.endReason,
-                            purpose = record.purpose,
-                            recordId = record.id,
-                            note = record.note
+            todayRangeFlow()
+                .flatMapLatest { (dayStart, dayEnd) ->
+                    combine(
+                        usageRecordRepository.getDayRecords(dayStart, dayEnd),
+                        limitResetRepository.getResetsByPeriod(dayStart, dayEnd),
+                        sessionManager.currentSession,
+                        appLimitRepository.getAllAppLimits()
+                    ) { usageRecords, resetRecords, activeSession, limits ->
+                        TimelineDaySnapshot(
+                            dayStart = dayStart,
+                            dayEnd = dayEnd,
+                            usageRecords = usageRecords,
+                            resetRecords = resetRecords,
+                            activeSession = activeSession,
+                            limits = limits
                         )
                     }
                 }
-                val resetEvents = resetRecords.map { reset ->
-                    TimelineEvent.LimitResetEvent(
-                        packageName = reset.packageName,
-                        appName = reset.appName,
-                        resetTime = reset.resetTime,
-                        oldDailyLimitMinutes = reset.oldDailyLimitMinutes,
-                        newDailyLimitMinutes = reset.newDailyLimitMinutes,
-                        oldWeeklyLimitMinutes = reset.oldWeeklyLimitMinutes,
-                        newWeeklyLimitMinutes = reset.newWeeklyLimitMinutes,
-                        resetId = reset.id
-                    )
+                .collect { snapshot ->
+                    val dayStart = snapshot.dayStart
+                    val dayEnd = snapshot.dayEnd
+                    val usageRecords = snapshot.usageRecords
+                    val resetRecords = snapshot.resetRecords
+                    val activeSession = snapshot.activeSession
+                    val limits = snapshot.limits
+
+                    val limitByPkg = limits.associateBy { it.packageName }
+                    val usageEvents = withContext(Dispatchers.IO) {
+                        usageRecords.map { record ->
+                            val limit = limitByPkg[record.packageName]
+                            val kind = IntentKind.fromStorage(record.intentKind)
+                            val gateQuit = record.isGateQuit
+                            val seed = record.isSeed
+                            val end = UsageRecordEntity.EndReason
+                            TimelineEvent.UsageEvent(
+                                packageName = record.packageName,
+                                appName = resolveAppName(record.packageName),
+                                startTime = record.startTime,
+                                endTime = record.endTime,
+                                durationSeconds = record.durationSeconds,
+                                endReason = record.endReason,
+                                purpose = record.purpose,
+                                recordId = record.id,
+                                note = record.note,
+                                mindfulnessLevel = record.mindfulnessLevel,
+                                intentKind = kind,
+                                hasIntentGate = !seed && (
+                                    gateQuit ||
+                                        kind != null ||
+                                        record.purpose != null ||
+                                        limit?.requireIntentOnOpen == true
+                                    ),
+                                hasTimeLock = !seed && (
+                                    record.endReason == end.LIMIT_REACHED ||
+                                        record.endReason == end.SESSION_LIMIT_REACHED ||
+                                        record.sessionLimitMinutes > 0 ||
+                                        limit?.timeLimitEnabled == true
+                                    ),
+                                sessionLimitMinutes = record.sessionLimitMinutes,
+                                sessionExtensionMinutes = record.sessionExtensionMinutes
+                            )
+                        }
+                    }
+                    val resetEvents = resetRecords.map { reset ->
+                        TimelineEvent.LimitResetEvent(
+                            packageName = reset.packageName,
+                            appName = reset.appName,
+                            resetTime = reset.resetTime,
+                            oldDailyLimitMinutes = reset.oldDailyLimitMinutes,
+                            newDailyLimitMinutes = reset.newDailyLimitMinutes,
+                            oldWeeklyLimitMinutes = reset.oldWeeklyLimitMinutes,
+                            newWeeklyLimitMinutes = reset.newWeeklyLimitMinutes,
+                            resetId = reset.id
+                        )
+                    }
+
+                    // 若有进行中的 session 且属于今天，插入一条「进行中」虚拟条目
+                    // endTime = -1L 是 isOngoing 的判断依据（TimelineEvent.UsageEvent.isOngoing）
+                    val ongoingEvent: TimelineEvent.UsageEvent? = if (activeSession != null &&
+                        activeSession.startTime >= dayStart && activeSession.startTime < dayEnd) {
+                        TimelineEvent.UsageEvent(
+                            packageName = activeSession.packageName,
+                            appName = activeSession.appName,
+                            startTime = activeSession.startTime,
+                            endTime = -1L,
+                            // durationSeconds 先用 0：进行中条目的实时时长由 ongoingSessionSeconds 驱动
+                            durationSeconds = 0L,
+                            endReason = "",
+                            purpose = activeSession.purpose,
+                            recordId = activeSession.recordId,
+                            note = null,
+                            intentKind = activeSession.intentKind,
+                            hasIntentGate = activeSession.hasIntentGate,
+                            hasTimeLock = activeSession.hasTimeLock || activeSession.hasSessionLimit
+                        )
+                    } else null
+
+                    val allEvents = if (ongoingEvent != null) {
+                        usageEvents + ongoingEvent
+                    } else {
+                        usageEvents
+                    }
+
+                    // 合并后按时间倒序（最新的在最上面）
+                    _todayTimeline.value = (allEvents + resetEvents).sortedByDescending { it.timeMs }
                 }
+        }
+    }
 
-                // 若有进行中的 session 且属于今天，插入一条「进行中」虚拟条目
-                // endTime = -1L 是 isOngoing 的判断依据（TimelineEvent.UsageEvent.isOngoing）
-                val ongoingEvent: TimelineEvent.UsageEvent? = if (activeSession != null &&
-                    activeSession.startTime >= dayStart && activeSession.startTime < dayEnd) {
-                    // 确保不与已完成记录重复（getDayRecords 的 SQL 排除了 endTime=-1，不会有重复）
-                    TimelineEvent.UsageEvent(
-                        packageName = activeSession.packageName,
-                        appName = activeSession.appName,
-                        startTime = activeSession.startTime,
-                        endTime = -1L,
-                        // durationSeconds 先用 0：进行中条目的实时时长由 ongoingSessionSeconds 驱动，
-                        // 不依赖此字段，此处为 0 避免误读
-                        durationSeconds = 0L,
-                        endReason = "",
-                        purpose = activeSession.purpose,
-                        recordId = activeSession.recordId,
-                        note = null
-                    )
-                } else null
-
-                val allEvents = if (ongoingEvent != null) {
-                    usageEvents + ongoingEvent
-                } else {
-                    usageEvents
-                }
-
-                // 合并后按时间倒序（最新的在最上面）
-                _todayTimeline.value = (allEvents + resetEvents).sortedByDescending { it.timeMs }
-            }
+    /**
+     * 当前自然日的 [dayStart, dayEnd)，跨过午夜后自动 emit 新区间。
+     * 首页「今日」相关订阅都应经此滚动，避免进程常驻时日界冻结在创建时刻。
+     */
+    private fun todayRangeFlow(): Flow<Pair<Long, Long>> = flow {
+        while (currentCoroutineContext().isActive) {
+            val now = System.currentTimeMillis()
+            val range = getDayRange(now)
+            emit(range)
+            delay((range.second - now).coerceAtLeast(1_000L))
         }
     }
 }
+
+/** 某一自然日内时间轴合并所需的瞬时快照 */
+private data class TimelineDaySnapshot(
+    val dayStart: Long,
+    val dayEnd: Long,
+    val usageRecords: List<UsageRecordEntity>,
+    val resetRecords: List<LimitResetEntity>,
+    val activeSession: UsageSession?,
+    val limits: List<AppLimitEntity>
+)

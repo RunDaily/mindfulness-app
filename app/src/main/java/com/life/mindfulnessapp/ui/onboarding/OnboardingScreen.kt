@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.life.mindfulnessapp.domain.usecase.PermissionStatus
+import com.life.mindfulnessapp.ui.theme.CapabilityForm
+import com.life.mindfulnessapp.ui.theme.CapabilityKind
+import com.life.mindfulnessapp.ui.theme.CapabilityMark
 import com.life.mindfulnessapp.ui.theme.LogoGreen
 import com.life.mindfulnessapp.ui.theme.LogoGreenBright
 import com.life.mindfulnessapp.ui.theme.LogoGreenDeep
@@ -52,8 +56,8 @@ import kotlinx.coroutines.launch
 //
 //  页面流程：
 //   0 = 隐私政策（新安装时必经）
-//   1 = 功能亮点 1（拦截胶囊 + 会话意图）
-//   2 = 功能亮点 2（统计 + 仪式感）
+//   1 = 功能亮点 1（意图门 + 时长锁）
+//   2 = 功能亮点 2（统计 + 对照意图复盘）
 //   3 = 权限授权
 //
 //  initialPage：
@@ -245,9 +249,9 @@ private fun PrivacyPolicyPage(
                     iconTint = Color(0xFF64B5F6),
                     title = "我们收集的信息",
                     items = listOf(
-                        "手机应用使用时长（本地统计，不含内容）",
-                        "您设置的应用限额及使用目的",
-                        "注册账号时的手机号（用于云端同步）"
+                        "手机应用使用时长（仅本机统计，不含内容）",
+                        "您设置的应用限额及使用目的（仅本机保存）",
+                        "可选：从服务器拉取公开格言内容（不关联个人身份）"
                     )
                 )
                 HorizontalDivider(color = cs.outlineVariant.copy(alpha = 0.3f))
@@ -256,9 +260,10 @@ private fun PrivacyPolicyPage(
                     iconTint = accentGreen,
                     title = "我们承诺不会",
                     items = listOf(
+                        "创建账号或收集手机号等个人身份信息",
+                        "将您的使用记录上传到云端",
                         "读取您的通讯录、短信或其他隐私内容",
-                        "将您的数据出售给任何第三方",
-                        "在无您授权的情况下访问您的数据"
+                        "将您的数据出售给任何第三方"
                     )
                 )
                 // 链接行
@@ -383,7 +388,7 @@ private fun PrivacySection(
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  第 1 页：功能亮点 1 —— 拦截胶囊 + 会话意图
+//  第 1 页：功能亮点 1 —— 意图门 + 时长锁
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -441,29 +446,31 @@ private fun FeatureIntroPage1(onNext: () -> Unit) {
                     letterSpacing = 2.sp
                 )
                 Text(
-                    text = "用觉察，而不是意志力",
-                    fontSize = 15.sp,
+                    text = "三件清醒的工具：想清楚再进，用完知道停，时段守住边界",
+                    fontSize = 14.sp,
                     color = cs.onBackground.copy(alpha = 0.45f),
-                    letterSpacing = 0.5.sp
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
                 )
             }
         }
 
-        // 功能卡片区
+        // 功能卡片区：用产品方言「意图门 / 时长锁 / 时段锁」播种后续 UI
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            FeatureCard(
-                icon = Icons.Default.Timer,
-                iconBg = Color(0xFF1A3A2E),
-                iconTint = LogoGreen,
-                title = "拦截胶囊",
-                description = "打开受监控的 App 时，屏幕边缘会出现一个悬浮计时胶囊，实时显示已用时长和剩余额度。"
+            CapabilityFeatureCard(
+                kind = CapabilityKind.IntentGate,
+                title = "意图门",
+                description = "打开受监控的 App 前，先停一下，写下这一次为什么。不是审讯，是给冲动一次刹车。"
             )
-            FeatureCard(
-                icon = Icons.Default.Lightbulb,
-                iconBg = Color(0xFF2D2A12),
-                iconTint = Color(0xFFFFD54F),
-                title = "每次都问一句",
-                description = "打开 App 前，心锚会轻轻问你：「你为什么要打开它？」帮你从冲动使用变成有意识使用。"
+            CapabilityFeatureCard(
+                kind = CapabilityKind.TimeLock,
+                title = "时长锁",
+                description = "给每天一个上限。用着时边缘有计时胶囊；用完会被拦住，把时间留给更值得的事。"
+            )
+            CapabilityFeatureCard(
+                kind = CapabilityKind.PeriodLock,
+                title = "时段锁",
+                description = "指定时段硬挡，多段可叠加。拦截页不提供解锁；要关只能回心锚配置，生效中关闭需过门槛。"
             )
         }
 
@@ -492,7 +499,7 @@ private fun FeatureIntroPage1(onNext: () -> Unit) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  第 1 页：功能亮点 2 —— 数据统计 + 仪式感结束
+//  第 1 页：功能亮点 2 —— 数据统计 + 对照意图复盘
 // ══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -549,8 +556,8 @@ private fun FeatureIntroPage2(onNext: () -> Unit, onBack: () -> Unit) {
                 icon = Icons.Default.SelfImprovement,
                 iconBg = Color(0xFF1A3A2E),
                 iconTint = LogoGreen,
-                title = "仪式感结束",
-                description = "每次结束使用时，可以留下一句感受备注。小小的反思，会让你对自己的使用更有掌控感。"
+                title = "对照意图复盘",
+                description = "每次带着意图进入，结束后可以回头看一眼：达成了，还是又滑远了？"
             )
         }
 
@@ -756,7 +763,7 @@ private fun PermissionSetupPage(
                         color = Color.White
                     )
                     Text(
-                        text = "需要以下权限才能正常工作\n所有数据仅存储在本机，绝不上传",
+                        text = "需要以下权限才能正常工作\n使用数据仅保存在本机，不会上传云端",
                         fontSize = 13.sp,
                         color = Color.White.copy(alpha = 0.55f),
                         textAlign = TextAlign.Center,
@@ -858,6 +865,54 @@ private fun FeatureCard(
                 contentDescription = null,
                 tint = iconTint,
                 modifier = Modifier.size(22.dp)
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = cs.onSurface
+            )
+            Text(
+                text = description,
+                fontSize = 12.sp,
+                color = cs.onSurface.copy(alpha = 0.5f),
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+/** Onboarding 专用：用门 / 锁字形教产品方言，与配置页、首页坑位对齐 */
+@Composable
+private fun CapabilityFeatureCard(
+    kind: CapabilityKind,
+    title: String,
+    description: String
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(cs.surface)
+            .padding(16.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(LogoGreen.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center
+        ) {
+            CapabilityMark(
+                kind = kind,
+                form = CapabilityForm.Emphasis,
+                tint = LogoGreen,
+                size = 24.dp
             )
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

@@ -51,23 +51,26 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.life.mindfulnessapp.data.AppPreferences
 import com.life.mindfulnessapp.service.MonitorForegroundService
+import com.life.mindfulnessapp.ui.applist.AddAppLimitScreen
+import com.life.mindfulnessapp.ui.applist.AppHistoryScreen
+import com.life.mindfulnessapp.ui.applist.AppLimitEditScreen
 import com.life.mindfulnessapp.ui.applist.AppListScreen
+import com.life.mindfulnessapp.ui.applist.MonitorManageScreen
 import com.life.mindfulnessapp.ui.home.HomeViewModel
 import androidx.activity.viewModels
 import com.life.mindfulnessapp.ui.home.HomeScreen
+import com.life.mindfulnessapp.ui.navigation.AppLimitTransitions
 import com.life.mindfulnessapp.ui.navigation.BottomTab
 import com.life.mindfulnessapp.ui.navigation.Screen
+import com.life.mindfulnessapp.ui.navigation.isNavigatingToAppLimit
+import com.life.mindfulnessapp.ui.navigation.isPoppingFromAppLimit
 import com.life.mindfulnessapp.ui.onboarding.OnboardingScreen
 import com.life.mindfulnessapp.ui.profile.ProfileScreen
+import com.life.mindfulnessapp.ui.settings.PositiveDestinationsScreen
 import com.life.mindfulnessapp.ui.settings.SettingsScreen
 import com.life.mindfulnessapp.ui.settings.ThemeScreen
-import com.life.mindfulnessapp.ui.stats.AppDetailStatsScreen
-import com.life.mindfulnessapp.ui.stats.DailyReportScreen
-import com.life.mindfulnessapp.ui.stats.OverviewScreen
-import com.life.mindfulnessapp.ui.stats.StatsScreen
+import com.life.mindfulnessapp.ui.stats.WeekAwarenessScreen
 import com.life.mindfulnessapp.ui.theme.*
-import com.life.mindfulnessapp.ui.favorite.FavoriteQuotesScreen
-import com.life.mindfulnessapp.ui.invite.InviteScreen
 import com.life.mindfulnessapp.ui.vip.VipScreen
 import androidx.compose.runtime.collectAsState
 import dagger.hilt.android.AndroidEntryPoint
@@ -96,17 +99,49 @@ class MainActivity : ComponentActivity() {
     /** 来自 Service 的「打开 App 限制编辑」请求，存储待跳转的 packageName（State，改变时触发重组） */
     private var pendingAppLimitEditPackage by mutableStateOf<String?>(null)
 
+    /** 来自拦截页「打开心锚」：落到今日 Tab */
+    private var pendingNavigateHome by mutableStateOf(false)
+
+    /** 来自离开轻条：打开「想去的地方」配置 */
+    private var pendingNavigatePositiveDestinations by mutableStateOf(false)
+
     /**
-     * 用户在 Anchor App 内手动结束计时时，触发 Snackbar 提示的标志。
+     * 用户在心锚内手动结束计时时，触发 Snackbar 的标志。
      * true = 需要显示 Snackbar，显示后由 UI 重置为 false。
      */
     var showSessionEndedSnackbar by mutableStateOf(false)
+        private set
+
+    /** Snackbar 文案：已回顾 / 可去回顾 */
+    var sessionEndedSnackbarMessage by mutableStateOf("计时已结束 ✓")
+        private set
+
+    /**
+     * 需要导航到「今日」并高亮的 recordId。
+     * 来自：被监控 App 内结束 / 心锚内结束广播 / 通知点击。
+     * UI 消费后应调用 [onNavigateHomeForHighlightHandled]。
+     */
+    var pendingNavigateHomeHighlightId by mutableStateOf<Long?>(null)
         private set
 
     /** 接收来自 MonitorForegroundService 的「会话在 App 内结束」LocalBroadcast */
     private val sessionEndedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == MonitorForegroundService.ACTION_SESSION_ENDED_IN_APP) {
+                val recordId = intent.getLongExtra(MonitorForegroundService.EXTRA_NOTE_RECORD_ID, -1L)
+                val reviewed = intent.getBooleanExtra(
+                    MonitorForegroundService.EXTRA_SESSION_REVIEWED,
+                    false
+                )
+                if (recordId != -1L) {
+                    homeViewModel.requestOpenNote(recordId)
+                    pendingNavigateHomeHighlightId = recordId
+                }
+                sessionEndedSnackbarMessage = if (reviewed) {
+                    "计时已结束，对照已保存 ✓"
+                } else {
+                    "计时已结束 ✓"
+                }
                 showSessionEndedSnackbar = true
             }
         }
@@ -115,6 +150,10 @@ class MainActivity : ComponentActivity() {
     /** 供 UI 层在 Snackbar 展示完毕后调用，重置标志 */
     fun onSessionEndedSnackbarShown() {
         showSessionEndedSnackbar = false
+    }
+
+    fun onNavigateHomeForHighlightHandled() {
+        pendingNavigateHomeHighlightId = null
     }
 
     /**
@@ -126,6 +165,7 @@ class MainActivity : ComponentActivity() {
                 val recordId = intent.getLongExtra(MonitorForegroundService.EXTRA_NOTE_RECORD_ID, -1L)
                 if (recordId != -1L) {
                     homeViewModel.requestOpenNote(recordId)
+                    pendingNavigateHomeHighlightId = recordId
                 }
             }
             MonitorForegroundService.ACTION_OPEN_APP_LIMIT_EDIT -> {
@@ -133,6 +173,12 @@ class MainActivity : ComponentActivity() {
                 if (!pkg.isNullOrEmpty()) {
                     pendingAppLimitEditPackage = pkg
                 }
+            }
+            MonitorForegroundService.ACTION_OPEN_HOME -> {
+                pendingNavigateHome = true
+            }
+            MonitorForegroundService.ACTION_OPEN_POSITIVE_DESTINATIONS -> {
+                pendingNavigatePositiveDestinations = true
             }
         }
     }
@@ -175,22 +221,25 @@ class MainActivity : ComponentActivity() {
         setContent {
             // 实时监听主题偏好，支持设置页切换后立即生效
             val isDarkTheme by appPreferences.isDarkTheme.collectAsState()
-            // 实时监听拦截主题 ID
-            val interceptThemeId by appPreferences.interceptThemeId.collectAsState()
 
             MindfulnessAppTheme(darkTheme = isDarkTheme) {
                 MindfulnessApp(
                     initialOnboardingDone = isOnboardingCompleted,
                     isPrivacyAccepted = isPrivacyAccepted,
                     isDarkTheme = isDarkTheme,
-                    interceptThemeId = interceptThemeId,
                     pendingAppLimitEditPackage = pendingAppLimitEditPackage,
                     onAppLimitEditHandled = { pendingAppLimitEditPackage = null },
-                    showSessionEndedSnackbar = showSessionEndedSnackbar,
-                    onSessionEndedSnackbarShown = { onSessionEndedSnackbarShown() },
-                    onThemeSelected = { themeId ->
-                        appPreferences.setInterceptThemeId(themeId)
+                    pendingNavigateHome = pendingNavigateHome,
+                    onNavigateHomeHandled = { pendingNavigateHome = false },
+                    pendingNavigatePositiveDestinations = pendingNavigatePositiveDestinations,
+                    onNavigatePositiveDestinationsHandled = {
+                        pendingNavigatePositiveDestinations = false
                     },
+                    pendingNavigateHomeHighlightId = pendingNavigateHomeHighlightId,
+                    onNavigateHomeForHighlightHandled = { onNavigateHomeForHighlightHandled() },
+                    showSessionEndedSnackbar = showSessionEndedSnackbar,
+                    sessionEndedSnackbarMessage = sessionEndedSnackbarMessage,
+                    onSessionEndedSnackbarShown = { onSessionEndedSnackbarShown() },
                     onPrivacyAccept = {
                         runBlocking { dataStore.edit { it[PRIVACY_ACCEPTED] = true } }
                     },
@@ -218,12 +267,17 @@ fun MindfulnessApp(
     initialOnboardingDone: Boolean,
     isPrivacyAccepted: Boolean = false,
     isDarkTheme: Boolean = true,
-    interceptThemeId: String = "default",
     pendingAppLimitEditPackage: String? = null,
     onAppLimitEditHandled: () -> Unit = {},
+    pendingNavigateHome: Boolean = false,
+    onNavigateHomeHandled: () -> Unit = {},
+    pendingNavigatePositiveDestinations: Boolean = false,
+    onNavigatePositiveDestinationsHandled: () -> Unit = {},
+    pendingNavigateHomeHighlightId: Long? = null,
+    onNavigateHomeForHighlightHandled: () -> Unit = {},
     showSessionEndedSnackbar: Boolean = false,
+    sessionEndedSnackbarMessage: String = "计时已结束 ✓",
     onSessionEndedSnackbarShown: () -> Unit = {},
-    onThemeSelected: (String) -> Unit = {},
     onPrivacyAccept: () -> Unit = {},
     onPrivacyDecline: () -> Unit = {},
     onOnboardingComplete: () -> Unit
@@ -235,17 +289,46 @@ fun MindfulnessApp(
     LaunchedEffect(showSessionEndedSnackbar) {
         if (showSessionEndedSnackbar) {
             snackbarHostState.showSnackbar(
-                message = "计时已结束，记录已保存 ✓",
+                message = sessionEndedSnackbarMessage,
                 duration = SnackbarDuration.Short
             )
             onSessionEndedSnackbarShown()
         }
     }
 
-    // 当从浮窗「重新设定今日目标」跳转过来时，直接导航到该 App 的详情页并自动弹出编辑对话框
+    // 手动结束后强制落到「今日」Tab（弹出其上的二级页 / 切回 Home）
+    LaunchedEffect(pendingNavigateHomeHighlightId) {
+        if (pendingNavigateHomeHighlightId == null) return@LaunchedEffect
+        navController.navigate(Screen.Home.route) {
+            popUpTo(Screen.Home.route) { inclusive = false }
+            launchSingleTop = true
+        }
+        onNavigateHomeForHighlightHandled()
+    }
+
+    // 拦截页「打开心锚」：落到今日 Tab
+    LaunchedEffect(pendingNavigateHome) {
+        if (!pendingNavigateHome) return@LaunchedEffect
+        navController.navigate(Screen.Home.route) {
+            popUpTo(Screen.Home.route) { inclusive = false }
+            launchSingleTop = true
+        }
+        onNavigateHomeHandled()
+    }
+
+    // 离开轻条「下次可设一个想去的地方」
+    LaunchedEffect(pendingNavigatePositiveDestinations) {
+        if (!pendingNavigatePositiveDestinations) return@LaunchedEffect
+        navController.navigate(Screen.PositiveDestinations.route) {
+            launchSingleTop = true
+        }
+        onNavigatePositiveDestinationsHandled()
+    }
+
+    // 当从浮窗「重新设定今日目标」跳转过来时，直接进入该 App 的监控配置页
     LaunchedEffect(pendingAppLimitEditPackage) {
         val pkg = pendingAppLimitEditPackage ?: return@LaunchedEffect
-        navController.navigate(Screen.AppDetailStats.createRoute(pkg, autoEdit = true)) {
+        navController.navigate(Screen.AppLimitEdit.createRoute(pkg)) {
             launchSingleTop = true
         }
         onAppLimitEditHandled()
@@ -265,8 +348,8 @@ fun MindfulnessApp(
     val currentDestination = navBackStackEntry?.destination
     val currentRoute = currentDestination?.route
 
-    // 只在三个 Tab 根页面显示底部导航栏；Onboarding 及二级页面不显示
-    val tabRoutes = setOf(Screen.Home.route, Screen.Stats.route, Screen.Profile.route)
+    // 只在 Tab 根页面显示底部导航栏；Onboarding 及二级页面不显示
+    val tabRoutes = setOf(Screen.Home.route, Screen.Profile.route)
     val showBottomBar = currentRoute in tabRoutes
 
     Scaffold(
@@ -332,105 +415,164 @@ fun MindfulnessApp(
                 )
             }
 
-            composable(Screen.Home.route) {
+            composable(
+                route = Screen.Home.route,
+                exitTransition = {
+                    if (isNavigatingToAppLimit()) AppLimitTransitions.holdExit() else null
+                },
+                popEnterTransition = {
+                    if (isPoppingFromAppLimit()) AppLimitTransitions.holdPopEnter() else null
+                }
+            ) {
                 HomeScreen(
                     onNavigateToAppDetail = { packageName ->
-                        navController.navigate(Screen.AppDetailStats.createRoute(packageName))
+                        navController.navigate(Screen.AppLimitEdit.createRoute(packageName))
                     },
-                    onNavigateToAppList = {
+                    onNavigateToManage = {
+                        navController.navigate(Screen.MonitorManage.route)
+                    },
+                    onNavigateToAdd = {
                         navController.navigate(Screen.AppList.route)
+                    },
+                    onNavigateToWeekAwareness = {
+                        navController.navigate(Screen.WeekAwareness.route)
                     }
                 )
             }
 
-            composable(Screen.AppList.route) {
-                AppListScreen(
+            composable(
+                route = Screen.MonitorManage.route,
+                exitTransition = {
+                    if (isNavigatingToAppLimit()) AppLimitTransitions.holdExit() else null
+                },
+                popEnterTransition = {
+                    if (isPoppingFromAppLimit()) AppLimitTransitions.holdPopEnter() else null
+                }
+            ) {
+                MonitorManageScreen(
                     onNavigateBack = { navController.popBackStack() },
+                    onNavigateToAdd = {
+                        navController.navigate(Screen.AppList.route)
+                    },
+                    onNavigateToEdit = { packageName ->
+                        navController.navigate(Screen.AppLimitEdit.createRoute(packageName))
+                    },
                     onNavigateToVip = { navController.navigate(Screen.Vip.route) }
                 )
             }
 
-            composable(Screen.Stats.route) {
-                StatsScreen(
-                    onNavigateToAppDetail = { packageName ->
-                        navController.navigate(Screen.AppDetailStats.createRoute(packageName))
-                    },
-                    onNavigateToAppList = {
-                        navController.navigate(Screen.AppList.route)
-                    },
-                    onNavigateToDailyReport = {
-                        navController.navigate(Screen.DailyReport.createRoute(0))
-                    },
-                    onNavigateToOverview = {
-                        navController.navigate(Screen.Overview.route)
-                    }
-                )
-            }
-
             composable(
-                route = Screen.DailyReport.route,
-                arguments = listOf(
-                    androidx.navigation.navArgument("dayOffset") {
-                        type = androidx.navigation.NavType.IntType
-                        defaultValue = 0
-                    }
-                )
-            ) { backStackEntry ->
-                val dayOffset = backStackEntry.arguments?.getInt("dayOffset") ?: 0
-                DailyReportScreen(
-                    initialDayOffset = dayOffset,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(Screen.Overview.route) {
-                OverviewScreen(
+                route = Screen.AppList.route,
+                exitTransition = {
+                    if (isNavigatingToAppLimit()) AppLimitTransitions.holdExit() else null
+                },
+                popEnterTransition = {
+                    if (isPoppingFromAppLimit()) AppLimitTransitions.holdPopEnter() else null
+                }
+            ) {
+                AppListScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToDayReport = { offset ->
-                        navController.navigate(Screen.DailyReport.createRoute(offset))
-                    }
+                    onNavigateToAddLimit = { packageName ->
+                        navController.navigate(Screen.AppLimitAdd.createRoute(packageName))
+                    },
+                    onNavigateToVip = { navController.navigate(Screen.Vip.route) }
                 )
             }
 
             composable(
-                route = Screen.AppDetailStats.route,
+                route = Screen.AppLimitAdd.route,
                 arguments = listOf(
                     androidx.navigation.navArgument("packageName") {
                         type = androidx.navigation.NavType.StringType
-                    },
-                    androidx.navigation.navArgument("autoEdit") {
-                        type = androidx.navigation.NavType.BoolType
-                        defaultValue = false
                     }
-                )
+                ),
+                enterTransition = { AppLimitTransitions.enter() },
+                exitTransition = { fadeOut(animationSpec = androidx.compose.animation.core.tween(160)) },
+                popEnterTransition = { fadeIn(animationSpec = androidx.compose.animation.core.tween(160)) },
+                popExitTransition = { AppLimitTransitions.popExit() }
             ) { backStackEntry ->
                 val packageName = backStackEntry.arguments?.getString("packageName") ?: return@composable
-                val autoEdit = backStackEntry.arguments?.getBoolean("autoEdit") ?: false
-                AppDetailStatsScreen(
+                AddAppLimitScreen(
                     packageName = packageName,
-                    autoShowEditDialog = autoEdit,
+                    onNavigateBack = { navController.popBackStack() },
+                    onAddSuccess = {
+                        // 按来源落点：管理页发起 → 回管理；首页「+」发起 → 回首页看新坑
+                        val backToManage = navController.popBackStack(
+                            Screen.MonitorManage.route,
+                            inclusive = false
+                        )
+                        if (!backToManage) {
+                            navController.popBackStack(Screen.Home.route, inclusive = false)
+                        }
+                    },
+                    onNavigateToVip = { navController.navigate(Screen.Vip.route) }
+                )
+            }
+
+            composable(
+                route = Screen.AppLimitEdit.route,
+                arguments = listOf(
+                    androidx.navigation.navArgument("packageName") {
+                        type = androidx.navigation.NavType.StringType
+                    }
+                ),
+                enterTransition = { AppLimitTransitions.enter() },
+                exitTransition = { fadeOut(animationSpec = androidx.compose.animation.core.tween(160)) },
+                popEnterTransition = { fadeIn(animationSpec = androidx.compose.animation.core.tween(160)) },
+                popExitTransition = { AppLimitTransitions.popExit() }
+            ) { backStackEntry ->
+                val packageName = backStackEntry.arguments?.getString("packageName") ?: return@composable
+                AppLimitEditScreen(
+                    packageName = packageName,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToHistory = {
+                        navController.navigate(Screen.AppHistory.createRoute(packageName))
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.AppHistory.route,
+                arguments = listOf(
+                    androidx.navigation.navArgument("packageName") {
+                        type = androidx.navigation.NavType.StringType
+                    }
+                ),
+                enterTransition = { AppLimitTransitions.enter() },
+                exitTransition = { fadeOut(animationSpec = androidx.compose.animation.core.tween(160)) },
+                popEnterTransition = { fadeIn(animationSpec = androidx.compose.animation.core.tween(160)) },
+                popExitTransition = { AppLimitTransitions.popExit() }
+            ) { backStackEntry ->
+                val packageName = backStackEntry.arguments?.getString("packageName") ?: return@composable
+                AppHistoryScreen(
+                    packageName = packageName,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
 
-            // ── 第3个 Tab：我的页面 ─────────────────────────────────────────
+            composable(Screen.WeekAwareness.route) {
+                WeekAwarenessScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToAppReview = { packageName ->
+                        navController.navigate(Screen.AppHistory.createRoute(packageName))
+                    },
+                    onNavigateToAddApps = {
+                        navController.navigate(Screen.AppList.route)
+                    }
+                )
+            }
+
+            // ── 「我」Tab ───────────────────────────────────────────────────
             composable(Screen.Profile.route) {
                 ProfileScreen(
-                    interceptThemeId = interceptThemeId,
                     onNavigateToVip = {
                         navController.navigate(Screen.Vip.route)
-                    },
-                    onNavigateToInvite = {
-                        navController.navigate(Screen.Invite.route)
-                    },
-                    onNavigateToAppList = {
-                        navController.navigate(Screen.AppList.route)
                     },
                     onNavigateToSettings = {
                         navController.navigate(Screen.Settings.route)
                     },
-                    onNavigateToFavorites = {
-                        navController.navigate(Screen.FavoriteQuotes.route)
+                    onNavigateToWeekAwareness = {
+                        navController.navigate(Screen.WeekAwareness.route)
                     }
                 )
             }
@@ -438,10 +580,11 @@ fun MindfulnessApp(
             // ── 二级设置页（从「我」进入）──────────────────────────────────
             composable(Screen.Settings.route) {
                 SettingsScreen(
-                    interceptThemeId = interceptThemeId,
-                    onThemeSelected = onThemeSelected,
                     onNavigateToTheme = {
                         navController.navigate(Screen.Theme.route)
+                    },
+                    onNavigateToPositiveDestinations = {
+                        navController.navigate(Screen.PositiveDestinations.route)
                     },
                     onNavigateBack = {
                         navController.popBackStack()
@@ -451,11 +594,12 @@ fun MindfulnessApp(
 
             composable(Screen.Theme.route) {
                 ThemeScreen(
-                    interceptThemeId = interceptThemeId,
-                    onThemeSelected = onThemeSelected,
-                    onNavigateToVip = {
-                        navController.navigate(Screen.Vip.route)
-                    },
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Screen.PositiveDestinations.route) {
+                PositiveDestinationsScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
@@ -463,20 +607,6 @@ fun MindfulnessApp(
             composable(Screen.Vip.route) {
                 VipScreen(
                     isDarkTheme = isDarkTheme,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(Screen.Invite.route) {
-                InviteScreen(
-                    isDarkTheme = isDarkTheme,
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            // ── 收藏格言列表 ───────────────────────────────────────────────
-            composable(Screen.FavoriteQuotes.route) {
-                FavoriteQuotesScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

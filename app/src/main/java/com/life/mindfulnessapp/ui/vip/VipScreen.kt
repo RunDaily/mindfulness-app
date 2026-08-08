@@ -153,19 +153,16 @@ fun VipScreen(
             PurchaseButton(
                 selectedPlan = selectedPlan,
                 isLoading = uiState.isLoading || uiState.purchasingPlan != null,
-                isLoggedIn = viewModel.isLoggedIn,
                 vipGold = vipGold,
                 onPurchase = {
-                    if (!viewModel.isLoggedIn) {
-                        Toast.makeText(context, "请先在设置页登录账号", Toast.LENGTH_SHORT).show()
-                    } else if (selectedPlan != null && activity != null) {
+                    if (selectedPlan != null && activity != null) {
                         viewModel.launchPurchase(activity, selectedPlan!!)
                     }
                 }
             )
 
             // ── 免费试用入口（未激活时显示）─────────────────────────────────
-            if (!uiState.isVip && viewModel.isLoggedIn) {
+            if (!uiState.isVip && uiState.trialAvailable) {
                 Spacer(modifier = Modifier.height(12.dp))
                 TrialButton(
                     isLoading = uiState.isLoading,
@@ -310,7 +307,6 @@ private fun BenefitTable(
         BenefitRow("Block Themes",      "3 styles",  "All 8",     "All 8"),
         BenefitRow("Data History",      "7 days",    "30 days",   "Forever"),
         BenefitRow("Weekly Limit",      "—",         "✓",         "✓"),
-        BenefitRow("Cloud Sync",        "—",         "✓",         "✓"),
         BenefitRow("Daily Limit Edits", "1×/day",    "2×/day",    "Unlimited"),
         BenefitRow("Deep Insights",     "—",         "—",         "✓"),
         BenefitRow("Data Export",       "—",         "—",         "✓")
@@ -432,7 +428,7 @@ private fun PlanSelectionSection(
             price = productPrices[VipPlan.YEARLY_STANDARD],
             tag   = "Save 52%",
             tagColor = accentGreen,
-            desc  = "Cloud sync, unlimited apps"
+            desc  = "Unlimited apps, all themes"
         ),
         PlanInfo(
             plan  = VipPlan.MONTHLY_STANDARD,
@@ -589,7 +585,6 @@ private fun PlanCard(
 private fun PurchaseButton(
     selectedPlan: VipPlan?,
     isLoading: Boolean,
-    isLoggedIn: Boolean,
     vipGold: Color,
     onPurchase: () -> Unit
 ) {
@@ -616,10 +611,6 @@ private fun PurchaseButton(
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text("Processing...", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        } else if (!isLoggedIn) {
-            Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Sign in to Subscribe", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         } else {
             Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
@@ -653,7 +644,7 @@ private fun TrialButton(
         Icon(Icons.Default.CardGiftcard, contentDescription = null, modifier = Modifier.size(16.dp))
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            "Try Free for 7 Days (one-time per account)",
+            "Try Free for 7 Days (one-time per device)",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium
         )
@@ -765,9 +756,9 @@ fun VipUpgradeDialog(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(
                             "📱 Unlimited monitored apps",
-                            "🎨 All 8 block themes",
-                            "☁️ Cloud sync",
-                            "📅 Weekly usage limits"
+                            "🎨 All block themes",
+                            "📅 Weekly usage limits",
+                            "📊 Extended usage history"
                         ).forEach { item ->
                             Text(item, fontSize = 12.sp, color = accentGreen.copy(alpha = 0.85f))
                         }

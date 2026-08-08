@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">心锚</string>
+    <string name="app_slogan">用觉察，而不是意志力</string>
     <string name="app_description">有意识地使用手机</string>
 
     <!-- 权限引导 -->
@@ -28,6 +29,5 @@
     <!-- 导航 -->
     <string name="nav_home">主页</string>
     <string name="nav_apps">应用</string>
-    <string name="nav_stats">统计</string>
     <string name="nav_settings">设置</string>
 </resources>

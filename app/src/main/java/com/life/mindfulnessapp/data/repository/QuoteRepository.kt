@@ -1,12 +1,9 @@
 package com.life.mindfulnessapp.data.repository
 
 import android.util.Log
-import com.life.mindfulnessapp.data.db.dao.FavoriteQuoteDao
-import com.life.mindfulnessapp.data.db.entity.FavoriteQuoteEntity
 import com.life.mindfulnessapp.data.network.ApiService
 import com.life.mindfulnessapp.data.network.RemoteQuote
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -47,8 +44,7 @@ private const val CACHE_TTL_MS = 6 * 60 * 60 * 1000L
 
 @Singleton
 class QuoteRepository @Inject constructor(
-    private val api: ApiService,
-    private val favoriteQuoteDao: FavoriteQuoteDao
+    private val api: ApiService
 ) {
     // ── 内存缓存 ──────────────────────────────
     private val cacheMutex = Mutex()
@@ -79,26 +75,6 @@ class QuoteRepository @Inject constructor(
     suspend fun preload() = withContext(Dispatchers.IO) {
         try { ensureCache() } catch (_: Exception) {}
     }
-
-    // ── 收藏相关 ──────────────────────────────
-
-    /** 收藏一条名言 */
-    suspend fun addFavorite(content: String, author: String) = withContext(Dispatchers.IO) {
-        favoriteQuoteDao.insert(FavoriteQuoteEntity(content = content, author = author))
-    }
-
-    /** 取消收藏 */
-    suspend fun removeFavorite(content: String) = withContext(Dispatchers.IO) {
-        favoriteQuoteDao.deleteByContent(content)
-    }
-
-    /** 获取所有收藏（Flow，UI 层实时观察） */
-    fun getAllFavorites(): Flow<List<FavoriteQuoteEntity>> =
-        favoriteQuoteDao.getAllFavorites()
-
-    /** 检查某条名言是否已被收藏（Flow） */
-    fun isFavorite(content: String): Flow<Boolean> =
-        favoriteQuoteDao.isFavorite(content)
 
     // ── 内部：确保缓存有效 ───────────────────
 

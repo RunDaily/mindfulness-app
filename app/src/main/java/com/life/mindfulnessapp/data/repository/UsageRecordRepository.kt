@@ -5,7 +5,9 @@ import com.life.mindfulnessapp.data.db.dao.DailyUsageSummary
 import com.life.mindfulnessapp.data.db.dao.HourlyUsage
 import com.life.mindfulnessapp.data.db.dao.UsageRecordDao
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
+import com.life.mindfulnessapp.domain.model.RecentPurpose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,10 +25,14 @@ class UsageRecordRepository @Inject constructor(
     /** 仅更新指定记录的备注，传入 null 表示清空备注 */
     suspend fun updateNote(id: Long, note: String?) = dao.updateNote(id, note)
 
+    /** 同时更新备注与对照档位 */
+    suspend fun updateNoteAndMindfulness(id: Long, note: String?, mindfulnessLevel: Int?) =
+        dao.updateNoteAndMindfulness(id, note, mindfulnessLevel)
+
     /** 仅更新指定记录的效果评分 */
     suspend fun updateEffectScore(id: Long, score: Int?) = dao.updateEffectScore(id, score)
 
-    /** 同时更新备注和效果评分（结束弹框提交时调用）*/
+    /** 同时更新备注和效果评分 */
     suspend fun updateNoteAndScore(id: Long, note: String?, score: Int?) =
         dao.updateNoteAndScore(id, note, score)
 
@@ -35,6 +41,16 @@ class UsageRecordRepository @Inject constructor(
 
     fun getDayRecords(dayStartMs: Long, dayEndMs: Long): Flow<List<UsageRecordEntity>> =
         dao.getDayRecords(dayStartMs, dayEndMs)
+
+    /**
+     * 今日已完成意图回顾的次数（写入了有效 mindfulnessLevel）。
+     * 用于收束页「今日第 N 次回顾」。
+     */
+    suspend fun countTodayIntentReviews(nowMs: Long = System.currentTimeMillis()): Int {
+        val (start, end) = getDayRange(nowMs)
+        return dao.getDayRecords(start, end).first()
+            .count { UsageRecordEntity.MindfulnessLevel.isValid(it.mindfulnessLevel) }
+    }
 
     /** 今日有 purpose 记录的 Flow，用于首页展示有意识使用次数 */
     fun getDayMindfulRecords(dayStartMs: Long, dayEndMs: Long): Flow<List<UsageRecordEntity>> =
@@ -66,19 +82,19 @@ class UsageRecordRepository @Inject constructor(
     /** 清除全部本地使用记录（「清除本地数据」功能调用）*/
     suspend fun deleteAllRecords() = dao.deleteAllRecords()
 
-    /** 获取 sinceMs 之后的所有已完成记录（用于云端同步）*/
+    /** 获取 sinceMs 之后的所有已完成记录 */
     suspend fun getAllCompletedRecordsSince(sinceMs: Long): List<UsageRecordEntity> =
         dao.getAllCompletedRecordsSince(sinceMs)
 
     /**
-     * 获取某一天内指定 App 的所有已完成记录（按开始时间正序）。
+     * 获取某一天内指定 App 的所有已完成记录（按开始时间倒序，最新在上）。
      * 用于详情页日历联动列表，显示选中日期的使用明细。
      */
-    suspend fun getAppDayRecordsAsc(
+    suspend fun getAppDayRecordsDesc(
         packageName: String,
         dayStartMs: Long,
         dayEndMs: Long
-    ): List<UsageRecordEntity> = dao.getDayRecordsForAppAsc(packageName, dayStartMs, dayEndMs)
+    ): List<UsageRecordEntity> = dao.getDayRecordsForAppDesc(packageName, dayStartMs, dayEndMs)
 
     /**
      * 获取指定 App 在某个月份范围内每天的本地记录总时长 Map，key="yyyy-MM-dd"。
@@ -123,6 +139,10 @@ class UsageRecordRepository @Inject constructor(
     fun getAppRecordsByPeriod(packageName: String, startMs: Long, endMs: Long): Flow<List<UsageRecordEntity>> =
         dao.getAppRecordsByPeriod(packageName, startMs, endMs)
 
+    /** 指定 App 全部使用记录（新→旧） */
+    fun getRecordsByApp(packageName: String): Flow<List<UsageRecordEntity>> =
+        dao.getRecordsByApp(packageName)
+
     /** 全局（所有 App）在指定时段内的按小时使用分布 */
     suspend fun getGlobalHourlyDistribution(startMs: Long, endMs: Long): List<HourlyUsage> =
         dao.getGlobalHourlyDistribution(startMs, endMs)
@@ -146,6 +166,28 @@ class UsageRecordRepository @Inject constructor(
     ): List<UsageRecordEntity> {
         val (start, end) = getDayRange(dateMs)
         return dao.getDayRecordsForApp(packageName, start, end)
+    }
+
+    /**
+     * 获取指定 App 去重后的最近意图（按最近使用优先）。
+     * 过滤过短文本，避免单字乱填污染快捷 tag。
+     */
+    suspend fun getRecentPurposes(
+        packageName: String,
+        limit: Int = 3
+    ): List<RecentPurpose> {
+        if (limit <= 0) return emptyList()
+        val raw = dao.getRecentPurposesRaw(packageName, fetchLimit = 40)
+        val seen = linkedSetOf<String>()
+        val result = mutableListOf<RecentPurpose>()
+        for (row in raw) {
+            val trimmed = row.purpose.trim()
+            if (trimmed.length < 2) continue
+            if (!seen.add(trimmed)) continue
+            result.add(RecentPurpose(purpose = trimmed))
+            if (result.size >= limit) break
+        }
+        return result
     }
 
     companion object {
@@ -192,6 +234,21 @@ class UsageRecordRepository @Inject constructor(
             val (todayStart, _) = getDayRange(dateMs)
             val yesterdayStart = todayStart - 24 * 60 * 60 * 1000L
             return yesterdayStart to todayStart
+        }
+
+        /** 获取本月（1 号 0 点到下月 1 号 0 点）的开始和结束时间戳 */
+        fun getMonthRange(dateMs: Long): Pair<Long, Long> {
+            val cal = Calendar.getInstance().apply {
+                timeInMillis = dateMs
+                set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val start = cal.timeInMillis
+            cal.add(Calendar.MONTH, 1)
+            return start to cal.timeInMillis
         }
     }
 }
