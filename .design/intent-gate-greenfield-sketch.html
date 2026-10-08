@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>意图门 · 从零设计 · 草图</title>
+  <style>
+    :root {
+      --ink: #0b0d0c;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --paper: #e8ede6;
+      --leaf: #3d7a4a;
+      --leaf-soft: rgba(61, 122, 74, 0.14);
+      --sand: #c4a35a;
+      --sand-soft: rgba(196, 163, 90, 0.16);
+      --line: rgba(232, 237, 230, 0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 50% -10%, #1a2420 0%, transparent 50%),
+        var(--ink);
+      color: var(--paper);
+      font-family: "Iowan Old Style", "Songti SC", "Source Han Serif SC", Georgia, serif;
+      padding: 32px 16px 80px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 36px; }
+
+    .hero { text-align: center; max-width: 580px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 11px; letter-spacing: .18em; color: var(--leaf);
+      font-weight: 600; margin-bottom: 14px;
+    }
+    .hero h1 {
+      font-size: clamp(26px, 4vw, 34px); font-weight: 500;
+      letter-spacing: -.02em; line-height: 1.25;
+    }
+    .hero p {
+      margin-top: 14px; font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 14px; color: var(--fog); line-height: 1.7;
+    }
+
+    .beats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    }
+    @media (max-width: 800px) { .beats { grid-template-columns: 1fr; } }
+    .beat {
+      border: 1px solid var(--line); border-radius: 16px;
+      padding: 18px 16px; background: rgba(255,255,255,.02);
+    }
+    .beat .n {
+      font-family: "SF Pro Text", sans-serif;
+      font-size: 10px; letter-spacing: .14em; color: var(--leaf); margin-bottom: 8px;
+    }
+    .beat h3 { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+    .beat p {
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 12px; color: var(--fog); line-height: 1.55;
+    }
+
+    .tabs {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+    }
+    .tabs button {
+      border: 1px solid var(--line); background: transparent; color: var(--fog);
+      padding: 8px 14px; border-radius: 999px; font-size: 12px; cursor: pointer;
+      font-family: inherit;
+    }
+    .tabs button.on {
+      color: var(--paper); border-color: rgba(61,122,74,.5);
+      background: var(--leaf-soft);
+    }
+
+    .stage-wrap {
+      display: flex; justify-content: center; gap: 28px; flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .phone {
+      width: min(340px, 100%);
+      aspect-ratio: 9 / 17.5;
+      border-radius: 40px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: #070908;
+      box-shadow: 0 30px 90px rgba(0,0,0,.55);
+      position: relative; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .phone .bar {
+      font-family: "SF Pro Text", sans-serif;
+      height: 44px; padding: 14px 22px 0;
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: rgba(232,237,230,.45); font-weight: 600;
+    }
+
+    /* —— Beat states —— */
+    .layer { position: absolute; inset: 0; display: flex; flex-direction: column;
+      padding: 52px 22px 28px; opacity: 0; pointer-events: none;
+      transition: opacity .35s ease; }
+    .layer.on { opacity: 1; pointer-events: auto; }
+
+    /* Beat 0: arrive */
+    #beat0 {
+      align-items: center; justify-content: center; text-align: center;
+      background:
+        radial-gradient(ellipse at 50% 40%, rgba(61,122,74,.18) 0%, transparent 55%),
+        #070908;
+    }
+    .pulse {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--leaf);
+      box-shadow: 0 0 0 0 rgba(61,122,74,.45);
+      animation: pulse 2.2s ease-out infinite;
+      margin-bottom: 28px;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(61,122,74,.4); }
+      70% { box-shadow: 0 0 0 28px rgba(61,122,74,0); }
+      100% { box-shadow: 0 0 0 0 rgba(61,122,74,0); }
+    }
+    #beat0 .app {
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 13px; color: var(--fog); margin-bottom: 10px;
+    }
+    #beat0 .line {
+      font-size: 22px; font-weight: 500; max-width: 220px; line-height: 1.35;
+    }
+    #beat0 .sub {
+      margin-top: 16px;
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 12px; color: var(--mist);
+    }
+
+    /* Beat 1: name */
+    #beat1 { background: #070908; }
+    .whisper {
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 11px; color: var(--mist); margin-bottom: 6px;
+    }
+    .q {
+      font-size: 28px; font-weight: 500; letter-spacing: -.02em;
+      line-height: 1.25; margin-bottom: 10px;
+    }
+    .cue {
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 12px; color: var(--fog); line-height: 1.5;
+      margin-bottom: 22px; min-height: 36px;
+    }
+    .field {
+      flex: 1; display: flex; flex-direction: column; gap: 14px;
+    }
+    .field textarea {
+      width: 100%; flex: 1; min-height: 100px; max-height: 140px;
+      resize: none; border: 0; outline: 0; background: transparent;
+      color: var(--paper); font-size: 20px; line-height: 1.4;
+      font-family: inherit; font-weight: 400;
+    }
+    .field textarea::placeholder { color: rgba(139,147,140,.45); }
+    .chips {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+    }
+    .chip {
+      border: 1px solid var(--line); background: transparent;
+      color: var(--fog); font-size: 12px; padding: 8px 12px;
+      border-radius: 999px; cursor: pointer; font-family: inherit;
+    }
+    .chip.honest {
+      border-color: rgba(196,163,90,.35); color: #d8c48a;
+    }
+    .chip.on {
+      background: var(--leaf-soft); border-color: rgba(61,122,74,.45); color: #9fd4a8;
+    }
+    .chip.honest.on {
+      background: var(--sand-soft); border-color: rgba(196,163,90,.55); color: var(--sand);
+    }
+    .footer-acts {
+      display: grid; gap: 10px; margin-top: auto;
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+    }
+    .go {
+      width: 100%; padding: 16px; border: 0; border-radius: 16px;
+      background: var(--leaf); color: #e8f5ea;
+      font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .go:disabled { background: #1a1f1b; color: var(--mist); cursor: not-allowed; }
+    .away {
+      width: 100%; padding: 15px; border-radius: 16px; cursor: pointer;
+      background: transparent; border: 1px solid rgba(232,237,230,.28);
+      color: var(--paper); font-size: 15px; font-weight: 600;
+      font-family: inherit;
+    }
+    .else {
+      text-align: center; font-size: 12px; color: var(--mist);
+      padding: 4px; cursor: pointer; background: none; border: 0;
+      font-family: inherit; text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* Beat 2: hold (duration as hold, not sheet of chores) */
+    #beat2 {
+      background:
+        radial-gradient(ellipse at 50% 30%, rgba(61,122,74,.12) 0%, transparent 50%),
+        #070908;
+      align-items: center;
+    }
+    .named {
+      text-align: center; margin-top: 24px; margin-bottom: 8px;
+    }
+    .named .kind {
+      font-family: "SF Pro Text", sans-serif;
+      font-size: 10px; letter-spacing: .12em; color: var(--sand);
+      margin-bottom: 8px;
+    }
+    .named .kind.task { color: #9fd4a8; }
+    .named .txt { font-size: 22px; font-weight: 500; line-height: 1.35; }
+    .hold-ring {
+      width: 200px; height: 200px; border-radius: 50%;
+      margin: 28px auto 18px;
+      border: 1.5px solid rgba(232,237,230,.12);
+      display: grid; place-items: center; position: relative;
+      cursor: grab; user-select: none;
+      touch-action: none;
+    }
+    .hold-ring::before {
+      content: ""; position: absolute; inset: -1px; border-radius: 50%;
+      background: conic-gradient(var(--leaf) calc(var(--p, 25) * 1%), transparent 0);
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0);
+      mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0);
+    }
+    .hold-inner { text-align: center; z-index: 1; }
+    .hold-inner .mins {
+      font-family: "SF Pro Text", sans-serif;
+      font-size: 42px; font-weight: 300; letter-spacing: -.03em;
+    }
+    .hold-inner .unit {
+      font-family: "SF Pro Text", sans-serif;
+      font-size: 12px; color: var(--fog); margin-top: 2px;
+    }
+    .hold-hint {
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 12px; color: var(--mist); text-align: center; margin-bottom: 28px;
+    }
+    .enter-now {
+      width: 100%; max-width: 260px; margin: 0 auto; padding: 15px;
+      border: 0; border-radius: 16px; background: var(--paper); color: var(--ink);
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+    }
+    .back-name {
+      margin-top: 12px; text-align: center;
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 12px; color: var(--mist); background: none; border: 0;
+      cursor: pointer; width: 100%;
+    }
+
+    /* Leave */
+    #beatLeave {
+      align-items: center; justify-content: center; text-align: center;
+      background: #070908;
+    }
+    #beatLeave .mark {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--leaf);
+      margin: 0 auto 20px;
+    }
+    #beatLeave h2 { font-size: 24px; font-weight: 500; margin-bottom: 10px; }
+    #beatLeave p {
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 13px; color: var(--fog); line-height: 1.55; max-width: 220px;
+    }
+
+    /* Else sheet thin */
+    #beatElse {
+      background: rgba(7,9,8,.96); justify-content: flex-end;
+    }
+    .else-sheet {
+      border-top: 1px solid var(--line);
+      padding: 18px 4px 8px;
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+    }
+    .else-sheet h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .else-sheet .s { font-size: 12px; color: var(--fog); margin-bottom: 14px; }
+    .else-list { display: grid; gap: 8px; }
+    .else-item {
+      padding: 14px 14px; border-radius: 14px;
+      background: rgba(255,255,255,.04); border: 1px solid var(--line);
+      font-size: 14px; color: var(--paper); cursor: pointer; text-align: left;
+    }
+    .else-cancel {
+      margin-top: 10px; width: 100%; padding: 12px; border: 0;
+      background: transparent; color: var(--mist); font-size: 13px;
+      cursor: pointer; font-family: inherit;
+    }
+
+    .side {
+      width: min(360px, 100%);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 13px; color: var(--fog); line-height: 1.65;
+    }
+    .side h2 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 18px; font-weight: 500; color: var(--paper);
+      margin-bottom: 12px;
+    }
+    .side ul { list-style: none; display: grid; gap: 10px; }
+    .side li {
+      padding: 12px 14px; border-radius: 12px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.02);
+    }
+    .side li strong { color: var(--paper); font-weight: 600; display: block; margin-bottom: 4px; }
+    .side .cut { color: #c97b7b; }
+
+    .rules {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+    }
+    @media (max-width: 700px) { .rules { grid-template-columns: 1fr; } }
+    .rules > div {
+      border: 1px solid var(--line); border-radius: 14px; padding: 16px;
+      background: rgba(255,255,255,.02);
+    }
+    .rules h3 { font-size: 13px; color: var(--paper); margin-bottom: 10px; }
+    .rules p { font-size: 12px; color: var(--fog); line-height: 1.55; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">GREENFIELD · 不考虑现有形态</div>
+      <h1>门不是一张表单。<br />门是两拍半的停顿。</h1>
+      <p>
+        先停住，再命名，再托住多久——同一条呼吸里完成。<br />
+        没有搜索切换、没有能力橱窗、没有时钟装饰。屏幕几乎空着，只留下「我知道」。
+      </p>
+    </header>
+
+    <section class="beats">
+      <div class="beat">
+        <div class="n">BEAT 0 · 约 0.8s</div>
+        <h3>停住</h3>
+        <p>只有 App 名 + 一句「你正要进去」。不提问、不填表。身体先到场。</p>
+      </div>
+      <div class="beat">
+        <div class="n">BEAT 1 · 主舞台</div>
+        <h3>命名</h3>
+        <p>「这一次是什么？」大输入 + 诚实芯片。离开与进入视觉对等。</p>
+      </div>
+      <div class="beat">
+        <div class="n">BEAT 2 · 同一意图</div>
+        <h3>托住</h3>
+        <p>时长不是弹层杂务，是围着命名的一圈：拖环选多久，再进入。</p>
+      </div>
+    </section>
+
+    <div class="tabs">
+      <button type="button" class="on" data-b="0" onclick="go(0)">0 · 停住</button>
+      <button type="button" data-b="1" onclick="go(1)">1 · 命名</button>
+      <button type="button" data-b="2" onclick="go(2)">2 · 托住</button>
+      <button type="button" data-b="leave" onclick="go('leave')">离开</button>
+      <button type="button" data-b="else" onclick="go('else')">去做别的</button>
+    </div>
+
+    <div class="stage-wrap">
+      <div class="phone" id="phone">
+        <div class="bar"><span>9:41</span><span>▮▮▮</span></div>
+
+        <div class="layer on" id="beat0">
+          <div class="pulse"></div>
+          <div class="app">小红书</div>
+          <div class="line">你正要进去</div>
+          <div class="sub">今日第 3 次 · 轻声，不抢戏</div>
+        </div>
+
+        <div class="layer" id="beat1">
+          <div class="whisper">小红书 · 今日第 3 次</div>
+          <div class="q">这一次<br />是什么？</div>
+          <div class="cue" id="cue">拇指已经伸出去了吗</div>
+          <div class="field">
+            <textarea id="ta" placeholder="事、冲动，或要搜的词" oninput="sync()"></textarea>
+            <div class="chips">
+              <button type="button" class="chip" data-v="回一条私信" onclick="useChip(this)">回私信</button>
+              <button type="button" class="chip" data-v="找一个菜谱" onclick="useChip(this)">找菜谱</button>
+              <button type="button" class="chip honest" data-v="就是想刷" onclick="useChip(this)">就是想刷</button>
+              <button type="button" class="chip honest" data-v="手在点了" onclick="useChip(this)">手在点了</button>
+            </div>
+          </div>
+          <div class="footer-acts">
+            <button type="button" class="go" id="goBtn" disabled onclick="go(2)">带着它进入</button>
+            <button type="button" class="away" onclick="go('leave')">不进去了</button>
+            <button type="button" class="else" onclick="go('else')">其实想做别的</button>
+          </div>
+        </div>
+
+        <div class="layer" id="beat2">
+          <div class="named">
+            <div class="kind" id="kind">冲动 · 合法</div>
+            <div class="txt" id="namedTxt">就是想刷</div>
+          </div>
+          <div class="hold-ring" id="ring" style="--p: 33;">
+            <div class="hold-inner">
+              <div class="mins" id="mins">15</div>
+              <div class="unit">分钟</div>
+            </div>
+          </div>
+          <div class="hold-hint">拖圆环选择多久 · 命名已被托住</div>
+          <button type="button" class="enter-now" onclick="alert('草图：进入 App，命名成为会话对象')">进入</button>
+          <button type="button" class="back-name" onclick="go(1)">改命名</button>
+        </div>
+
+        <div class="layer" id="beatLeave">
+          <div class="mark"></div>
+          <h2>到场了</h2>
+          <p>看见了，没有跟进去。<br />不是忍住，是选择。</p>
+        </div>
+
+        <div class="layer" id="beatElse">
+          <div style="flex:1"></div>
+          <div class="else-sheet">
+            <h3>去做什么？</h3>
+            <div class="s">从命名里长出来的转向，不是能力橱窗</div>
+            <div class="else-list">
+              <button type="button" class="else-item">打开待办里的下一件</button>
+              <button type="button" class="else-item">回到桌面，先站起来</button>
+              <button type="button" class="else-item">写下「此刻更想要的」再走</button>
+            </div>
+            <button type="button" class="else-cancel" onclick="go(1)">回到命名</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side" id="sideNote">
+        <h2>Beat 0 · 停住</h2>
+        <ul>
+          <li><strong>为什么要有这一拍</strong>自动化太快，直接出输入框，人会用「填表」代替「看见」。</li>
+          <li><strong>绝不超过约 1 秒</strong>自动淡入命名页。不是惩罚式呼吸倒计时。</li>
+          <li><strong>只保留语境耳语</strong>App 名、今日第几次。时钟、限额、勋章全拿掉。</li>
+        </ul>
+      </aside>
+    </div>
+
+    <section class="rules">
+      <div>
+        <h3>我会放进门里的</h3>
+        <p>· 0.8 秒的空：先停，再问</p>
+        <p>· 一个大问题 + 一个大输入</p>
+        <p>· 诚实命名与任务命名同级</p>
+        <p>· 离开与进入对等，文案是「到场」</p>
+        <p>· 时长围着命名转一圈（托住）</p>
+        <p>· 「去做别的」是薄层转向，不是九宫格产品入口</p>
+      </div>
+      <div>
+        <h3>我会坚决拿掉的</h3>
+        <p class="cut">· 搜索直达当默认主路径</p>
+        <p class="cut">· 深链/搜索从命名文案静默劫持落地</p>
+        <p class="cut">· 模式 Tab / 多决策组件</p>
+        <p class="cut">· 拟物时钟抢视觉中心</p>
+        <p class="cut">· 目标/待办/习惯橱窗式下区</p>
+        <p class="cut">· 四念处四步问卷、强制深呼吸</p>
+        <p class="cut">· 「有意义意图」才能过门</p>
+        <p class="cut">· 离开时的毅力勋章话术</p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const notes = {
+      0: {
+        title: "Beat 0 · 停住",
+        items: [
+          ["为什么要有这一拍", "自动化太快，直接出输入框，人会用「填表」代替「看见」。"],
+          ["绝不超过约 1 秒", "自动淡入命名页。不是惩罚式呼吸倒计时。"],
+          ["只保留语境耳语", "App 名、今日第几次。时钟、限额、勋章全拿掉。"],
+        ],
+      },
+      1: {
+        title: "Beat 1 · 命名",
+        items: [
+          ["主问", "「这一次是什么？」——对象可以是事，也可以是冲动。"],
+          ["一句 cue", "身/受/心轮换，点不点都行；法不进门。"],
+          ["三出口同页", "带着它进入 / 不进去了 / 其实想做别的。没有第四个杂项。"],
+        ],
+      },
+      2: {
+        title: "Beat 2 · 托住",
+        items: [
+          ["时长的隐喻", "不是「还要填一项」，是把已命名的这一次托在手里。"],
+          ["环即边界", "拖环改分钟；命名始终在环上方，对照对象不丢。"],
+          ["可退回", "改命名 = 回到 Beat 1，不重走停住。"],
+        ],
+      },
+      leave: {
+        title: "离开 · 到场",
+        items: [
+          ["成功定义", "看见后没跟进去 = 觉察成立，不是意志力高光。"],
+          ["文案禁区", "不用「真棒你忍住了」「今日毅力 +1」。"],
+          ["停留极短", "一瞥即回桌面，避免把门做成奖台。"],
+        ],
+      },
+      else: {
+        title: "去做别的 · 薄转向",
+        items: [
+          ["不是能力橱窗", "不陈列目标/待办/习惯产品位。"],
+          ["从当下长出", "选项少、可空、可只是「先站起来」。"],
+          ["随时可回", "没想清楚就回到命名，不惩罚。"],
+        ],
+      },
+    };
+
+    const cues = [
+      "拇指已经伸出去了吗",
+      "是无聊在赶你，还是真有事",
+      "「看一眼就好」是不是在说话",
+    ];
+    let cueI = 0;
+
+    function renderNote(key) {
+      const n = notes[key];
+      const ul = n.items.map(([a, b]) =>
+        `<li><strong>${a}</strong>${b}</li>`
+      ).join("");
+      document.getElementById("sideNote").innerHTML =
+        `<h2>${n.title}</h2><ul>${ul}</ul>`;
+    }
+
+    function go(which) {
+      const map = {
+        0: "beat0",
+        1: "beat1",
+        2: "beat2",
+        leave: "beatLeave",
+        else: "beatElse",
+      };
+      document.querySelectorAll(".layer").forEach((el) => el.classList.remove("on"));
+      document.getElementById(map[which]).classList.add("on");
+      document.querySelectorAll(".tabs button").forEach((b) => {
+        b.classList.toggle("on", String(b.dataset.b) === String(which));
+      });
+      if (which === 2) {
+        const t = document.getElementById("ta").value.trim() || "就是想刷";
+        document.getElementById("namedTxt").textContent = t;
+        const urge = /想刷|手|无聊|看一眼|冲动/.test(t);
+        const k = document.getElementById("kind");
+        k.textContent = urge ? "冲动 · 合法" : "事";
+        k.className = "kind" + (urge ? "" : " task");
+      }
+      if (which === 1) {
+        document.getElementById("cue").textContent = cues[cueI % cues.length];
+        cueI++;
+      }
+      renderNote(which);
+    }
+
+    function sync() {
+      const v = document.getElementById("ta").value.trim();
+      document.getElementById("goBtn").disabled = v.length < 1;
+      document.querySelectorAll(".chip").forEach((c) => {
+        c.classList.toggle("on", c.dataset.v === v);
+      });
+    }
+    function useChip(el) {
+      document.getElementById("ta").value = el.dataset.v;
+      sync();
+    }
+
+    // ring drag → minutes 5..45
+    const ring = document.getElementById("ring");
+    function setMins(m) {
+      m = Math.max(5, Math.min(45, Math.round(m / 5) * 5));
+      document.getElementById("mins").textContent = m;
+      ring.style.setProperty("--p", ((m - 5) / 40) * 100);
+    }
+    function minsFromEvent(e) {
+      const r = ring.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const pt = e.touches ? e.touches[0] : e;
+      let ang = Math.atan2(pt.clientY - cy, pt.clientX - cx); // -PI..PI
+      let deg = (ang * 180) / Math.PI + 90; // 0 at top
+      if (deg < 0) deg += 360;
+      return 5 + (deg / 360) * 40;
+    }
+    let dragging = false;
+    ring.addEventListener("pointerdown", (e) => {
+      dragging = true;
+      ring.setPointerCapture(e.pointerId);
+      setMins(minsFromEvent(e));
+    });
+    ring.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      setMins(minsFromEvent(e));
+    });
+    ring.addEventListener("pointerup", () => { dragging = false; });
+
+    // auto demo: beat0 → beat1
+    setTimeout(() => {
+      if (document.getElementById("beat0").classList.contains("on")) go(1);
+    }, 1100);
+
+    renderNote(0);
+  </script>
+</body>
+</html>

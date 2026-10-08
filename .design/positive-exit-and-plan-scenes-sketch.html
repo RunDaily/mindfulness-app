@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心锚 · 守计划场景 &amp; 去做了记录</title>
+  <style>
+    :root {
+      --bg: #000;
+      --surface: #1c1c1e;
+      --line: #3a3a3c;
+      --text: #fff;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --green: #34c759;
+      --green-dim: rgba(52, 199, 89, 0.16);
+      --amber: #ffd60a;
+      --amber-dim: rgba(255, 214, 10, 0.12);
+      --blue: #64d2ff;
+      --blue-dim: rgba(100, 210, 255, 0.12);
+      --violet: #bf5af2;
+      --violet-dim: rgba(191, 90, 242, 0.14);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 18% 0%, #1a1610 0%, transparent 40%),
+        radial-gradient(ellipse at 82% 5%, #102018 0%, transparent 38%),
+        #050506;
+      color: var(--text);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 64px;
+    }
+    .wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 28px; }
+
+    .hero { text-align: center; max-width: 620px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: .12em;
+      color: var(--amber); margin-bottom: 10px;
+    }
+    .hero h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+    .hero p { margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .pills { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .pill {
+      font-size: 12px; padding: 7px 12px; border-radius: 999px;
+      border: 1px solid rgba(255,214,10,.28); background: var(--amber-dim); color: #ffe8a0;
+    }
+    .pill.g {
+      border-color: rgba(52,199,89,.28); background: var(--green-dim); color: #b7f0c4;
+    }
+
+    .section-h {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .section-h h2 { font-size: 16px; font-weight: 650; }
+    .section-h p { font-size: 12px; color: var(--dim); line-height: 1.45; max-width: 420px; }
+
+    .phones {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start;
+    }
+    @media (max-width: 800px) { .phones { grid-template-columns: 1fr; } }
+
+    .col-head { text-align: center; margin-bottom: 10px; }
+    .col-head h3 { font-size: 13px; font-weight: 650; }
+    .col-head p { font-size: 11px; color: var(--dim); margin-top: 3px; }
+
+    .phone {
+      width: 100%; max-width: 390px; margin: 0 auto;
+      background: var(--bg);
+      border: 1px solid #2a2a2c; border-radius: 36px;
+      padding: 12px 12px 18px;
+      box-shadow: 0 0 0 1px #111, 0 24px 80px rgba(0,0,0,.5);
+      display: flex; flex-direction: column; gap: 11px;
+    }
+    .status-bar {
+      height: 22px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px; font-size: 11px; font-weight: 600; color: #aeaeb2;
+    }
+    .region {
+      background: var(--surface); border: 1px solid #2a2a2c;
+      border-radius: var(--radius); padding: 14px; position: relative;
+    }
+    .region-tag {
+      position: absolute; top: -9px; left: 12px;
+      font-size: 10px; font-weight: 650; letter-spacing: .04em;
+      border-radius: 999px; padding: 2px 8px;
+    }
+    .tag-amber { color: #ffe08a; background: #1a1608; border: 1px solid rgba(255,214,10,.3); }
+    .tag-green { color: var(--green); background: #0d1a10; border: 1px solid rgba(52,199,89,.35); }
+    .tag-blue { color: var(--blue); background: #0c1820; border: 1px solid rgba(100,210,255,.35); }
+    .tag-violet { color: #e0b0ff; background: #1a0f22; border: 1px solid rgba(191,90,242,.35); }
+
+    /* Gate bot focus */
+    .bot-title {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 12px; color: var(--muted); margin: 4px 0 12px; padding-top: 8px;
+    }
+    .bot-title::before, .bot-title::after {
+      content: ""; flex: 1; height: 1px; background: #2c2c2e;
+    }
+    .exit {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+      padding: 10px 12px; border-radius: 14px;
+      background: #0e0e10; border: 1px solid #2a2a2c; margin-bottom: 8px;
+    }
+    .exit.featured {
+      border-color: rgba(255,214,10,.4);
+      background: linear-gradient(180deg, #1a1608 0%, #0e0e10 100%);
+      box-shadow: inset 0 0 0 1px rgba(255,214,10,.08);
+    }
+    .exit-ico {
+      width: 30px; height: 30px; border-radius: 9px;
+      display: grid; place-items: center; font-size: 13px;
+      background: var(--amber-dim); color: var(--amber);
+    }
+    .exit-name { font-size: 13px; font-weight: 650; }
+    .exit-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+    .scene-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 6px; font-size: 10px; font-weight: 650;
+      padding: 3px 8px; border-radius: 999px;
+      background: var(--violet-dim); color: #e0b0ff;
+      border: 1px solid rgba(191,90,242,.28);
+    }
+    .exit-preview { font-size: 10px; color: #aeaeb2; text-align: right; line-height: 1.3; max-width: 88px; }
+    .muted-exit { opacity: .55; }
+    .note {
+      font-size: 10px; color: #48484a; text-align: center; line-height: 1.4; margin-top: 4px;
+    }
+
+    /* Plan config */
+    .cfg-title { font-size: 15px; font-weight: 650; padding-top: 6px; }
+    .cfg-sub { font-size: 11px; color: var(--muted); margin: 4px 0 12px; line-height: 1.45; }
+    .scene-tabs {
+      display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .scene-tab {
+      font-size: 11px; font-weight: 650; padding: 6px 10px; border-radius: 999px;
+      border: 1px solid #2a2a2c; color: var(--dim); background: #0e0e10;
+    }
+    .scene-tab.on {
+      color: #e0b0ff; border-color: rgba(191,90,242,.4); background: var(--violet-dim);
+    }
+    .plan-card {
+      padding: 12px; border-radius: 14px; background: #0e0e10; border: 1px solid #2a2a2c;
+      margin-bottom: 8px;
+    }
+    .plan-card.hl { border-color: rgba(255,214,10,.35); }
+    .plan-top { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+    .plan-name { font-size: 14px; font-weight: 650; }
+    .plan-why { font-size: 11px; color: #e0b0ff; margin-top: 4px; }
+    .plan-meta { font-size: 11px; color: var(--dim); margin-top: 8px; line-height: 1.4; }
+    .badge {
+      font-size: 10px; font-weight: 650; padding: 3px 7px; border-radius: 999px;
+      white-space: nowrap;
+    }
+    .badge.goal { background: var(--violet-dim); color: #e0b0ff; }
+    .badge.habit { background: var(--green-dim); color: #b7f0c4; }
+    .badge.life { background: var(--blue-dim); color: #a8e4ff; }
+    .tpl-row {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
+    }
+    .tpl {
+      font-size: 10px; padding: 5px 8px; border-radius: 999px;
+      border: 1px dashed #3a3a3c; color: var(--muted);
+    }
+
+    /* Today mirror */
+    .pulse-title { font-size: 15px; font-weight: 650; padding-top: 6px; }
+    .pulse-sub { font-size: 11px; color: var(--muted); margin: 3px 0 10px; }
+    .metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .metric {
+      background: #0e0e10; border: 1px solid #2a2a2c; border-radius: 12px;
+      padding: 10px 6px; text-align: center;
+    }
+    .metric .n { font-size: 18px; font-weight: 700; }
+    .metric .l { font-size: 10px; color: var(--dim); margin-top: 2px; }
+    .metric.intent .n { color: var(--green); }
+    .metric.hold .n { color: var(--amber); }
+    .metric.do .n { color: var(--blue); }
+
+    .tl { margin-top: 12px; display: grid; gap: 6px; }
+    .tl-row {
+      display: grid; grid-template-columns: 40px 10px 1fr; gap: 8px; align-items: start;
+      padding: 9px 10px; border-radius: 12px; background: #0e0e10; border: 1px solid #222;
+    }
+    .tl-row.do-row {
+      border-color: rgba(100,210,255,.28);
+      background: linear-gradient(90deg, rgba(100,210,255,.06), #0e0e10 40%);
+    }
+    .tl-time { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; padding-top: 2px; }
+    .tl-dot {
+      width: 8px; height: 8px; border-radius: 50%; margin-top: 5px;
+    }
+    .tl-dot.intent { background: var(--green); }
+    .tl-dot.hold { background: var(--amber); }
+    .tl-dot.do { background: var(--blue); }
+    .tl-body { min-width: 0; }
+    .tl-main { font-size: 12px; color: #e8e8ed; line-height: 1.35; }
+    .tl-kind {
+      display: inline-block; font-size: 10px; font-weight: 650;
+      margin-top: 4px; padding: 2px 7px; border-radius: 999px;
+    }
+    .tl-kind.intent { background: var(--green-dim); color: #b7f0c4; }
+    .tl-kind.hold { background: var(--amber-dim); color: #ffe08a; }
+    .tl-kind.do { background: var(--blue-dim); color: #a8e4ff; }
+    .tl-extra { font-size: 10px; color: var(--dim); margin-top: 4px; line-height: 1.35; }
+
+    /* Flow strip */
+    .flow {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 16px; padding: 16px;
+    }
+    .flow h3 { font-size: 14px; font-weight: 650; margin-bottom: 6px; }
+    .flow .sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; line-height: 1.45; }
+    .steps {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    }
+    @media (max-width: 720px) { .steps { grid-template-columns: 1fr 1fr; } }
+    .step {
+      background: #0c0c0e; border: 1px solid #222; border-radius: 12px; padding: 12px;
+    }
+    .step .n {
+      font-size: 10px; font-weight: 700; color: var(--amber); letter-spacing: .06em; margin-bottom: 6px;
+    }
+    .step h4 { font-size: 13px; font-weight: 650; margin-bottom: 4px; }
+    .step p { font-size: 11px; color: var(--dim); line-height: 1.45; }
+
+    .map {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 16px;
+      padding: 16px; overflow-x: auto;
+    }
+    .map h3 { font-size: 14px; font-weight: 650; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      text-align: left; padding: 10px 12px; border-bottom: 1px solid #222;
+      vertical-align: top; line-height: 1.45;
+    }
+    th { color: var(--dim); font-weight: 650; font-size: 11px; }
+    td strong { color: #e8e8ed; }
+    .mute { color: var(--dim); }
+    tr:last-child td { border-bottom: 0; }
+
+    .callout {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    @media (max-width: 720px) { .callout { grid-template-columns: 1fr; } }
+    .call {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 14px; padding: 14px;
+    }
+    .call h4 { font-size: 13px; font-weight: 650; margin-bottom: 6px; }
+    .call p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .call.yes { border-color: rgba(52,199,89,.28); }
+    .call.no { border-color: rgba(255,107,107,.25); }
+    .call.yes h4 { color: #b7f0c4; }
+    .call.no h4 { color: #ff9a9a; }
+
+    .footer-note {
+      text-align: center; font-size: 11px; color: #48484a; line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Structure Sketch · v1.1</div>
+      <h1>守计划接场景 · 正向出口记「去做了」</h1>
+      <p>
+        目标 / 习惯不做成门上的平级入口，而是守计划的场景标签；
+        点了正向出口，默认记选择，写进今日镜子。
+      </p>
+      <div class="pills">
+        <span class="pill">目标 / 习惯 → 守计划的「为什么」</span>
+        <span class="pill g">去做了 = 第二种离开 · 与守住并列</span>
+      </div>
+    </header>
+
+    <!-- ① 守计划场景 -->
+    <div class="section-h">
+      <h2>① 守计划 × 目标 / 习惯场景</h2>
+      <p>门上只露当下相关的一块；配置侧用场景标签说明「为了什么」</p>
+    </div>
+
+    <section class="phones">
+      <div>
+        <div class="col-head">
+          <h3>门 · 下区（时段内）</h3>
+          <p>守计划带场景副文案 · 仍是离开出口</p>
+        </div>
+        <div class="phone">
+          <div class="status-bar"><span>14:08</span><span>门 · 下区</span></div>
+          <section class="region" style="padding-top:18px;">
+            <div class="region-tag tag-amber">正向出口</div>
+            <div class="bot-title">也可以去做</div>
+
+            <div class="exit muted-exit">
+              <div class="exit-ico" style="background:var(--green-dim);color:var(--green);">◎</div>
+              <div>
+                <div class="exit-name">此刻可做</div>
+                <div class="exit-sub">短、轻、立刻离开</div>
+              </div>
+              <div class="exit-preview">走走 · 喝水</div>
+            </div>
+
+            <div class="exit featured">
+              <div class="exit-ico">▤</div>
+              <div>
+                <div class="exit-name">守计划</div>
+                <div class="exit-sub">练习吉他 · 14:00–14:40</div>
+                <div class="scene-chip">为了 · 学吉他</div>
+              </div>
+              <div class="exit-preview">离开去做<br/>这档计划</div>
+            </div>
+
+            <div class="exit muted-exit">
+              <div class="exit-ico" style="background:var(--blue-dim);color:var(--blue);">→</div>
+              <div>
+                <div class="exit-name">想去的地方</div>
+                <div class="exit-sub">换一个更值得的 App</div>
+              </div>
+              <div class="exit-preview">备忘录</div>
+            </div>
+
+            <div class="note">无相关计划时：此条隐藏或灰显「此刻没有要守的计划」</div>
+          </section>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>App · 锚点库 · 守计划</h3>
+          <p>场景是标签 / 模板，不是第三个产品</p>
+        </div>
+        <div class="phone">
+          <div class="status-bar"><span>14:08</span><span>守计划</span></div>
+          <section class="region" style="padding-top:16px;">
+            <div class="region-tag tag-violet">场景标签</div>
+            <div class="cfg-title">守计划</div>
+            <div class="cfg-sub">一段生活计划块。可标成目标相关 / 习惯相关 / 生活节奏。</div>
+
+            <div class="scene-tabs">
+              <span class="scene-tab on">全部</span>
+              <span class="scene-tab">目标</span>
+              <span class="scene-tab">习惯</span>
+              <span class="scene-tab">生活</span>
+            </div>
+
+            <div class="plan-card hl">
+              <div class="plan-top">
+                <div>
+                  <div class="plan-name">练习吉他</div>
+                  <div class="plan-why">为了 · 学吉他</div>
+                </div>
+                <span class="badge goal">目标</span>
+              </div>
+              <div class="plan-meta">工作日 14:00–14:40 · 限制 抖音 / 小红书</div>
+            </div>
+
+            <div class="plan-card">
+              <div class="plan-top">
+                <div>
+                  <div class="plan-name">晨间不刷</div>
+                  <div class="plan-why">为了 · 起床后先清醒</div>
+                </div>
+                <span class="badge habit">习惯</span>
+              </div>
+              <div class="plan-meta">每天 6:30–8:00 · 限制短视频</div>
+            </div>
+
+            <div class="plan-card">
+              <div class="plan-top">
+                <div>
+                  <div class="plan-name">深度工作</div>
+                  <div class="plan-why">生活节奏</div>
+                </div>
+                <span class="badge life">生活</span>
+              </div>
+              <div class="plan-meta">工作日 9:00–12:00</div>
+            </div>
+
+            <div class="tpl-row">
+              <span class="tpl">+ 目标模板</span>
+              <span class="tpl">+ 习惯模板</span>
+              <span class="tpl">+ 空白计划</span>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② 去做了 -->
+    <div class="section-h">
+      <h2>② 正向出口 → 今日记「去做了」</h2>
+      <p>点出口即记选择；与「守住」「带着意图」并列，不做打卡 streak</p>
+    </div>
+
+    <section class="phones">
+      <div>
+        <div class="col-head">
+          <h3>门上 · 点出口的瞬间</h3>
+          <p>默认记「选择」，不要求证明做完</p>
+        </div>
+        <div class="phone">
+          <div class="status-bar"><span>14:09</span><span>离开仪式</span></div>
+          <section class="region" style="padding-top:18px;text-align:center;">
+            <div class="region-tag tag-blue">轻条 / 仪式</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:4px;">小红书</div>
+            <div style="font-size:20px;font-weight:700;margin:10px 0 6px;letter-spacing:-.02em;">去做了</div>
+            <div style="font-size:14px;color:#a8e4ff;">出去走走</div>
+            <div style="font-size:11px;color:var(--dim);margin-top:14px;line-height:1.5;">
+              今日 · 守住 3 · 去做 2<br />
+              <span style="opacity:.7;">可选后置：「做成了？」——默认可跳过</span>
+            </div>
+          </section>
+          <section class="region" style="padding-top:16px;">
+            <div class="region-tag tag-green">三类统一事件</div>
+            <div style="display:grid;gap:8px;margin-top:4px;font-size:12px;">
+              <div style="padding:10px;border-radius:12px;background:#0e0e10;border:1px solid #222;">
+                <strong>此刻可做</strong>
+                <div class="mute" style="margin-top:4px;font-size:11px;">positive_exit · thing · 出去走走</div>
+              </div>
+              <div style="padding:10px;border-radius:12px;background:#0e0e10;border:1px solid #222;">
+                <strong>守计划</strong>
+                <div class="mute" style="margin-top:4px;font-size:11px;">positive_exit · plan · 练习吉他</div>
+              </div>
+              <div style="padding:10px;border-radius:12px;background:#0e0e10;border:1px solid #222;">
+                <strong>想去的地方</strong>
+                <div class="mute" style="margin-top:4px;font-size:11px;">positive_exit · place · 备忘录</div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>App · 今日镜子</h3>
+          <p>时间轴上能读出完整进出故事</p>
+        </div>
+        <div class="phone">
+          <div class="status-bar"><span>14:30</span><span>今日</span></div>
+          <section class="region" style="padding-top:16px;">
+            <div class="region-tag tag-blue">镜子</div>
+            <div class="pulse-title">今天</div>
+            <div class="pulse-sub">带着意图 · 守住 · 去做了</div>
+            <div class="metrics">
+              <div class="metric intent"><div class="n">5</div><div class="l">带着意图</div></div>
+              <div class="metric hold"><div class="n">3</div><div class="l">守住</div></div>
+              <div class="metric do"><div class="n">2</div><div class="l">去做了</div></div>
+            </div>
+            <div class="tl">
+              <div class="tl-row do-row">
+                <div class="tl-time">14:09</div>
+                <div class="tl-dot do"></div>
+                <div class="tl-body">
+                  <div class="tl-main">小红书 → 出去走走</div>
+                  <span class="tl-kind do">去做了 · 此刻可做</span>
+                </div>
+              </div>
+              <div class="tl-row">
+                <div class="tl-time">13:40</div>
+                <div class="tl-dot hold"></div>
+                <div class="tl-body">
+                  <div class="tl-main">抖音 · 先不进去了</div>
+                  <span class="tl-kind hold">守住</span>
+                </div>
+              </div>
+              <div class="tl-row do-row">
+                <div class="tl-time">12:05</div>
+                <div class="tl-dot do"></div>
+                <div class="tl-body">
+                  <div class="tl-main">微信 → 守计划 · 练习吉他</div>
+                  <span class="tl-kind do">去做了 · 计划</span>
+                  <div class="tl-extra">为了 · 学吉他</div>
+                </div>
+              </div>
+              <div class="tl-row">
+                <div class="tl-time">11:22</div>
+                <div class="tl-dot intent"></div>
+                <div class="tl-body">
+                  <div class="tl-main">小红书 · 搜「相机选购」· 8 分</div>
+                  <span class="tl-kind intent">带着意图</span>
+                </div>
+              </div>
+              <div class="tl-row do-row">
+                <div class="tl-time">10:18</div>
+                <div class="tl-dot do"></div>
+                <div class="tl-body">
+                  <div class="tl-main">抖音 → 换去备忘录</div>
+                  <span class="tl-kind do">去做了 · 地方</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="flow">
+      <h3>点出口之后 · 记录流</h3>
+      <p class="sub">核心记「选择」；「做成了」永远可选，默认不挡路。</p>
+      <div class="steps">
+        <div class="step">
+          <div class="n">01</div>
+          <h4>点正向出口</h4>
+          <p>此刻可做 / 守计划 / 想去的地方</p>
+        </div>
+        <div class="step">
+          <div class="n">02</div>
+          <h4>卸门 + 记事件</h4>
+          <p>写入 positive_exit · 今日「去做了」+1</p>
+        </div>
+        <div class="step">
+          <div class="n">03</div>
+          <h4>轻条肯定</h4>
+          <p>「去做了 · 出去走走」——与「守住了」同级仪式</p>
+        </div>
+        <div class="step">
+          <div class="n">04</div>
+          <h4>可选确认</h4>
+          <p>稍后问「做成了？」可跳过；不做连续打卡</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="map">
+      <h3>事件对照</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>用户动作</th>
+            <th>事件</th>
+            <th>今日呈现</th>
+            <th>不做什么</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>先不进去了</strong></td>
+            <td>gate_quit</td>
+            <td>守住</td>
+            <td class="mute">—</td>
+          </tr>
+          <tr>
+            <td><strong>点「出去走走」</strong></td>
+            <td>positive_exit · thing</td>
+            <td>去做了 · 此刻可做</td>
+            <td class="mute">不要求计步 / 打卡</td>
+          </tr>
+          <tr>
+            <td><strong>点「练习吉他」计划</strong></td>
+            <td>positive_exit · plan</td>
+            <td>去做了 · 计划（可带「为了 ·」）</td>
+            <td class="mute">不打开目标管理系统</td>
+          </tr>
+          <tr>
+            <td><strong>点「备忘录」</strong></td>
+            <td>positive_exit · place</td>
+            <td>去做了 · 地方</td>
+            <td class="mute">不对目的地 App 再拦一次（按现有规则）</td>
+          </tr>
+          <tr>
+            <td><strong>带着意图进入</strong></td>
+            <td>mindful_enter</td>
+            <td>带着意图</td>
+            <td class="mute">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="callout">
+      <div class="call yes">
+        <h4>做</h4>
+        <p>
+          守计划加场景标签（目标 / 习惯 / 生活）；门上露出「为了 · xxx」；
+          正向出口统一记「去做了」，镜子三计数并列。
+        </p>
+      </div>
+      <div class="call no">
+        <h4>不做</h4>
+        <p>
+          门上平级「我的目标 / 待办 / 习惯」；习惯连续天数墙；
+          强制「做成了」才能关页；把探索做成第二套效率 App。
+        </p>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      承接 <a href="./gate-and-app-structure-sketch.html" style="color:#8e8e93;">门与 App 结构草图</a> · 本页细化两条产品决策<br />
+      工程侧可落：PlanBlock 增 scene / why 字段；UsageRecord 增 positive_exit 类型
+    </p>
+  </div>
+</body>
+</html>

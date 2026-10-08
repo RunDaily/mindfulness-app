@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>觉察叙事 · 光点落成 · 流程草图</title>
+  <style>
+    :root {
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --line: rgba(255,255,255,.1);
+      --accent: #7eb8a2;
+      --accent-soft: rgba(126,184,162,.16);
+      --warm: #d4b483;
+      --warm-soft: rgba(212,180,131,.14);
+      --search: #8eb4d4;
+      --search-soft: rgba(142,180,212,.14);
+      --island: #121214;
+      --bar: rgba(28,28,30,.94);
+      --danger: #ef5350;
+      --glow: #e8f0ec;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--ink);
+      background:
+        radial-gradient(ellipse at 22% -6%, rgba(126,184,162,.07), transparent 42%),
+        radial-gradient(ellipse at 88% 8%, rgba(142,180,212,.05), transparent 36%),
+        linear-gradient(180deg, #0c0c0e, #050506 72%);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 120px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; }
+
+    .hero { text-align: center; max-width: 660px; margin: 0 auto 44px; }
+    .eyebrow {
+      font-size: 11px; font-weight: 650; letter-spacing: .16em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+    }
+    h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+    .hero p { margin-top: 12px; font-size: 14px; color: var(--muted); line-height: 1.75; }
+
+    .section { margin-bottom: 64px; }
+    .sec-head { text-align: center; margin-bottom: 20px; }
+    .sec-head h2 { font-size: 16px; font-weight: 650; }
+    .sec-head p {
+      margin-top: 8px; font-size: 13px; color: var(--muted);
+      line-height: 1.65; max-width: 600px; margin-left: auto; margin-right: auto;
+    }
+
+    .note {
+      max-width: 720px; margin: 0 auto 22px;
+      padding: 14px 16px;
+      border-left: 2px solid var(--accent);
+      background: rgba(255,255,255,.02);
+      border-radius: 0 10px 10px 0;
+      font-size: 13px; color: var(--muted); line-height: 1.7;
+    }
+    .note strong { color: var(--ink); font-weight: 600; }
+    .note.warn { border-left-color: var(--warm); }
+
+    .acts {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      max-width: 900px; margin: 0 auto 28px;
+    }
+    @media (max-width: 720px) { .acts { grid-template-columns: 1fr; } }
+    .act {
+      border: 1px solid var(--line); border-radius: 16px;
+      padding: 18px 16px; background: rgba(255,255,255,.025);
+      text-align: center;
+    }
+    .act .n {
+      font-size: 11px; font-weight: 650; letter-spacing: .12em;
+      color: var(--accent); margin-bottom: 8px;
+    }
+    .act h3 { font-size: 15px; font-weight: 650; margin-bottom: 8px; }
+    .act p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    .path-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    }
+    @media (max-width: 860px) { .path-grid { grid-template-columns: 1fr; } }
+    .path-card {
+      border: 1px solid var(--line); border-radius: 16px;
+      padding: 16px 16px 18px; background: rgba(255,255,255,.025);
+    }
+    .path-card.intent { border-color: rgba(126,184,162,.3); }
+    .path-card.browse { border-color: rgba(212,180,131,.3); }
+    .path-card.search { border-color: rgba(142,180,212,.3); }
+    .path-card h3 {
+      font-size: 14px; font-weight: 650; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .tag {
+      font-size: 10px; font-weight: 650; letter-spacing: .06em;
+      padding: 2px 7px; border-radius: 999px;
+    }
+    .tag.intent { background: var(--accent-soft); color: var(--accent); }
+    .tag.browse { background: var(--warm-soft); color: var(--warm); }
+    .tag.search { background: var(--search-soft); color: var(--search); }
+    .path-card .lead { font-size: 12px; color: var(--muted); line-height: 1.55; margin-bottom: 12px; }
+    .path-card ul { list-style: none; font-size: 12px; color: var(--dim); line-height: 1.75; }
+    .path-card ul li::before { content: "· "; color: var(--muted); }
+    .path-card ul strong { color: var(--ink); font-weight: 550; }
+    .path-card ul .cut { color: #a07070; text-decoration: line-through; opacity: .75; }
+    .path-card ul .cut::before { content: ""; }
+
+    .stage {
+      background: #0a0a0c;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 40px 16px 22px;
+      position: relative; overflow: hidden;
+      min-height: 168px;
+    }
+    .stage.wall {
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(255,255,255,.03), transparent 55%),
+        #121214;
+    }
+    .stage-label {
+      position: absolute; top: 10px; left: 14px;
+      font-size: 10px; font-weight: 650; letter-spacing: .08em;
+      color: var(--dim); text-transform: uppercase;
+    }
+    .stage-caption {
+      margin-top: 14px; font-size: 11px; color: var(--dim);
+      text-align: center; line-height: 1.55;
+    }
+    .gallery {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    @media (max-width: 720px) { .gallery { grid-template-columns: 1fr; } }
+
+    .bar-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 10px; min-height: 88px;
+      position: relative;
+    }
+    .bar {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bar);
+      border: 0.8px solid rgba(255,255,255,.1);
+      border-radius: 999px;
+      padding: 7px 10px 7px 8px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.35);
+      transform-origin: center center;
+    }
+    .mark {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    .mark.app { background: #fe2c55; color: #fff; font-size: 9px; }
+    .mark.timer {
+      background: rgba(255,255,255,.06);
+      border: 0.7px solid rgba(255,255,255,.12); color: var(--warm);
+    }
+    .mark.search {
+      background: rgba(255,255,255,.06);
+      border: 0.7px solid rgba(255,255,255,.12); color: var(--search);
+    }
+    .bar-mid { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .bar-time {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 15px; font-weight: 600; letter-spacing: .04em; color: #f5f5f7;
+    }
+    .bar-time.urgent { color: var(--danger); }
+    .bar-sub {
+      font-size: 11px; font-weight: 500; color: rgba(245,245,247,.7);
+      white-space: nowrap; max-width: 120px;
+    }
+    .stop {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,255,255,.06);
+      display: grid; place-items: center; flex-shrink: 0;
+    }
+    .stop span {
+      width: 11px; height: 11px; border-radius: 2.5px; background: #ef5350;
+    }
+
+    .hint {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(26,26,28,.96);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 999px;
+      padding: 9px 15px;
+      font-size: 14px; font-weight: 600; color: rgba(242,242,247,.94);
+      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    }
+    .hint .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0;
+    }
+
+    .island {
+      width: min(320px, 92%); margin: 0 auto;
+      background: var(--island);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 22px; padding: 16px 18px 14px;
+    }
+    .island .q { font-size: 13px; font-weight: 650; color: var(--accent); margin-bottom: 4px; }
+    .island .naming { font-size: 15px; font-weight: 550; margin-bottom: 16px; }
+    .island .acts-row { display: flex; gap: 18px; align-items: center; }
+    .island .yes { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .island .no { font-size: 14px; color: var(--accent); font-weight: 650; }
+
+    .end-pill {
+      width: min(340px, 94%); margin: 0 auto;
+      background: rgba(18,18,20,.96);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px; padding: 16px; text-align: center;
+    }
+    .end-pill .prompt { font-size: 15px; font-weight: 650; margin-bottom: 6px; }
+    .end-pill .meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .end-pill .bin { display: flex; gap: 10px; justify-content: center; }
+    .end-pill .bin span {
+      font-size: 13px; font-weight: 550; padding: 8px 16px; border-radius: 999px;
+    }
+    .end-pill .bin .no { color: var(--muted); border: 1px solid rgba(255,255,255,.1); }
+    .end-pill .bin .yes { color: var(--accent); background: var(--accent-soft); }
+
+    .matrix {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+      max-width: 920px; margin: 0 auto;
+    }
+    .matrix th, .matrix td {
+      border: 1px solid var(--line); padding: 10px 12px;
+      text-align: left; vertical-align: top; line-height: 1.55;
+    }
+    .matrix th {
+      background: rgba(255,255,255,.03); font-weight: 650;
+      color: var(--muted); font-size: 11px; letter-spacing: .04em;
+    }
+    .matrix td strong { color: var(--ink); }
+    .matrix .gone { color: #8a6060; }
+    .matrix .ok { color: var(--accent); }
+
+    .demo-btn {
+      display: block; margin: 12px auto 0;
+      background: transparent; border: 1px solid var(--line);
+      color: var(--muted); font: inherit; font-size: 12px;
+      padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    }
+    .demo-btn:hover { color: var(--ink); border-color: rgba(255,255,255,.22); }
+
+    .phases {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+      max-width: 920px; margin: 0 auto 22px;
+    }
+    @media (max-width: 800px) { .phases { grid-template-columns: 1fr 1fr; } }
+    .phase {
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 14px 12px; background: rgba(255,255,255,.02);
+      text-align: center;
+    }
+    .phase .ms {
+      font-size: 10px; font-weight: 650; letter-spacing: .1em;
+      color: var(--accent); margin-bottom: 6px;
+    }
+    .phase h4 { font-size: 13px; font-weight: 650; margin-bottom: 6px; }
+    .phase p { font-size: 11px; color: var(--muted); line-height: 1.55; }
+
+    .vs {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      max-width: 820px; margin: 0 auto 24px;
+    }
+    @media (max-width: 640px) { .vs { grid-template-columns: 1fr; } }
+    .vs .card {
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 14px; background: rgba(255,255,255,.02);
+    }
+    .vs .card.bad { border-color: rgba(160,112,112,.35); }
+    .vs .card.good { border-color: rgba(126,184,162,.35); }
+    .vs h4 { font-size: 13px; font-weight: 650; margin-bottom: 8px; }
+    .vs ul { list-style: none; font-size: 12px; color: var(--muted); line-height: 1.7; }
+    .vs li::before { content: "· "; color: var(--dim); }
+
+    /* —— 光点落成 —— */
+    .bloom-stage .bloom-layer {
+      position: absolute; left: 50%; top: 50%;
+      width: 8px; height: 8px; margin: -4px 0 0 -4px;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .bloom-stage .bloom-core {
+      background: radial-gradient(circle, #fff 0%, rgba(232,240,236,.9) 35%, rgba(126,184,162,.0) 70%);
+      filter: blur(6px);
+      box-shadow: 0 0 12px 2px rgba(255,255,255,.35);
+    }
+    .bloom-stage .bloom-halo {
+      background: radial-gradient(circle,
+        rgba(255,255,255,.22) 0%,
+        rgba(126,184,162,.12) 28%,
+        rgba(126,184,162,0) 70%);
+      filter: blur(18px);
+      width: 12px; height: 12px; margin: -6px 0 0 -6px;
+    }
+    .bloom-stage .bar {
+      opacity: 0;
+      filter: blur(10px);
+      transform: scale(.55);
+      box-shadow: 0 0 0 0 rgba(255,255,255,0);
+    }
+    .bloom-stage .bar .bar-mid,
+    .bloom-stage .bar .stop,
+    .bloom-stage .bar .mark {
+      opacity: 0;
+    }
+
+    .bloom-stage.play .bloom-core {
+      animation: coreApproach 1.05s cubic-bezier(.22,.61,.36,1) forwards;
+    }
+    .bloom-stage.play .bloom-halo {
+      animation: haloBloom 1.15s cubic-bezier(.16,.84,.3,1) .08s forwards;
+    }
+    .bloom-stage.play .bar {
+      animation: barResolve 1.05s cubic-bezier(.22,.61,.36,1) .28s forwards;
+    }
+    .bloom-stage.play .bar .mark {
+      animation: contentIn .45s ease .72s forwards;
+    }
+    .bloom-stage.play .bar .bar-mid {
+      animation: contentIn .5s ease .78s forwards;
+    }
+    .bloom-stage.play .bar .stop {
+      animation: contentIn .45s ease .84s forwards;
+    }
+
+    @keyframes coreApproach {
+      0% {
+        opacity: 0; transform: scale(.35);
+        filter: blur(10px);
+      }
+      18% {
+        opacity: .95; transform: scale(.7);
+        filter: blur(7px);
+      }
+      42% {
+        opacity: 1; transform: scale(1.15);
+        filter: blur(2.5px);
+        box-shadow: 0 0 22px 4px rgba(255,255,255,.45);
+      }
+      70% {
+        opacity: .55; transform: scale(1.6);
+        filter: blur(8px);
+      }
+      100% {
+        opacity: 0; transform: scale(2.2);
+        filter: blur(16px);
+      }
+    }
+    @keyframes haloBloom {
+      0% {
+        opacity: 0; transform: scale(.4);
+      }
+      30% {
+        opacity: .85; transform: scale(4.5);
+      }
+      55% {
+        opacity: .55; transform: scale(9);
+      }
+      100% {
+        opacity: 0; transform: scale(14);
+      }
+    }
+    @keyframes barResolve {
+      0% {
+        opacity: 0; filter: blur(12px); transform: scale(.5);
+        box-shadow: 0 0 40px 8px rgba(255,255,255,.2);
+      }
+      45% {
+        opacity: 1; filter: blur(3px); transform: scale(.92);
+        box-shadow: 0 0 28px 4px rgba(126,184,162,.18);
+      }
+      100% {
+        opacity: 1; filter: blur(0); transform: scale(1);
+        box-shadow: 0 8px 28px rgba(0,0,0,.35), 0 0 0 0.5px rgba(255,255,255,.08);
+      }
+    }
+    @keyframes contentIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* 搜索前 30s 静默 */
+    .silent-stage .empty {
+      font-size: 12px; color: var(--dim); letter-spacing: .06em;
+      opacity: .7;
+    }
+    .silent-stage .bar { display: none; }
+    .silent-stage.after .empty { display: none; }
+    .silent-stage.after .bar { display: inline-flex; }
+
+    /* 锚提示时条隐 */
+    .hint-demo .bar { transition: opacity .4s ease, filter .4s ease, transform .4s ease; }
+    .hint-demo .hint {
+      opacity: 0; transform: translateY(4px) scale(.98);
+      filter: blur(4px);
+      transition: opacity .4s ease, transform .4s ease, filter .4s ease;
+      pointer-events: none; position: absolute;
+    }
+    .hint-demo.show-hint .bar {
+      opacity: 0; filter: blur(6px); transform: scale(.96);
+      pointer-events: none;
+    }
+    .hint-demo.show-hint .hint {
+      opacity: 1; transform: translateY(0) scale(1); filter: blur(0);
+    }
+
+    .timeline {
+      max-width: 760px; margin: 0 auto;
+      border-left: 1px solid var(--line); padding-left: 20px;
+    }
+    .tl { position: relative; margin-bottom: 26px; }
+    .tl::before {
+      content: ""; position: absolute; left: -24px; top: 6px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(126,184,162,.15);
+    }
+    .tl.browse::before { background: var(--warm); box-shadow: 0 0 0 3px rgba(212,180,131,.15); }
+    .tl.search::before { background: var(--search); box-shadow: 0 0 0 3px rgba(142,180,212,.15); }
+    .tl .t { font-size: 11px; font-weight: 650; color: var(--accent); margin-bottom: 4px; }
+    .tl.browse .t { color: var(--warm); }
+    .tl.search .t { color: var(--search); }
+    .tl h4 { font-size: 14px; font-weight: 650; margin-bottom: 4px; }
+    .tl p { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="hero">
+      <div class="eyebrow">Entrance · glow bloom</div>
+      <h1>光点落成 · 觉察叙事修订</h1>
+      <p>
+        「小点滋长」偏种子发芽，不够高级。改成<strong>远处高亮光点靠近 → 光晕展开 → 落成玻璃条</strong>。
+        搜索前 30 秒完全不出胶囊，安静找。
+      </p>
+    </header>
+
+    <!-- 为什么换 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>一 · 为什么换掉「滋长」</h2>
+      </div>
+      <div class="vs">
+        <div class="card bad">
+          <h4 style="color:#c09090">滋长（旧）</h4>
+          <ul>
+            <li>硬缩放 0.2→1，像 UI 控件弹出</li>
+            <li>种子/发芽隐喻偏玩具</li>
+            <li>材质一开始就在，没有「光→形」</li>
+            <li>容易弹、抢注意力</li>
+          </ul>
+        </div>
+        <div class="card good">
+          <h4 style="color:var(--accent)">光点落成（新）</h4>
+          <ul>
+            <li>先只有远处一点光，像被看见</li>
+            <li>光晕柔扩散，再凝成玻璃壳</li>
+            <li>内容最后淡入——克制</li>
+            <li>缓出曲线、无回弹；总长约 1s</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note">
+        <strong>设计原则：</strong>光先于形 · 形先于字 · 不弹跳 · 不饱和闪白。
+        光点颜色跟路径轻差分（意图偏冷绿白、搜索偏冷蓝白、刷一刷偏暖）。
+      </div>
+    </section>
+
+    <!-- 四拍 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>二 · 进场四拍</h2>
+        <p>同一套编排，三路共用；只换光色与条内容。</p>
+      </div>
+      <div class="phases">
+        <div class="phase">
+          <div class="ms">0–200ms</div>
+          <h4>远点</h4>
+          <p>1–2px 高亮斑，强模糊、低不透明——感觉在远处</p>
+        </div>
+        <div class="phase">
+          <div class="ms">200–450ms</div>
+          <h4>靠近</h4>
+          <p>模糊收敛、亮度微升（不爆闪），光核略放大</p>
+        </div>
+        <div class="phase">
+          <div class="ms">450–750ms</div>
+          <h4>光晕展开</h4>
+          <p>大半径软晕外扩；壳在晕心以模糊态显现</p>
+        </div>
+        <div class="phase">
+          <div class="ms">750–1050ms</div>
+          <h4>落成</h4>
+          <p>晕散尽、壳锐化；字与停最后淡入</p>
+        </div>
+      </div>
+
+      <div class="gallery">
+        <div class="stage wall bloom-stage" id="bloomStage">
+          <div class="stage-label">进场 · 光点落成</div>
+          <div class="bar-wrap">
+            <div class="bloom-layer bloom-halo"></div>
+            <div class="bloom-layer bloom-core"></div>
+            <div class="bar">
+              <div class="mark app">红</div>
+              <div class="bar-mid">
+                <div class="bar-time">00:00</div>
+                <div class="bar-sub">看数据</div>
+              </div>
+              <div class="stop"><span></span></div>
+            </div>
+          </div>
+          <p class="stage-caption">远点 → 靠近 → 光晕 → 玻璃条（点按钮重放）</p>
+          <button type="button" class="demo-btn" id="bloomBtn">重放光点落成</button>
+        </div>
+
+        <div class="stage wall hint-demo" id="hintStage">
+          <div class="stage-label">锚提示 · 条让开（仅意图）</div>
+          <div class="bar-wrap">
+            <div class="hint"><span class="dot"></span>你刚才说：看数据</div>
+            <div class="bar">
+              <div class="mark app">红</div>
+              <div class="bar-mid">
+                <div class="bar-time">00:30</div>
+                <div class="bar-sub">看数据</div>
+              </div>
+              <div class="stop"><span></span></div>
+            </div>
+          </div>
+          <p class="stage-caption">条柔隐（略模糊）→ 提示独占 → 条以光点落成或轻淡入回来</p>
+          <button type="button" class="demo-btn" id="hintBtn">重放锚提示</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 搜索静默 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>三 · 搜索：前 30s 不出胶囊</h2>
+        <p>先安静找。30s 后胶囊以「光点落成」出现——不是锚提示，是陪伴姗姗来迟。</p>
+      </div>
+      <div class="note warn">
+        <strong>和意图的差分：</strong>意图是「一进门就有条 → 30s 条隐换回声」；
+        搜索是「前 30s 什么都没有 → 30s 条才落成」。同是 30s 节点，叙事相反。
+      </div>
+      <div class="gallery">
+        <div class="stage wall silent-stage" id="silentStage">
+          <div class="stage-label">搜索 · 0–30s</div>
+          <div class="bar-wrap">
+            <div class="empty">静默 · 无胶囊</div>
+            <div class="bar">
+              <div class="mark search">⌕</div>
+              <div class="bar-mid">
+                <div class="bar-time">00:30</div>
+              </div>
+              <div class="stop"><span></span></div>
+            </div>
+          </div>
+          <p class="stage-caption">画面干净，不打扰搜索心流</p>
+          <button type="button" class="demo-btn" id="silentBtn">演示 30s 后落成</button>
+        </div>
+        <div class="stage wall">
+          <div class="stage-label">对比 · 意图 T+0</div>
+          <div class="bar-wrap">
+            <div class="bar">
+              <div class="mark app">红</div>
+              <div class="bar-mid">
+                <div class="bar-time">00:00</div>
+                <div class="bar-sub">看数据</div>
+              </div>
+              <div class="stop"><span></span></div>
+            </div>
+          </div>
+          <p class="stage-caption">意图：进门即有条（光点落成）</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 三路 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>四 · 三条路径（修订）</h2>
+      </div>
+      <div class="path-grid">
+        <div class="path-card intent">
+          <h3><span class="tag intent">INTENT</span> 写下意图</h3>
+          <p class="lead">一进门就被托住</p>
+          <ul>
+            <li>T+0：光点落成 → 条（时间+意图）</li>
+            <li>≈30s：条隐 → 锚提示「你刚才说」→ 条回</li>
+            <li>每 5min：觉察岛</li>
+            <li>偏了 → 直接结束对照</li>
+          </ul>
+        </div>
+        <div class="path-card browse">
+          <h3><span class="tag browse">BROWSE</span> 刷一刷</h3>
+          <p class="lead">倒计时自明 · 极静</p>
+          <ul>
+            <li>T+0：光点落成 → 条（<strong>仅时间+停</strong>）</li>
+            <li class="cut">无锚提示 / 无临期文案 / 无中途问</li>
+            <li>≤30s：时间变色即可</li>
+            <li>结束：「这轮刷够了吗？」</li>
+          </ul>
+        </div>
+        <div class="path-card search">
+          <h3><span class="tag search">SEARCH</span> 搜索</h3>
+          <p class="lead">先找，再陪伴</p>
+          <ul>
+            <li><strong>0–30s：无胶囊</strong></li>
+            <li>≈30s：光点落成 → 条出现</li>
+            <li class="cut">无进门锚提示</li>
+            <li>每 5min：觉察岛「还在搜吗？」</li>
+            <li>结束：「找到答案了吗？」</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 三幕 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>五 · 三幕（不变骨架）</h2>
+      </div>
+      <div class="acts">
+        <div class="act">
+          <div class="n">ACT I</div>
+          <h3>进门看见</h3>
+          <p>意图/刷一刷：光点落成成条。<br />搜索：静默 30s 再落成。<br />仅意图有回声锚提示。</p>
+        </div>
+        <div class="act">
+          <div class="n">ACT II</div>
+          <h3>中途轻问</h3>
+          <p>意图/搜索每 5 分钟。<br />偏了直达结束对照。<br />刷一刷不问。</p>
+        </div>
+        <div class="act">
+          <div class="n">ACT III</div>
+          <h3>离开对照</h3>
+          <p>二选一 · 路径差分文案。<br />对齐即收 · 偏航才细档。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 时间线摘要 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>六 · 30s 节点对照</h2>
+        <p>同一个时钟点，三路完全不同——这是高级差分，不是同一套换皮。</p>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th></th>
+              <th>意图</th>
+              <th>刷一刷</th>
+              <th>搜索</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>T+0</strong></td>
+              <td class="ok">光点落成 · 有条</td>
+              <td class="ok">光点落成 · 有条（无次行）</td>
+              <td class="gone">无胶囊</td>
+            </tr>
+            <tr>
+              <td><strong>≈30s</strong></td>
+              <td class="ok">条隐 → 锚提示 → 条回</td>
+              <td>—</td>
+              <td class="ok">光点落成 · 条首次出现</td>
+            </tr>
+            <tr>
+              <td><strong>每 5min</strong></td>
+              <td class="ok">觉察岛</td>
+              <td class="gone">无</td>
+              <td class="ok">觉察岛</td>
+            </tr>
+            <tr>
+              <td><strong>临期</strong></td>
+              <td class="gone">不抬岛</td>
+              <td class="gone">仅色变</td>
+              <td class="gone">不抬岛</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="note">
+        <strong>实现提示（落地时）：</strong>
+        Compose 侧可用 Animatable + blur/alpha/scale 分层：光核、光晕、壳、内容四轨，
+        曲线用 FastOutSlowIn / 自定义 cubic，忌 Spring 回弹。
+        搜索延迟用会话秒 ≥30 再挂胶囊窗口，进场动画与意图/刷一刷共用「光点落成」。
+      </div>
+      <div class="note warn">
+        认可后改代码：进场动效替换、搜索 30s 延迟出条、其余仍按上一版叙事（5min 轻问、去 SoftExit、刷一刷无次行/无临期提示、锚提示时藏条）。
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const bloomStage = document.getElementById('bloomStage');
+    const bloomBtn = document.getElementById('bloomBtn');
+    function playBloom() {
+      bloomStage.classList.remove('play');
+      void bloomStage.offsetWidth;
+      bloomStage.classList.add('play');
+    }
+    bloomBtn.addEventListener('click', playBloom);
+    setTimeout(playBloom, 300);
+
+    const hintStage = document.getElementById('hintStage');
+    const hintBtn = document.getElementById('hintBtn');
+    let hintTimer;
+    function playHint() {
+      clearTimeout(hintTimer);
+      hintStage.classList.remove('show-hint');
+      void hintStage.offsetWidth;
+      setTimeout(() => hintStage.classList.add('show-hint'), 180);
+      hintTimer = setTimeout(() => hintStage.classList.remove('show-hint'), 2900);
+    }
+    hintBtn.addEventListener('click', playHint);
+
+    const silentStage = document.getElementById('silentStage');
+    const silentBtn = document.getElementById('silentBtn');
+    silentBtn.addEventListener('click', () => {
+      silentStage.classList.remove('after', 'bloom-stage', 'play');
+      void silentStage.offsetWidth;
+      silentStage.classList.add('bloom-stage');
+      // 先静默一拍，再落成
+      setTimeout(() => {
+        silentStage.classList.add('after', 'play');
+      }, 400);
+    });
+  </script>
+</body>
+</html>

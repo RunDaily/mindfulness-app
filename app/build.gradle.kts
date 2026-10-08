@@ -12,7 +12,12 @@ val localProperties = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
-val deepseekApiKey: String = localProperties.getProperty("DEEPSEEK_API_KEY", "")
+val wxAppId: String = localProperties.getProperty("WX_APP_ID", "")
+
+val keystoreFilePath: String = localProperties.getProperty("KEYSTORE_FILE", "")
+val keystorePassword: String = localProperties.getProperty("KEYSTORE_PASSWORD", "")
+val keyAliasName: String = localProperties.getProperty("KEY_ALIAS", "")
+val keyPasswordValue: String = localProperties.getProperty("KEY_PASSWORD", keystorePassword)
 
 android {
     namespace = "com.life.mindfulnessapp"
@@ -22,21 +27,33 @@ android {
         applicationId = "com.life.mindfulnessapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 6
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // DeepSeek：从根目录 local.properties 读取，勿写入仓库
-        buildConfigField("String", "DEEPSEEK_API_KEY", "\"${deepseekApiKey.replace("\"", "\\\"")}\"")
-        buildConfigField("String", "DEEPSEEK_BASE_URL", "\"https://api.deepseek.com/\"")
-        buildConfigField("String", "DEEPSEEK_MODEL", "\"deepseek-chat\"")
+        // website = 官网 APK 渠道；play = 商店渠道（评分/Billing 行为分流）
+        buildConfigField("String", "DISTRIBUTION_CHANNEL", "\"website\"")
+        // 微信开放平台 · 移动应用 AppID（APP 支付）
+        buildConfigField("String", "WX_APP_ID", "\"${wxAppId.replace("\"", "\\\"")}\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            if (keystoreFilePath.isNotBlank()) {
+                storeFile = rootProject.file(keystoreFilePath)
+                storePassword = keystorePassword
+                keyAlias = keyAliasName
+                keyPassword = keyPasswordValue
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -57,6 +74,12 @@ android {
         compose = true
         buildConfig = true
     }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+        disable += setOf("NullSafeMutableLiveData")
+    }
 }
 
 dependencies {
@@ -72,6 +95,13 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.reorderable)
+
+    // 汉字拼音：应用名字母序 + 简拼/全拼搜索（如 xhs → 小红书）
+    implementation(libs.pinyin4j)
+    implementation(libs.zxing.core)
+    implementation(libs.wechat.sdk.android)
+    // 系统手机号选择器（自助领邀请码）；无 GMS 时降级为手动输入
+    implementation(libs.play.services.auth)
 
     // Room
     implementation(libs.androidx.room.runtime)

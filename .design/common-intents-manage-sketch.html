@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>常用意图 · 管理页形态</title>
+  <style>
+    :root {
+      --bg: #0a0a0b;
+      --surface: #161618;
+      --surface-2: #1c1c1f;
+      --line: rgba(255,255,255,.08);
+      --text: #f2f2f4;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --accent: #34c759;
+      --accent-dim: rgba(52,199,89,.14);
+      --accent-line: rgba(52,199,89,.38);
+      --warn: #ff9f0a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% -10%, #1a1f1c 0%, #0a0a0b 48%, #000 100%);
+      color: var(--text);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 28px 16px 64px; gap: 14px;
+    }
+    .page-title { text-align: center; max-width: 420px; }
+    .page-title h1 { font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .page-title p { font-size: 13px; color: var(--dim); line-height: 1.55; }
+
+    .phone {
+      width: min(390px, 100%);
+      background: var(--bg);
+      border: 1px solid #2a2a2c;
+      border-radius: 36px;
+      padding: 12px 0 0;
+      box-shadow: 0 0 0 1px #111, 0 28px 90px rgba(0,0,0,.7);
+      display: flex; flex-direction: column;
+      min-height: 720px;
+      overflow: hidden;
+    }
+    .status {
+      height: 28px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 22px; font-size: 12px; font-weight: 600; color: #aeaeb2;
+    }
+    .scroll {
+      flex: 1; overflow: auto; padding: 4px 18px 18px;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .top {
+      display: flex; align-items: center; gap: 4px; margin-bottom: 8px;
+    }
+    .back {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: grid; place-items: center; color: var(--text); font-size: 20px;
+    }
+    .title-wrap { flex: 1; display: flex; align-items: baseline; gap: 10px; }
+    .title { font-size: 20px; font-weight: 600; }
+    .gate-pill {
+      font-size: 11px; font-weight: 600; color: var(--accent);
+      background: var(--accent-dim); border: 1px solid var(--accent-line);
+      border-radius: 999px; padding: 3px 9px;
+    }
+    .hint {
+      font-size: 13px; color: var(--muted); line-height: 1.5;
+      margin: 0 0 16px 4px;
+    }
+
+    .system {
+      border-radius: 18px; padding: 14px 16px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-line);
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 22px;
+    }
+    .system .name { font-size: 16px; font-weight: 600; }
+    .system .meta { margin-top: 4px; font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .system .gear { margin-left: auto; color: var(--accent); font-size: 18px; }
+
+    .sec {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin: 0 2px 10px;
+    }
+    .sec h2 {
+      font-size: 12px; font-weight: 600; letter-spacing: .04em;
+      color: var(--dim); text-transform: none;
+    }
+    .sec span { font-size: 11px; color: var(--dim); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 14px 12px;
+      margin-bottom: 10px;
+    }
+    .card.on-gate { border-color: var(--accent-line); }
+    .card-top {
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    .card-main { flex: 1; min-width: 0; }
+    .card-title {
+      font-size: 15px; font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); flex-shrink: 0;
+    }
+    .card-sub {
+      margin-top: 4px; font-size: 12px; color: var(--muted); line-height: 1.4;
+    }
+    .card-sub.land { color: rgba(52,199,89,.9); }
+    .side {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .side label { font-size: 10px; color: var(--dim); }
+    .sw {
+      width: 42px; height: 26px; border-radius: 999px;
+      background: #3a3a3c; position: relative;
+    }
+    .sw.on { background: var(--accent); }
+    .sw::after {
+      content: ""; position: absolute; top: 3px; left: 3px;
+      width: 20px; height: 20px; border-radius: 50%; background: #fff;
+    }
+    .sw.on::after { left: 19px; }
+    .x { width: 32px; height: 32px; display: grid; place-items: center; color: var(--dim); font-size: 16px; }
+
+    .mins {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+    }
+    .mins .t {
+      font-size: 10px; color: var(--dim); width: 100%; margin-bottom: 2px;
+    }
+    .chip {
+      font-size: 12px; font-weight: 500; color: var(--muted);
+      padding: 5px 10px; border-radius: 999px;
+      background: rgba(255,255,255,.04); border: 1px solid var(--line);
+    }
+    .chip.on {
+      color: var(--accent); background: var(--accent-dim);
+      border-color: var(--accent-line); font-weight: 600;
+    }
+
+    .empty {
+      text-align: center; padding: 28px 12px; color: var(--dim); font-size: 13px; line-height: 1.5;
+    }
+
+    .actions-intro {
+      font-size: 12px; color: var(--dim); line-height: 1.45;
+      margin: -2px 2px 10px;
+    }
+    .action {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+    }
+    .action.added { opacity: .55; }
+    .action .body { flex: 1; min-width: 0; }
+    .action .name { font-size: 14px; font-weight: 600; }
+    .action .desc { margin-top: 3px; font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .action .cta {
+      font-size: 12px; font-weight: 600; white-space: nowrap;
+      color: var(--accent);
+      padding: 7px 12px; border-radius: 999px;
+      background: var(--accent-dim); border: 1px solid var(--accent-line);
+    }
+    .action .cta.done {
+      color: var(--dim); background: transparent; border-color: var(--line);
+    }
+
+    .dock {
+      border-top: 1px solid var(--line);
+      background: rgba(10,10,11,.92);
+      backdrop-filter: blur(12px);
+      padding: 12px 18px 22px;
+    }
+    .dock-row {
+      display: flex; gap: 10px; align-items: center;
+    }
+    .field {
+      flex: 1; height: 48px; border-radius: 14px;
+      background: var(--surface); border: 1px solid var(--line);
+      display: flex; align-items: center; padding: 0 14px;
+      color: var(--dim); font-size: 14px;
+    }
+    .add-btn {
+      height: 48px; padding: 0 14px; border-radius: 14px;
+      background: var(--accent-dim); border: 1px solid var(--accent-line);
+      color: var(--accent); font-size: 14px; font-weight: 600;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .count {
+      margin-top: 8px; text-align: right; font-size: 11px; color: var(--dim);
+    }
+  </style>
+</head>
+<body>
+  <div class="page-title">
+    <h1>常用意图管理 · 形态草图</h1>
+    <p>同一列表两种来源：自定义文案，或从可直达动作加入（已添加标出）。落地以 deepLinkId 为准。</p>
+  </div>
+
+  <div class="phone">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="scroll">
+      <div class="top">
+        <div class="back">←</div>
+        <div class="title-wrap">
+          <div class="title">常用意图</div>
+          <div class="gate-pill">门上 2/6</div>
+        </div>
+      </div>
+      <p class="hint">打开「门上」会出现在拦截页写意图区。可直达动作进入后落到对应页面。</p>
+
+      <div class="system">
+        <div>
+          <div class="name">随便刷刷</div>
+          <div class="meta">日限额 30 分 · 可刷 12–14、20–22</div>
+        </div>
+        <div class="gear">⚙</div>
+      </div>
+
+      <div class="sec">
+        <h2>我的常用</h2>
+        <span>3/12</span>
+      </div>
+
+      <div class="card on-gate">
+        <div class="card-top">
+          <div class="card-main">
+            <div class="card-title"><span class="dot"></span>回消息</div>
+            <div class="card-sub land">门上 · 进入后直达消息中心</div>
+          </div>
+          <div class="side">
+            <label>门上</label>
+            <div class="sw on"></div>
+          </div>
+          <div class="x">×</div>
+        </div>
+        <div class="mins">
+          <div class="t">默认时长</div>
+          <span class="chip">不限</span>
+          <span class="chip on">5′</span>
+          <span class="chip">10′</span>
+          <span class="chip">15′</span>
+          <span class="chip">30′</span>
+        </div>
+      </div>
+
+      <div class="card on-gate">
+        <div class="card-top">
+          <div class="card-main">
+            <div class="card-title"><span class="dot"></span>看关注</div>
+            <div class="card-sub land">门上 · 进入后直达关注流</div>
+          </div>
+          <div class="side">
+            <label>门上</label>
+            <div class="sw on"></div>
+          </div>
+          <div class="x">×</div>
+        </div>
+        <div class="mins">
+          <div class="t">默认时长</div>
+          <span class="chip on">不限</span>
+          <span class="chip">5′</span>
+          <span class="chip">10′</span>
+          <span class="chip">15′</span>
+          <span class="chip">30′</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-top">
+          <div class="card-main">
+            <div class="card-title">改一下简介</div>
+            <div class="card-sub">仅保存在常用池</div>
+          </div>
+          <div class="side">
+            <label>门上</label>
+            <div class="sw"></div>
+          </div>
+          <div class="x">×</div>
+        </div>
+        <div class="mins">
+          <div class="t">默认时长</div>
+          <span class="chip on">不限</span>
+          <span class="chip">5′</span>
+          <span class="chip">10′</span>
+          <span class="chip">15′</span>
+          <span class="chip">30′</span>
+        </div>
+      </div>
+
+      <div class="sec" style="margin-top:18px">
+        <h2>可直达动作</h2>
+        <span>本 App</span>
+      </div>
+      <p class="actions-intro">点「加入」即成为一条常用意图；进入后会落到对应页。已加入的标为「已添加」。</p>
+
+      <div class="action added">
+        <div class="body">
+          <div class="name">回消息</div>
+          <div class="desc">进入后打开消息中心，处理私信与通知</div>
+        </div>
+        <div class="cta done">已添加</div>
+      </div>
+      <div class="action">
+        <div class="body">
+          <div class="name">逛商城</div>
+          <div class="desc">进入后落到商城 Tab，逛店与购物</div>
+        </div>
+        <div class="cta">加入</div>
+      </div>
+      <div class="action added">
+        <div class="body">
+          <div class="name">看关注</div>
+          <div class="desc">进入后打开关注流，只看已关注的人</div>
+        </div>
+        <div class="cta done">已添加</div>
+      </div>
+      <div class="action">
+        <div class="body">
+          <div class="name">看发现</div>
+          <div class="desc">进入后打开发现 Tab（推荐流）</div>
+        </div>
+        <div class="cta">加入</div>
+      </div>
+      <div class="action">
+        <div class="body">
+          <div class="name">编辑资料</div>
+          <div class="desc">进入后打开个人资料编辑页</div>
+        </div>
+        <div class="cta">加入</div>
+      </div>
+    </div>
+
+    <div class="dock">
+      <div class="dock-row">
+        <div class="field">自定义意图…</div>
+        <div class="add-btn">＋ 添加</div>
+      </div>
+      <div class="count">3/12</div>
+    </div>
+  </div>
+</body>
+</html>

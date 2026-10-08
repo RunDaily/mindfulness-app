@@ -1,5 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.MindfulnessApp" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.MindfulnessApp" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/app_window_bg_night</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- 能力详情：系统级 Activity 进场，整页压住主界面 -->
+    <style name="Theme.MindfulnessApp.CapabilityApps" parent="Theme.MindfulnessApp">
+        <item name="android:windowAnimationStyle">@style/Animation.CapabilityApps</item>
+    </style>
+
+    <style name="Animation.CapabilityApps" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/capability_activity_enter</item>
+        <item name="android:activityOpenExitAnimation">@anim/capability_activity_exit</item>
+        <item name="android:activityCloseEnterAnimation">@anim/capability_activity_pop_enter</item>
+        <item name="android:activityCloseExitAnimation">@anim/capability_activity_pop_exit</item>
+    </style>
+    <style name="Theme.MindfulnessApp.DualSpaceGate" parent="Theme.MindfulnessApp">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
 </resources>

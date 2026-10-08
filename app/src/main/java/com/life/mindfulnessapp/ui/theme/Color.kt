@@ -20,6 +20,9 @@ val LogoGreen       = Color(0xFF26BB68)   // 主品牌绿（-8% 饱和度，更�
 val LogoGreenBright = Color(0xFF43CC7E)   // 亮版：用于深色背景上的高亮文字
 val LogoGreenDeep   = Color(0xFF1A9E55)   // 深版：按压态、日间 Header 渐变终止色
 
+/** 日程表 · 当前时段名（草图 sand / now） */
+val ScheduleSlotNow = Color(0xFFC4A35A)
+
 // 兼容别名
 val LogoGreenLight = LogoGreenBright
 val LogoGreenMid   = LogoGreen
@@ -109,6 +112,24 @@ val DayBorder         = Color(0xFFCBD4E2)   // 卡片边框（模拟阴影感，
 
 // Dock/导航栏
 val DayDockBg         = Color(0xFFFFFFFF)   // 白色底
+
+// ════════════════════════════════════════════════════════════════════════════
+//  雾青（Mist）· 轻存在
+//  低对比青绿底，胶囊壳更透；服务「少抢画面」气质。
+// ════════════════════════════════════════════════════════════════════════════
+
+val MistBg            = Color(0xFFE6ECE8)
+val MistBgVariant     = Color(0xFFD8E2DC)
+val MistCardBg        = Color(0xFFF5F8F6)
+val MistCardElevated  = Color(0xFFEDF3EF)
+val MistCardGreen     = Color(0xFFDCE8E1)
+val MistTextPrimary   = Color(0xFF24302A)
+val MistTextSecondary = Color(0xFF5C7368)
+val MistTextHint      = Color(0xFF8A9E94)
+val MistBorder        = Color(0xFFB8C9BE)
+val MistDivider       = Color(0xFFD0DCD4)
+val MistAccent        = Color(0xFF5A8F72)
+val MistDockBg        = Color(0xFFE6ECE8)
 
 // ════════════════════════════════════════════════════════════════════════════
 //  旧版兼容别名（保持其他文件不报错，默认指向夜间主题值）

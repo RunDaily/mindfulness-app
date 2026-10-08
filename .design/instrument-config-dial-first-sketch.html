@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>配置 · 拨目标为主 · 用量退旁</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --line: rgba(232,237,230,.12);
+      --sand: #c4a35a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 80px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 36px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .eyebrow { font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px; }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 980px) { .row, .row3 { grid-template-columns: 1fr; justify-items: center; } }
+    .col-head { text-align: center; margin-bottom: 8px; max-width: 290px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; }
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9/19.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .bar {
+      height: 34px; padding: 12px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex: none;
+    }
+    .scroll { flex: 1; padding: 2px 16px 14px; display: flex; flex-direction: column; }
+    .brand { font-family: "Iowan Old Style", "Songti SC", Georgia, serif; font-size: 20px; font-weight: 500; }
+    .sub { font-size: 11px; color: var(--fog); line-height: 1.45; margin-top: 4px; }
+    .sub.quiet { color: var(--mist); font-size: 11px; }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 8px; }
+    .inst { padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .inst.off .name, .inst.off .hint, .inst.off .aside { color: var(--mist); }
+    .inst.soft .name { color: var(--fog); font-size: 13px; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .name { font-size: 14px; }
+    .hint { font-size: 10px; color: var(--mist); margin-top: 2px; }
+    .aside {
+      margin-top: 3px; font-size: 10px; color: var(--mist);
+      font-variant-numeric: tabular-nums;
+    }
+    .sw {
+      width: 34px; height: 19px; border-radius: 999px; position: relative; flex: none;
+      background: rgba(232,237,230,.16);
+    }
+    .sw.on { background: rgba(61,122,74,.85); }
+    .sw i {
+      position: absolute; top: 2px; left: 2px; width: 15px; height: 15px;
+      border-radius: 50%; background: var(--paper);
+    }
+    .sw.on i { left: 17px; }
+    .val {
+      margin-top: 8px; display: flex; align-items: baseline; justify-content: space-between;
+      font-variant-numeric: tabular-nums; max-width: 150px;
+    }
+    .step { font-size: 15px; color: var(--fog); }
+    .num { font-size: 20px; font-weight: 500; letter-spacing: -.03em; }
+    .unit { font-size: 11px; color: var(--fog); margin-left: 3px; }
+    .pair { display: flex; gap: 20px; margin-top: 8px; }
+    .pair .k { font-size: 10px; color: var(--mist); }
+    .pair .v { font-size: 15px; margin-top: 2px; }
+    .foot {
+      margin-top: auto; padding-top: 14px; display: flex;
+      justify-content: space-between; align-items: baseline;
+    }
+    .cta { font-size: 15px; color: var(--leaf-text); }
+    .dim { font-size: 12px; color: var(--mist); }
+    .danger { font-size: 12px; color: #c47a72; }
+    .strike {
+      margin-top: 10px; padding: 10px 0; border-top: 1px dashed rgba(196,122,114,.4);
+      font-size: 11px; color: #c47a72; line-height: 1.55;
+    }
+    .heat-demo {
+      height: 18px; display: flex; align-items: flex-end; gap: 2px; margin-top: 8px; opacity: .45;
+    }
+    .heat-demo i {
+      flex: 1; border-radius: 1px 1px 0 0; display: block; min-height: 2px;
+      background: rgba(61,122,74,.5);
+    }
+    .heat-demo i.n { background: rgba(196,163,90,.65); }
+    .heat-demo i.z { background: rgba(232,237,230,.1); }
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.75; max-width: 720px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Configure · Revise</div>
+      <h1>这页是定目标，不是看数</h1>
+      <p>主表面只有器械开关与数字。用量最多退成一行淡旁注；24 小时热力默认不出现。Agent 日一句先不做。</p>
+      <div class="thesis">拨数为主 · 对照极淡 · 热力默认无 · 日报搁置</div>
+    </header>
+
+    <p class="sec">配置 · <strong>建议形态</strong></p>
+    <section class="row">
+      <div>
+        <div class="col-head"><h3>① 推荐</h3><p>无用量头 · 无热力</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="scroll">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub quiet">改完保存，门口按新数字执行</p>
+
+            <div class="inst">
+              <div class="top">
+                <div>
+                  <div class="name">日限</div>
+                  <div class="hint">今天最多用多久</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="val">
+                <span class="step">−</span>
+                <span><span class="num">45</span><span class="unit">分</span></span>
+                <span class="step">+</span>
+              </div>
+            </div>
+
+            <div class="inst">
+              <div class="top">
+                <div>
+                  <div class="name">次数</div>
+                  <div class="hint">今天最多进几次</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="val">
+                <span class="step">−</span>
+                <span><span class="num">10</span><span class="unit">次</span></span>
+                <span class="step">+</span>
+              </div>
+            </div>
+
+            <div class="inst">
+              <div class="top">
+                <div>
+                  <div class="name">时段</div>
+                  <div class="hint">这段时间不让进</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="pair">
+                <div><div class="k">开始</div><div class="v">23:00</div></div>
+                <div><div class="k">结束</div><div class="v">07:00</div></div>
+              </div>
+            </div>
+
+            <div class="inst soft">
+              <div class="top">
+                <div>
+                  <div class="name">呼吸</div>
+                  <div class="hint">打开前先停一下</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="val">
+                <span class="step">−</span>
+                <span><span class="num">8</span><span class="unit">秒</span></span>
+                <span class="step">+</span>
+              </div>
+            </div>
+
+            <div class="foot">
+              <span class="danger">移出方案</span>
+              <span class="cta">保存</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>② 可有 · 极淡旁注</h3><p>挂在数字旁，不当头</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="scroll">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub quiet">近 7 日均约 55 分 · 14 次</p>
+
+            <div class="inst">
+              <div class="top">
+                <div>
+                  <div class="name">日限</div>
+                  <div class="hint">今天最多用多久</div>
+                  <div class="aside">对照日均 55</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="val">
+                <span class="step">−</span>
+                <span><span class="num">45</span><span class="unit">分</span></span>
+                <span class="step">+</span>
+              </div>
+            </div>
+
+            <div class="inst">
+              <div class="top">
+                <div>
+                  <div class="name">次数</div>
+                  <div class="hint">今天最多进几次</div>
+                  <div class="aside">对照日均 14</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="val">
+                <span class="step">−</span>
+                <span><span class="num">10</span><span class="unit">次</span></span>
+                <span class="step">+</span>
+              </div>
+            </div>
+
+            <div class="inst off">
+              <div class="top">
+                <div>
+                  <div class="name">时段</div>
+                  <div class="hint">这段时间不让进</div>
+                </div>
+                <div class="sw"><i></i></div>
+              </div>
+            </div>
+
+            <div class="inst soft">
+              <div class="top">
+                <div>
+                  <div class="name">呼吸</div>
+                  <div class="hint">打开前先停一下</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="val">
+                <span class="step">−</span>
+                <span><span class="num">8</span><span class="unit">秒</span></span>
+                <span class="step">+</span>
+              </div>
+            </div>
+
+            <div class="foot">
+              <span class="danger">移出方案</span>
+              <span class="cta">保存</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>③ 现状 · 过重</h3><p>像看数页，不像定目标</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>现状</span></div>
+          <div class="scroll">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub" style="margin-top:8px">近 7 日 · 不含今天</p>
+            <p style="margin-top:8px;font-size:15px">日均 55 分</p>
+            <p class="sub">打开 101 次　　夜间 17%</p>
+            <div class="heat-demo">
+              <i class="z" style="height:10%"></i><i class="z" style="height:8%"></i>
+              <i class="z" style="height:8%"></i><i class="z" style="height:8%"></i>
+              <i class="z" style="height:10%"></i><i class="z" style="height:12%"></i>
+              <i style="height:30%"></i><i style="height:40%"></i>
+              <i style="height:50%"></i><i style="height:35%"></i><i style="height:28%"></i>
+              <i style="height:45%"></i>
+              <i class="n" style="height:55%"></i><i class="n" style="height:70%"></i>
+              <i class="n" style="height:40%"></i>
+              <i class="z" style="height:10%"></i><i class="z" style="height:8%"></i>
+              <i class="z" style="height:8%"></i><i class="z" style="height:8%"></i>
+              <i class="z" style="height:8%"></i><i class="z" style="height:8%"></i>
+              <i class="z" style="height:8%"></i><i class="z" style="height:8%"></i>
+              <i class="z" style="height:8%"></i>
+            </div>
+            <p class="sub" style="margin-top:4px;font-size:10px">0 → 24 · 沙色夜间</p>
+            <p class="sub" style="margin-top:10px;color:var(--leaf-text)">想先定个方向… 和 AI 聊聊</p>
+            <div class="inst" style="padding-top:8px">
+              <div class="top"><div class="name">呼吸 · 1 秒</div><div class="sw on"><i></i></div></div>
+            </div>
+            <div class="inst">
+              <div class="top"><div class="name">次数 · 25</div><div class="sw on"><i></i></div></div>
+            </div>
+            <div class="strike">
+              用量头 + 热力抢了第一眼。<br />
+              人进来是改目标，却先被教「怎么看图」。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>④ 热力 · 默认不要</h3><p>看数去详情 / 今日</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>分工</span></div>
+          <div class="scroll">
+            <div class="brand" style="font-size:17px">谁负责看数</div>
+            <p class="sub" style="margin-top:10px">配置页</p>
+            <div class="inst">
+              <div class="top"><div><div class="name">开关 + 数字</div><div class="hint">定目标 · 主业</div></div></div>
+            </div>
+            <div class="inst off">
+              <div class="top"><div><div class="name">日均 / 次 / 热力头</div><div class="hint">不当主形态</div></div></div>
+            </div>
+            <div class="inst off">
+              <div class="top"><div><div class="name">24h 沙色条</div><div class="hint">默认不出现</div></div></div>
+            </div>
+
+            <p class="sub" style="margin-top:14px">今日 · 少详情</p>
+            <div class="inst">
+              <div class="top"><div><div class="name">走势 · 一周节奏</div><div class="hint">看变化、看时段</div></div></div>
+            </div>
+            <div class="inst">
+              <div class="top"><div><div class="name">热力有所值</div><div class="hint">在「看」的页才抬权</div></div></div>
+            </div>
+
+            <div class="strike">
+              热力只在开时段时有一点理由；<br />
+              也仍不如一句「夜间约三成」轻。<br />
+              配置页默认：完全可以没有。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="note">
+      <strong>1. 日均 / 打开次数：</strong>同意不该是主权重。这页主业是定目标（拨开关与数字）。若保留用量，最多标题下或数字旁一行极淡对照；不要用量头、不要三数并排抢视线。<br />
+      <strong>2. 24h 热力：</strong>配置页默认没必要。看分布应去今日详情 / 一周节奏。开「时段」时若要提示，用「夜间约 31%」一句话即可，不必上图。<br />
+      <strong>3. Agent 日报：</strong>先不做。配置与今日主路径继续干净；日一句以后另议。<br />
+      <strong>和旧草图：</strong>`.design/instrument-config-sketch.html` 里「用量在开关之上」这条收回——用量可作对照，不作配置页立面。
+    </p>
+  </div>
+</body>
+</html>

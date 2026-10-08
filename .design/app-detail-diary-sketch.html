@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>少 · 详情日记</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --sand: #c4a35a;
+      --line: rgba(232,237,230,.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 72px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 36px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .hero .eyebrow { font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px; }
+    .hero h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 980px) { .row { grid-template-columns: 1fr; justify-items: center; } }
+    .col-head { text-align: center; margin-bottom: 8px; max-width: 280px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; }
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9/19.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .bar {
+      height: 34px; padding: 12px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex: none;
+    }
+    .scroll { flex: 1; padding: 2px 16px 14px; display: flex; flex-direction: column; }
+    .brand { font-family: "Iowan Old Style", "Songti SC", Georgia, serif; font-size: 20px; font-weight: 500; }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 8px; }
+    .k { font-size: 11px; color: var(--mist); }
+    .hero-n {
+      margin-top: 4px; font-size: 24px; font-weight: 500; letter-spacing: -.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .hero-s { margin-top: 3px; font-size: 12px; color: var(--fog); }
+    .delta { margin-top: 4px; font-size: 12px; color: var(--leaf-text); }
+    .block { margin-top: 16px; }
+    .days {
+      display: flex; align-items: flex-end; gap: 7px; height: 44px;
+      border-bottom: 1px solid var(--line); padding-bottom: 5px; margin-top: 10px;
+    }
+    .days .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .days .col.on .bar-i { background: var(--leaf-text); }
+    .days .col.on .d { color: var(--paper); }
+    .days .bar-i {
+      width: 100%; max-width: 12px; border-radius: 2px 2px 0 0;
+      background: rgba(232,237,230,.26); min-height: 2px;
+    }
+    .days .d { font-size: 9px; color: var(--mist); }
+    .day-pick {
+      margin-top: 12px; display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .day-pick .when { font-size: 12px; color: var(--fog); }
+    .day-pick .tot { font-size: 12px; color: var(--mist); font-variant-numeric: tabular-nums; }
+    .sess { padding: 11px 0; border-bottom: 1px solid var(--line); }
+    .sess:last-of-type { border-bottom: none; }
+    .sess .what {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 16px; line-height: 1.35; color: var(--paper);
+    }
+    .sess .what.empty { font-family: inherit; font-size: 14px; color: var(--mist); }
+    .sess .meta { margin-top: 4px; font-size: 11px; color: var(--mist); font-variant-numeric: tabular-nums; }
+    .sess.hold .what { color: var(--mist); font-family: inherit; font-size: 14px; }
+    .heat {
+      height: 22px; display: flex; align-items: flex-end; gap: 2px; margin-top: 8px;
+    }
+    .heat i { flex: 1; border-radius: 1px 1px 0 0; display: block; min-height: 2px; }
+    .aside { margin-top: 5px; font-size: 11px; color: var(--fog); }
+    .foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); }
+    .cta { font-size: 15px; color: var(--leaf-text); }
+    .rowi {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 10px 0; border-bottom: 1px solid var(--line);
+    }
+    .rowi .n { font-size: 14px; }
+    .rowi .m { font-size: 11px; color: var(--mist); margin-top: 2px; }
+    .rowi .r { font-size: 12px; color: #c5d0c6; text-align: right; font-variant-numeric: tabular-nums; }
+    .nav {
+      margin-top: auto; display: flex; justify-content: space-around; padding-top: 10px;
+      border-top: 1px solid var(--line); font-size: 11px; color: var(--mist);
+    }
+    .nav .on { color: var(--paper); font-weight: 600; }
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.7; max-width: 720px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Less · Diary</div>
+      <h1>先看见你说过的话</h1>
+      <p>上一版把时刻和「搜 / 写」放在主位，搜索词和意图被扫掉了。这一版反过来：那句话是主行。</p>
+      <div class="thesis">日柱管趋势 · 那句话管做了什么</div>
+    </header>
+
+    <p class="sec">形态 · <strong>话在上，时刻退后</strong></p>
+    <section class="row">
+      <div>
+        <div class="col-head"><h3>① 今日首页</h3><p>仍不抬日记</p></div>
+        <div class="phone" style="aspect-ratio:9/16">
+          <div class="bar"><span>9:41</span><span>今日</span></div>
+          <div class="scroll">
+            <div class="brand">今日</div>
+            <div class="k" style="margin-top:14px">少 · 2/3</div>
+            <div class="rowi">
+              <div><div class="n">小红书</div><div class="m">呼吸 · 日限</div></div>
+              <div class="r">18 / 40 分<br>打开 3/8</div>
+            </div>
+            <div class="rowi">
+              <div><div class="n">抖音</div><div class="m">呼吸 · 日限</div></div>
+              <div class="r">22 / 45 分<br>打开 4/8</div>
+            </div>
+            <div class="nav"><span class="on">今日</span><span>方案</span><span>我</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>② 今天的痕迹</h3><p>搜、写、直开各一条</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="scroll">
+            <div class="back">‹ 今日</div>
+            <div class="brand">小红书</div>
+            <div class="k" style="margin-top:10px">今日</div>
+            <div class="hero-n">18 / 40 分</div>
+            <div class="hero-s">打开 3/8 · 守住 2</div>
+
+            <div class="block">
+              <div class="k">近 7 日 · 日均 18 分</div>
+              <div class="delta">比加上规则前少 12</div>
+              <div class="days">
+                <div class="col"><div class="bar-i" style="height:36px"></div><div class="d">一</div></div>
+                <div class="col"><div class="bar-i" style="height:24px"></div><div class="d">二</div></div>
+                <div class="col"><div class="bar-i" style="height:18px"></div><div class="d">三</div></div>
+                <div class="col"><div class="bar-i" style="height:14px"></div><div class="d">四</div></div>
+                <div class="col"><div class="bar-i" style="height:26px"></div><div class="d">五</div></div>
+                <div class="col"><div class="bar-i" style="height:10px"></div><div class="d">六</div></div>
+                <div class="col on"><div class="bar-i" style="height:16px"></div><div class="d">今</div></div>
+              </div>
+            </div>
+
+            <div class="day-pick">
+              <div class="when">今天</div>
+              <div class="tot">18 分 · 3 次</div>
+            </div>
+            <div class="sess">
+              <div class="what">日式收纳</div>
+              <div class="meta">21:14 · 搜 · 6 分</div>
+            </div>
+            <div class="sess">
+              <div class="what">回一条私信</div>
+              <div class="meta">14:02 · 写 · 8 分 · 限 10</div>
+            </div>
+            <div class="sess">
+              <div class="what empty">没有写下</div>
+              <div class="meta">09:40 · 打开 · 4 分</div>
+            </div>
+
+            <div class="foot"><span class="cta">去改规则</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>③ 点周一</h3><p>柱换选，话换成那天</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="scroll">
+            <div class="back">‹ 今日</div>
+            <div class="brand">小红书</div>
+            <div class="k" style="margin-top:10px">今日</div>
+            <div class="hero-n">18 / 40 分</div>
+            <div class="hero-s">打开 3/8 · 守住 2</div>
+
+            <div class="block">
+              <div class="k">近 7 日 · 日均 18 分</div>
+              <div class="delta">比加上规则前少 12</div>
+              <div class="days">
+                <div class="col on"><div class="bar-i" style="height:36px"></div><div class="d">一</div></div>
+                <div class="col"><div class="bar-i" style="height:24px"></div><div class="d">二</div></div>
+                <div class="col"><div class="bar-i" style="height:18px"></div><div class="d">三</div></div>
+                <div class="col"><div class="bar-i" style="height:14px"></div><div class="d">四</div></div>
+                <div class="col"><div class="bar-i" style="height:26px"></div><div class="d">五</div></div>
+                <div class="col"><div class="bar-i" style="height:10px"></div><div class="d">六</div></div>
+                <div class="col"><div class="bar-i" style="height:16px"></div><div class="d">今</div></div>
+              </div>
+            </div>
+
+            <div class="day-pick">
+              <div class="when">周一 · 9/21</div>
+              <div class="tot">42 分 · 4 次</div>
+            </div>
+            <div class="sess">
+              <div class="what">空气炸锅食谱</div>
+              <div class="meta">13:05 · 搜 · 7 分</div>
+            </div>
+            <div class="sess">
+              <div class="what">找周末去处</div>
+              <div class="meta">20:40 · 写 · 11 分 · 限 15</div>
+            </div>
+            <div class="sess">
+              <div class="what empty">没有写下</div>
+              <div class="meta">23:12 · 打开 · 19 分</div>
+            </div>
+            <div class="sess hold">
+              <div class="what">门口离开</div>
+              <div class="meta">12:58 · 守住</div>
+            </div>
+
+            <div class="foot"><span class="cta">去改规则</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>④ 夜里挤着</h3><p>热力贴柱下，半句可选</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="scroll">
+            <div class="back">‹ 今日</div>
+            <div class="brand">小红书</div>
+            <div class="k" style="margin-top:10px">今日</div>
+            <div class="hero-n">18 / 40 分</div>
+            <div class="hero-s">打开 3/8 · 守住 2</div>
+
+            <div class="block">
+              <div class="k">近 7 日 · 日均 18 分</div>
+              <div class="delta">比加上规则前少 12</div>
+              <div class="days">
+                <div class="col"><div class="bar-i" style="height:36px"></div><div class="d">一</div></div>
+                <div class="col"><div class="bar-i" style="height:24px"></div><div class="d">二</div></div>
+                <div class="col"><div class="bar-i" style="height:18px"></div><div class="d">三</div></div>
+                <div class="col"><div class="bar-i" style="height:14px"></div><div class="d">四</div></div>
+                <div class="col"><div class="bar-i" style="height:26px"></div><div class="d">五</div></div>
+                <div class="col"><div class="bar-i" style="height:10px"></div><div class="d">六</div></div>
+                <div class="col on"><div class="bar-i" style="height:16px"></div><div class="d">今</div></div>
+              </div>
+              <div class="heat" aria-hidden="true">
+                <i style="height:12%;background:rgba(196,163,90,.28)"></i>
+                <i style="height:8%;background:rgba(196,163,90,.2)"></i>
+                <i style="height:6%;background:rgba(196,163,90,.16)"></i>
+                <i style="height:6%;background:rgba(196,163,90,.16)"></i>
+                <i style="height:8%;background:rgba(196,163,90,.2)"></i>
+                <i style="height:10%;background:rgba(196,163,90,.24)"></i>
+                <i style="height:16%;background:rgba(232,237,230,.12)"></i>
+                <i style="height:12%;background:rgba(232,237,230,.08)"></i>
+                <i style="height:10%;background:rgba(232,237,230,.08)"></i>
+                <i style="height:14%;background:rgba(232,237,230,.1)"></i>
+                <i style="height:18%;background:rgba(232,237,230,.14)"></i>
+                <i style="height:14%;background:rgba(232,237,230,.1)"></i>
+                <i style="height:12%;background:rgba(232,237,230,.08)"></i>
+                <i style="height:10%;background:rgba(232,237,230,.08)"></i>
+                <i style="height:16%;background:rgba(232,237,230,.1)"></i>
+                <i style="height:24%;background:rgba(232,237,230,.16)"></i>
+                <i style="height:36%;background:rgba(232,237,230,.22)"></i>
+                <i style="height:30%;background:rgba(232,237,230,.18)"></i>
+                <i style="height:50%;background:rgba(232,237,230,.28)"></i>
+                <i style="height:88%;background:rgba(196,163,90,.72)"></i>
+                <i style="height:62%;background:rgba(196,163,90,.5)"></i>
+                <i style="height:28%;background:rgba(196,163,90,.34)"></i>
+                <i style="height:16%;background:rgba(196,163,90,.24)"></i>
+                <i style="height:12%;background:rgba(196,163,90,.2)"></i>
+              </div>
+              <div class="aside">22 点后占三成</div>
+            </div>
+
+            <div class="day-pick">
+              <div class="when">今天</div>
+              <div class="tot">18 分 · 3 次</div>
+            </div>
+            <div class="sess">
+              <div class="what">日式收纳</div>
+              <div class="meta">21:14 · 搜 · 6 分</div>
+            </div>
+            <div class="sess">
+              <div class="what">回一条私信</div>
+              <div class="meta">14:02 · 写 · 8 分 · 限 10</div>
+            </div>
+
+            <div class="foot"><span class="cta">去改规则</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>框外 · 为何改。</strong>
+      上一版不是最佳。日柱、热力、痕迹三截同重，行里又先写「21:14 · 搜」，「日式收纳」像注解。日记要认的是那句话：搜到的词、写下的意图。时刻、进法、时长退到下一行。<br>
+      日柱只作形状和选日，柱上不再标分钟。热力仍可选，贴在柱下，不跟痕迹抢主位。<br>
+      <strong>例子怎么读。</strong>
+      「日式收纳」「空气炸锅食谱」是门口搜进去的词。「回一条私信」「找周末去处」是写下的意图。直开没有句子，写「没有写下」。守住不进，只记离开。
+    </div>
+  </div>
+</body>
+</html>

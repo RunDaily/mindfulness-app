@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>意图门 · 缺口 · 草图</title>
+  <style>
+    :root {
+      --ink: #070908;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --leaf: #3d7a4a;
+      --leaf-soft: rgba(61, 122, 74, 0.14);
+      --sand: #c4a35a;
+      --sand-soft: rgba(196, 163, 90, 0.16);
+      --line: rgba(232, 237, 230, 0.14);
+      --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--page);
+      color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 40px 20px 80px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 28px; }
+
+    header { max-width: 540px; }
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--mist);
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 28px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      line-height: 1.3;
+    }
+    header p {
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--fog);
+      max-width: 36em;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tabs button {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--fog);
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .tabs button.on {
+      color: var(--paper);
+      border-color: rgba(61, 122, 74, 0.45);
+      background: var(--leaf-soft);
+    }
+
+    .stage-wrap {
+      display: flex;
+      justify-content: center;
+      gap: 28px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .phone {
+      width: min(340px, 100%);
+      aspect-ratio: 9 / 17.5;
+      border-radius: 40px;
+      border: 1px solid var(--line);
+      background: var(--ink);
+      position: relative;
+      overflow: hidden;
+    }
+    .bar {
+      height: 44px;
+      padding: 14px 22px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: rgba(232, 237, 230, 0.45);
+      font-weight: 600;
+    }
+
+    .layer {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 52px 22px 22px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .layer.on { opacity: 1; pointer-events: auto; }
+
+    .toprow {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .whisper, .when {
+      font-size: 11px;
+      color: var(--mist);
+    }
+    .when { flex-shrink: 0; }
+
+    /* 停住 */
+    #beatStop {
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    #beatStop .when {
+      position: absolute;
+      top: 52px;
+      right: 22px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--leaf);
+      margin-bottom: 28px;
+    }
+    #beatStop .line {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 26px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    #beatStop .sub {
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--mist);
+    }
+
+    /* 一门 */
+    .q {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 26px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      line-height: 1.3;
+      margin-top: 22px;
+    }
+    .field { margin-top: 20px; }
+    .field-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .field textarea {
+      flex: 1;
+      min-width: 0;
+      min-height: 44px;
+      max-height: 72px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--paper);
+      font-size: 20px;
+      line-height: 1.4;
+      font-family: inherit;
+    }
+    .field textarea::placeholder { color: rgba(139, 147, 140, 0.45); }
+    .clear {
+      display: none;
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      margin-top: 10px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(232, 237, 230, 0.1);
+      color: var(--fog);
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .clear.show { display: flex; }
+    .land {
+      height: 0;
+      overflow: hidden;
+      font-size: 11px;
+      color: var(--sand);
+    }
+    .land.show {
+      height: auto;
+      margin-top: 6px;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--fog);
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .chip.honest {
+      border-color: rgba(196, 163, 90, 0.4);
+      color: #d8c48a;
+    }
+    .chip.on {
+      background: var(--leaf-soft);
+      border-color: rgba(61, 122, 74, 0.5);
+      color: #9fd4a8;
+    }
+    .chip.honest.on {
+      background: var(--sand-soft);
+      border-color: rgba(196, 163, 90, 0.55);
+      color: var(--sand);
+    }
+
+    .midflex {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .hold {
+      display: none;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      padding: 8px 0 4px;
+    }
+    .hold.show { display: flex; }
+    .ruler {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 4px 0;
+    }
+    .ruler::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 1px;
+      background: rgba(232, 237, 230, 0.22);
+    }
+    .mark {
+      height: 32px;
+      display: grid;
+      grid-template-columns: 18px 28px;
+      align-items: center;
+      cursor: pointer;
+      background: none;
+      border: 0;
+      padding: 0;
+      color: inherit;
+      font-family: inherit;
+    }
+    .tick {
+      height: 1px;
+      width: 9px;
+      background: var(--mist);
+    }
+    .mark.on .tick { width: 16px; background: var(--sand); }
+    .n {
+      font-weight: 300;
+      font-size: 13px;
+      color: var(--fog);
+      font-variant-numeric: tabular-nums;
+      text-align: left;
+    }
+    .mark.on .n { color: var(--paper); }
+    .figure { display: none; width: 72px; margin-left: 28px; }
+    .figure.show { display: block; }
+    .num {
+      font-weight: 260;
+      font-size: 56px;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .unit {
+      margin-top: 8px;
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      color: var(--sand);
+    }
+
+    .pause-enter {
+      display: block;
+      width: 100%;
+      background: none;
+      border: 0;
+      padding: 0;
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--paper);
+    }
+    .pause-enter.hero {
+      margin: auto 0;
+      padding: 8px 0;
+    }
+    .pause-enter .lead {
+      font-size: 16px;
+      letter-spacing: 0.04em;
+    }
+    .pause-enter .or {
+      color: var(--mist);
+      margin-right: 0.2em;
+    }
+    .pause-enter .sub {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--mist);
+    }
+    .pause-enter.slim {
+      margin: 0;
+      padding: 12px 0 2px;
+      border-top: 0;
+    }
+    .pause-enter.slim .lead { font-size: 13px; letter-spacing: 0.04em; }
+    .pause-enter.slim .sub { display: none; }
+
+    .base {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+      min-height: 56px;
+    }
+    .stay, .go {
+      font-size: 15px;
+      letter-spacing: 0.18em;
+      cursor: pointer;
+      background: none;
+      border: 0;
+      font-family: inherit;
+      color: inherit;
+    }
+    .stay { display: flex; align-items: center; gap: 8px; color: var(--paper); }
+    .sq { width: 4px; height: 4px; background: var(--sand); }
+    .go { color: var(--mist); }
+    .stay.on,
+    .go.on {
+      color: var(--ink);
+      background: var(--paper);
+      letter-spacing: 0.2em;
+      padding: 11px 16px 12px;
+      border-radius: 2px;
+      gap: 0;
+    }
+    .stay.on .sq { display: none; }
+
+    /* 离开 */
+    #beatLeave {
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    #beatLeave h2,
+    #beatPause .clock {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    #beatLeave h2 {
+      font-size: 26px;
+    }
+
+    /* 放空 */
+    .back-quiet {
+      background: none;
+      border: 0;
+      padding: 0;
+      color: var(--mist);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    #beatPause .clock {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+      font-weight: 260;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      font-family: "SF Pro Display", "SF Pro Text", sans-serif;
+    }
+    .spine {
+      display: grid;
+      gap: 2px;
+      padding-bottom: 8px;
+    }
+    .spine button {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: 0;
+      color: var(--paper);
+      font-size: 15px;
+      padding: 11px 0;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .spine .pt {
+      width: 4px;
+      height: 4px;
+      background: var(--sand);
+      flex-shrink: 0;
+    }
+    .spine .on { color: var(--sand); }
+
+    .side {
+      width: min(360px, 100%);
+      font-size: 13px;
+      color: var(--fog);
+      line-height: 1.65;
+    }
+    .side h2 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--paper);
+      margin-bottom: 12px;
+    }
+    .side ul { list-style: none; display: grid; gap: 10px; }
+    .side li {
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+    .side li strong {
+      color: var(--paper);
+      font-weight: 600;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .rules {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--fog);
+      line-height: 1.55;
+    }
+    @media (max-width: 700px) { .rules { grid-template-columns: 1fr; } }
+    .rules > div {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .rules h3 { font-size: 13px; color: var(--paper); margin-bottom: 10px; }
+    .rules p { margin-bottom: 6px; }
+    .cut { color: #c97b7b; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">意图门 · 收成缺口</div>
+      <h1>空门不问多久。<br />放空是侧门。</h1>
+      <p>
+        主问是必要与否。写了，尺子才出现。空着的时候，中间是放空一分钟。
+      </p>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button type="button" class="on" data-b="stop" onclick="go('stop')">停住</button>
+      <button type="button" data-b="empty" onclick="go('empty')">空门</button>
+      <button type="button" data-b="named" onclick="go('named')">写了</button>
+      <button type="button" data-b="ready" onclick="go('ready')">打开</button>
+      <button type="button" data-b="urge" onclick="go('urge')">想刷一会</button>
+      <button type="button" data-b="felt" onclick="go('felt')">很烦</button>
+      <button type="button" data-b="search" onclick="go('search')">搜一下</button>
+      <button type="button" data-b="pause" onclick="go('pause')">放空</button>
+      <button type="button" data-b="leave" onclick="go('leave')">离开</button>
+    </div>
+
+    <div class="stage-wrap">
+      <div class="phone" id="phone">
+        <div class="bar"><span>9:41</span><span>▮▮▮</span></div>
+
+        <div class="layer on" id="beatStop">
+          <div class="when">9月23日 · 已用 18 分</div>
+          <div class="dot"></div>
+          <div class="line">小红书</div>
+          <div class="sub">今日第 3 次</div>
+        </div>
+
+        <div class="layer" id="beatGate">
+          <div class="toprow">
+            <div class="whisper">小红书 · 今日第 3 次</div>
+            <div class="when">9月23日 · 已用 18 分</div>
+          </div>
+          <div class="q">这次打开，<br />是必要的吗</div>
+
+          <div class="field">
+            <div class="field-row">
+              <textarea id="ta" placeholder="必要的事情，或者此刻感受" oninput="onType()"></textarea>
+              <button type="button" class="clear" id="clearBtn" aria-label="清除" onclick="clearToEmpty()">×</button>
+            </div>
+            <div class="land" id="land">打开后去搜索</div>
+          </div>
+          <div class="chips" id="chips">
+            <button type="button" class="chip" data-v="回消息" onclick="useChip(this)">回消息</button>
+            <button type="button" class="chip" data-search="1" onclick="useSearch()">搜一下</button>
+            <button type="button" class="chip honest" data-v="想刷一会" onclick="useChip(this)">想刷一会</button>
+          </div>
+
+          <div class="midflex">
+            <div class="hold" id="holdRuler">
+              <div class="ruler" id="ruler">
+                <button type="button" class="mark" data-m="5"><span class="tick"></span><span class="n">5</span></button>
+                <button type="button" class="mark" data-m="10"><span class="tick"></span><span class="n">10</span></button>
+                <button type="button" class="mark" data-m="15"><span class="tick"></span><span class="n">15</span></button>
+                <button type="button" class="mark" data-m="20"><span class="tick"></span><span class="n">20</span></button>
+                <button type="button" class="mark" data-m="30"><span class="tick"></span><span class="n">30</span></button>
+              </div>
+              <div class="figure" id="figure">
+                <div class="num" id="mins">15</div>
+                <div class="unit">分钟</div>
+              </div>
+            </div>
+            <button type="button" class="pause-enter hero" id="pauseEnter" onclick="go('pause')">
+              <div class="lead"><span class="or">或者</span>放空一分钟</div>
+              <div class="sub">整理一下头脑</div>
+            </button>
+          </div>
+
+          <div class="base">
+            <button type="button" class="stay on" id="stay" onclick="go('leave')"><span class="sq"></span>不必</button>
+            <button type="button" class="go" id="goBtn" onclick="tryOpen()">打开</button>
+          </div>
+        </div>
+
+        <div class="layer" id="beatLeave">
+          <div class="dot"></div>
+          <h2>没打开</h2>
+        </div>
+
+        <div class="layer" id="beatPause">
+          <div class="toprow">
+            <button type="button" class="back-quiet" onclick="go('empty')">返回</button>
+            <div class="when">9月23日 · 已用 18 分</div>
+          </div>
+          <div class="q">放空一分钟</div>
+          <div class="clock" id="pauseClock">1:00</div>
+          <div class="spine">
+            <button type="button" data-act="window" onclick="pickAct(this)"><span class="pt"></span>看看窗外</button>
+            <button type="button" data-act="water" onclick="pickAct(this)"><span class="pt"></span>喝口水</button>
+            <button type="button" data-act="sit" onclick="pickAct(this)"><span class="pt"></span>坐着就行</button>
+          </div>
+          <div class="base">
+            <button type="button" class="stay on" onclick="go('leave')"><span class="sq"></span>回桌面</button>
+            <button type="button" class="go" onclick="go('empty')">还是打开</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side" id="sideNote"></aside>
+    </div>
+
+    <section class="rules">
+      <div>
+        <h3>这页里有的</h3>
+        <p>· 右上：日期 · 今日已用（不放限额）</p>
+        <p>· 有字才出清除；清除回到空门</p>
+        <p>· 想刷一会放最后</p>
+        <p>· 或者放空一分钟</p>
+        <p>· 写了才出尺子</p>
+      </div>
+      <div>
+        <h3>不放进去的</h3>
+        <p class="cut">· 空门上摆尺子</p>
+        <p class="cut">· 做点别的变成待办橱窗</p>
+        <p class="cut">· 放空页走四念处、拇指旁白</p>
+        <p class="cut">· 右上角再堆天气、限额、勋章</p>
+        <p class="cut">· 到场了 / 看见了 / 先站起来</p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const HINT = "必要的事情，或者此刻感受";
+    const URGE = "想刷一会";
+    let minutes = 0;
+    let searchOn = false;
+
+    const notes = {
+      stop: {
+        title: "停住 · 约一秒",
+        items: [
+          ["不说话", "App 名、今日第几次。右上是日期和今日已用。"],
+          ["不是倒计时", "自动进入一门。点屏幕也可跳过。"],
+          ["不加别的", "已用是事实。不放限额、剩余、勋章。"],
+        ],
+      },
+      empty: {
+        title: "空门 · 尺子不在",
+        items: [
+          ["主问", "这次打开，是必要的吗 —— 已用时长帮这一问。"],
+          ["或者放空", "接在必要吗后面，是另一条路，不是第三项作业。"],
+          ["想刷一会在最后", "事先、感受后。"],
+        ],
+      },
+      named: {
+        title: "写了 · 尺子才来",
+        items: [
+          ["入口变了", "有内容，才问多久。"],
+          ["右侧清除", "叉一下回到空门，尺子收起。"],
+          ["打开仍是字", "还没选刻度。"],
+        ],
+      },
+      ready: {
+        title: "打开 · 一次确认",
+        items: [
+          ["纸色才移过去", "写了，且尺子上有刻度。"],
+          ["仍可放空", "写了也可以改主意。"],
+          ["微信同一页", "问法不变，尺子刻度更短。"],
+        ],
+      },
+      urge: {
+        title: "想刷一会",
+        items: [
+          ["放最后", "回消息、搜一下在前。感受不抢必要。"],
+          ["对着主问", "必要吗？—— 想刷。诚实，不必改写成事。"],
+          ["仍要尺子", "要开，再说过多久。"],
+        ],
+      },
+      felt: {
+        title: "很烦 · 此刻感受",
+        items: [
+          ["和占位对齐", "此刻感受可以过门。"],
+          ["不改写成想刷", "很烦就是很烦。"],
+          ["仍要尺子", "过门和回消息一样。"],
+        ],
+      },
+      search: {
+        title: "搜一下 · 点了才搜",
+        items: [
+          ["点了才搜", "占位改成「搜什么」。"],
+          ["不静默劫持", "手写不等于自动去搜索。"],
+          ["钉过的才直达", "常用项绑了页面，点选才进对应页。"],
+        ],
+      },
+      pause: {
+        title: "放空 · 侧门",
+        items: [
+          ["自愿才进", "主门不再塞觉察句。想停，才进这一页。"],
+          ["一分钟就够", "看看窗外、喝口水、坐着就行。不是课程。"],
+          ["出口两个", "回桌面，或还是打开。不颁奖。"],
+        ],
+      },
+      leave: {
+        title: "离开",
+        items: [
+          ["一句事实", "没打开。"],
+          ["从哪来都行", "不必、放空结束、回桌面，都落这里。"],
+          ["一瞥即走", "然后回桌面。"],
+        ],
+      },
+    };
+
+    function namedNow() {
+      return document.getElementById("ta").value.trim().length > 0;
+    }
+
+    function renderNote(key) {
+      const n = notes[key];
+      const ul = n.items.map(([a, b]) => `<li><strong>${a}</strong>${b}</li>`).join("");
+      document.getElementById("sideNote").innerHTML = `<h2>${n.title}</h2><ul>${ul}</ul>`;
+    }
+
+    function showLayer(id) {
+      document.querySelectorAll(".layer").forEach((el) => el.classList.remove("on"));
+      document.getElementById(id).classList.add("on");
+    }
+
+    function hintText() {
+      return searchOn ? "搜什么" : HINT;
+    }
+
+    function setSearch(on) {
+      searchOn = on;
+      document.getElementById("ta").placeholder = hintText();
+      sync();
+    }
+
+    function setMinutes(m) {
+      minutes = m;
+      document.querySelectorAll(".mark").forEach((el) => {
+        el.classList.toggle("on", Number(el.dataset.m) === m);
+      });
+      const figure = document.getElementById("figure");
+      document.getElementById("mins").textContent = m || 15;
+      figure.classList.toggle("show", m > 0);
+      sync();
+    }
+
+    function canOpen() {
+      return namedNow() && minutes > 0;
+    }
+
+    function sync() {
+      const v = document.getElementById("ta").value.trim();
+      const named = v.length > 0;
+      document.querySelectorAll(".chip").forEach((c) => {
+        if (c.dataset.search) {
+          c.classList.toggle("on", searchOn);
+        } else {
+          c.classList.toggle("on", c.dataset.v === v && !searchOn);
+        }
+      });
+      document.getElementById("holdRuler").classList.toggle("show", named);
+      const pause = document.getElementById("pauseEnter");
+      pause.classList.toggle("hero", !named);
+      pause.classList.toggle("slim", named);
+      if (!named && minutes > 0) {
+        minutes = 0;
+        document.querySelectorAll(".mark").forEach((el) => el.classList.remove("on"));
+        document.getElementById("figure").classList.remove("show");
+      }
+      const open = canOpen();
+      document.getElementById("stay").classList.toggle("on", !open);
+      document.getElementById("goBtn").classList.toggle("on", open);
+      document.getElementById("land").classList.toggle("show", searchOn && named);
+      document.getElementById("clearBtn").classList.toggle("show", named);
+    }
+
+    function clearToEmpty() {
+      document.getElementById("ta").value = "";
+      searchOn = false;
+      document.getElementById("ta").placeholder = HINT;
+      minutes = 0;
+      document.querySelectorAll(".mark").forEach((el) => el.classList.remove("on"));
+      document.getElementById("figure").classList.remove("show");
+      sync();
+    }
+
+    function onType() {
+      const t = document.getElementById("ta").value.trim();
+      if (searchOn && (t === URGE || t === "很烦")) {
+        setSearch(false);
+        return;
+      }
+      sync();
+    }
+
+    function useChip(el) {
+      setSearch(false);
+      document.getElementById("ta").value = el.dataset.v;
+      sync();
+    }
+
+    function useSearch() {
+      setSearch(true);
+      const t = document.getElementById("ta").value.trim();
+      if (!t || t === URGE || t === "很烦" || t === "回消息") {
+        document.getElementById("ta").value = "";
+      }
+      sync();
+    }
+
+    function tryOpen() {
+      if (!canOpen()) return;
+      alert("草图：打开 App" + (searchOn ? "，去搜索。" : "。"));
+    }
+
+    function pickAct(el) {
+      document.querySelectorAll("#beatPause .spine button").forEach((b) => b.classList.remove("on"));
+      el.classList.add("on");
+    }
+
+    function go(which) {
+      document.querySelectorAll(".tabs button").forEach((b) => {
+        b.classList.toggle("on", b.dataset.b === which);
+      });
+
+      if (which === "stop") {
+        showLayer("beatStop");
+        renderNote("stop");
+        return;
+      }
+      if (which === "leave") {
+        showLayer("beatLeave");
+        renderNote("leave");
+        return;
+      }
+      if (which === "pause") {
+        showLayer("beatPause");
+        document.querySelectorAll("#beatPause .spine button").forEach((b) => b.classList.remove("on"));
+        renderNote("pause");
+        return;
+      }
+
+      showLayer("beatGate");
+      const scenes = {
+        empty: { text: "", search: false, min: 0 },
+        named: { text: "回消息", search: false, min: 0 },
+        ready: { text: "找菜谱", search: false, min: 15 },
+        urge: { text: URGE, search: false, min: 10 },
+        felt: { text: "很烦", search: false, min: 10 },
+        search: { text: "葱油拌面", search: true, min: 10 },
+      };
+      const s = scenes[which] || scenes.empty;
+      document.getElementById("ta").value = s.text;
+      searchOn = s.search;
+      document.getElementById("ta").placeholder = hintText();
+      setMinutes(s.min);
+      renderNote(which);
+    }
+
+    document.getElementById("ruler").addEventListener("click", (e) => {
+      const mark = e.target.closest(".mark");
+      if (!mark) return;
+      const m = Number(mark.dataset.m);
+      setMinutes(minutes === m ? 0 : m);
+    });
+
+    renderNote("stop");
+    setTimeout(() => {
+      if (document.getElementById("beatStop").classList.contains("on")) go("empty");
+    }, 1100);
+  </script>
+</body>
+</html>

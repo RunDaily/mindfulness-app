@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>节奏 1.5 屏 · 详情今日条 · 走势下打开次数</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --sand: #c4a35a;
+      --line: rgba(232,237,230,.12);
+      /* 手机内容区约 238px → 一天尺子 = 1.5 屏 ≈ 357px */
+      --day-w: 357px;
+      --hour: calc(var(--day-w) / 24);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 80px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 44px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .hero .eyebrow { font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px; }
+    .hero h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start; }
+    @media (max-width: 960px) {
+      .row2, .row3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 320px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9/17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4);
+      overflow: hidden;
+    }
+    .phone.wide {
+      width: min(320px, 100%);
+    }
+    .bar {
+      height: 28px; padding: 10px 14px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex-shrink: 0;
+    }
+    .body { flex: 1; padding: 2px 0 12px; display: flex; flex-direction: column; min-height: 0; }
+    .pad { padding: 0 16px; }
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 20px; font-weight: 500;
+    }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 6px; }
+    .sub { font-size: 11px; color: var(--fog); margin-top: 2px; line-height: 1.4; }
+    .lab { font-size: 10px; color: var(--mist); margin-top: 12px; }
+    .delta { font-size: 13px; color: var(--leaf-text); margin-top: 4px; }
+    .link {
+      margin-top: 8px; font-size: 13px; color: var(--mist);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .link em { font-style: normal; color: var(--leaf-text); }
+    .cta { font-size: 14px; color: var(--leaf-text); margin-top: auto; padding: 12px 16px 0; }
+    .note-line { font-size: 10px; color: var(--mist); margin-top: 8px; line-height: 1.45; padding: 0 16px; }
+    .foot {
+      margin-top: 8px; padding: 10px 16px 0; font-size: 12px; color: var(--fog);
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .foot strong { color: var(--leaf-text); font-size: 14px; font-weight: 600; }
+    .hint-scroll {
+      font-size: 10px; color: var(--mist); text-align: center; margin-top: 6px;
+      letter-spacing: .04em;
+    }
+
+    /* ── 可横滑的一天尺子 ── */
+    .scroller {
+      overflow-x: auto; overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(232,237,230,.2) transparent;
+      margin-top: 8px;
+    }
+    .scroller::-webkit-scrollbar { height: 3px; }
+    .scroller::-webkit-scrollbar-thumb { background: rgba(232,237,230,.22); border-radius: 2px; }
+    .ruler {
+      width: var(--day-w);
+      padding-left: 36px; /* 留给星期列的视觉对齐：外层另有 sticky */
+    }
+    .rhythm-board {
+      display: grid;
+      grid-template-columns: 32px var(--day-w);
+      width: calc(32px + var(--day-w));
+    }
+    .scroller .rhythm-board { margin-left: 0; }
+
+    .hours {
+      grid-column: 2;
+      display: grid;
+      grid-template-columns: repeat(24, var(--hour));
+      height: 16px;
+      align-items: end;
+      margin-bottom: 2px;
+    }
+    .hours span {
+      font-size: 8px; color: var(--mist); text-align: center;
+      transform: translateX(-50%);
+      width: var(--hour);
+      font-variant-numeric: tabular-nums;
+    }
+    .hours span.major { color: var(--fog); }
+    .hours span.hide { visibility: hidden; }
+
+    .day-row {
+      display: contents;
+    }
+    .dow {
+      font-size: 12px; font-weight: 500;
+      display: flex; flex-direction: column; justify-content: center;
+      padding-right: 4px;
+      position: sticky; left: 0; z-index: 2;
+      background: #050706;
+    }
+    .dow em { font-style: normal; font-size: 9px; color: var(--mist); font-weight: 400; }
+    .dow.today { color: var(--leaf-text); }
+
+    .track {
+      position: relative;
+      width: var(--day-w);
+      height: 28px;
+      border-radius: 3px;
+      background: rgba(232,237,230,.04);
+      margin: 3px 0;
+    }
+    /* 24 根整点竖细线 */
+    .track .grid {
+      position: absolute; inset: 0;
+      background-image: repeating-linear-gradient(
+        to right,
+        rgba(232,237,230,.14) 0,
+        rgba(232,237,230,.14) 1px,
+        transparent 1px,
+        transparent var(--hour)
+      );
+      pointer-events: none;
+    }
+    .blk {
+      position: absolute; top: 18%; height: 64%; border-radius: 2px; background: var(--leaf);
+      z-index: 1;
+    }
+    .now {
+      position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--paper);
+      transform: translateX(-50%); z-index: 2;
+    }
+
+    /* 详情 · 今日单行（同尺，可滑） */
+    .today-strip .track { height: 36px; margin: 6px 0 0; }
+    .today-strip .hours { margin-left: 0; }
+    .today-strip .ruler { padding-left: 16px; padding-right: 16px; width: calc(var(--day-w) + 32px); }
+    .today-strip .hours,
+    .today-strip .track { margin-left: 16px; }
+
+    /* 走势双图 */
+    .chart-dur { margin-top: 8px; height: 110px; position: relative; }
+    .chart-open { margin-top: 4px; height: 52px; position: relative; }
+    .chart-dur svg, .chart-open svg { width: 100%; height: 100%; display: block; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 6px;
+      font-size: 10px; color: var(--mist);
+    }
+    .legend i {
+      display: inline-block; width: 11px; height: 2px; margin-right: 4px; vertical-align: middle;
+    }
+    .legend .avg { background: var(--sand); }
+    .legend .cap { background: var(--leaf-text); border-top: 1px dashed var(--leaf-text); height: 0; padding-top: 1px; }
+    .legend .ln { background: rgba(232,237,230,.5); }
+    .legend .op { background: rgba(232,237,230,.4); height: 6px; width: 8px; border-radius: 1px; }
+    .sessions { margin-top: 8px; font-size: 11px; color: var(--fog); line-height: 1.55; padding: 0 16px; }
+    .sessions .mute { color: var(--mist); }
+
+    .cap {
+      max-width: 680px; margin: 0 auto; font-size: 12px; color: var(--mist);
+      text-align: center; line-height: 1.6;
+    }
+    .cap strong { color: var(--sand); font-weight: 500; }
+
+    .compare-old {
+      opacity: .55; outline: 1px dashed rgba(232,237,230,.15); outline-offset: 6px; border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="eyebrow">节奏 · 详情 · 打开</div>
+      <h1>一天尺子 1.5 屏宽 · 整点竖线 · 详情挂今日一行</h1>
+      <p>
+        周节奏横向可滑，几何宽度约为内容区的 1.5 倍；轴标 0–23 时，轨上每时一根细线。
+        详情只放<strong style="color:var(--sand);font-weight:500">当天</strong>同尺矮条；走势细看在时长图下方加打开次数矮柱。
+      </p>
+      <div class="thesis">同尺 · 可滑 · 详情一行 · 走势双量</div>
+    </div>
+
+    <!-- ① 周节奏 -->
+    <div>
+      <div class="sec"><strong>1 · 一周节奏</strong>　左粘星期 · 右滑 24h（约 1.5 屏）</div>
+      <div class="row2" style="margin-top:18px;max-width:720px;margin-left:auto;margin-right:auto">
+        <div>
+          <div class="col-head">
+            <h3>新 · 可滑 + 整点</h3>
+            <p>试着左右拖下面的轨</p>
+          </div>
+          <div class="phone wide">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="pad">
+                <div class="back">‹ 抖音</div>
+                <div class="brand">一周节奏</div>
+                <div class="sub">9月14日 – 20日 · 横滑看全天</div>
+              </div>
+              <div class="scroller" id="weekScroll">
+                <div class="rhythm-board">
+                  <div></div>
+                  <div class="hours" id="weekHours"></div>
+                  <!-- days -->
+                  <div class="dow"><b>一</b><em>14</em></div>
+                  <div class="track"><div class="grid"></div>
+                    <span class="blk" style="left:33.3%;width:2.5%"></span>
+                    <span class="blk" style="left:87.5%;width:8.8%"></span>
+                  </div>
+                  <div class="dow"><b>二</b><em>15</em></div>
+                  <div class="track"><div class="grid"></div>
+                    <span class="blk" style="left:50%;width:2.1%"></span>
+                    <span class="blk" style="left:79.2%;width:14.6%"></span>
+                  </div>
+                  <div class="dow"><b>三</b><em>16</em></div>
+                  <div class="track"><div class="grid"></div>
+                    <span class="blk" style="left:87.5%;width:5.4%"></span>
+                  </div>
+                  <div class="dow"><b>四</b><em>17</em></div>
+                  <div class="track"><div class="grid"></div>
+                    <span class="blk" style="left:8.3%;width:1.3%"></span>
+                    <span class="blk" style="left:83.3%;width:9.2%"></span>
+                  </div>
+                  <div class="dow"><b>五</b><em>18</em></div>
+                  <div class="track"><div class="grid"></div>
+                    <span class="blk" style="left:75%;width:6.3%"></span>
+                    <span class="blk" style="left:85.4%;width:12.5%"></span>
+                  </div>
+                  <div class="dow"><b>六</b><em>19</em></div>
+                  <div class="track"><div class="grid"></div>
+                    <span class="blk" style="left:1.3%;width:4.2%"></span>
+                    <span class="blk" style="left:70.8%;width:16.7%"></span>
+                  </div>
+                  <div class="dow today"><b>日</b><em>20</em></div>
+                  <div class="track"><div class="grid"></div>
+                    <span class="blk" style="left:37.5%;width:4.2%"></span>
+                    <span class="blk" style="left:58.3%;width:7.5%"></span>
+                    <span class="now" style="left:90.3%"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="hint-scroll">← 滑动 · 约 1.5 屏宽看满 24 时 →</div>
+              <div class="foot"><span>今天 · 打开 3 次</span><strong>18 分</strong></div>
+              <div class="note-line">整点竖线 · 数字隔一标（0 2 4…）</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>旧 · 一屏塞满</h3>
+            <p>四段字 · 无整点 · 块挤</p>
+          </div>
+          <div class="phone compare-old">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body" style="padding:2px 16px 12px">
+              <div class="brand" style="font-size:18px">一周节奏</div>
+              <div class="sub">凌晨 / 上午 / 下午 / 晚上</div>
+              <div style="margin-top:12px;flex:1;display:flex;flex-direction:column;gap:4px">
+                <div style="flex:1;display:grid;grid-template-columns:28px 1fr;gap:6px">
+                  <span style="font-size:12px">一</span>
+                  <div style="position:relative;background:rgba(232,237,230,.04);border-radius:2px">
+                    <span class="blk" style="left:33%;width:3%"></span>
+                    <span class="blk" style="left:86%;width:9%"></span>
+                  </div>
+                </div>
+                <div style="flex:1;display:grid;grid-template-columns:28px 1fr;gap:6px">
+                  <span style="font-size:12px">二</span>
+                  <div style="position:relative;background:rgba(232,237,230,.04);border-radius:2px">
+                    <span class="blk" style="left:50%;width:2%"></span>
+                    <span class="blk" style="left:78%;width:15%"></span>
+                  </div>
+                </div>
+                <div style="flex:1;display:grid;grid-template-columns:28px 1fr;gap:6px">
+                  <span style="font-size:12px">…</span>
+                  <div style="position:relative;background:rgba(232,237,230,.04);border-radius:2px;opacity:.5"></div>
+                </div>
+                <div style="flex:1;display:grid;grid-template-columns:28px 1fr;gap:6px">
+                  <span style="font-size:12px;color:var(--leaf-text)">日</span>
+                  <div style="position:relative;background:rgba(232,237,230,.04);border-radius:2px">
+                    <span class="blk" style="left:37%;width:4%"></span>
+                    <span class="blk" style="left:58%;width:8%"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="note-line" style="padding:0;margin-top:12px">时段糊成一团</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 详情今日条 -->
+    <div>
+      <div class="sec"><strong>2 · App 详情</strong>　契约下挂「今天」同尺矮条 · 点进一周</div>
+      <div class="row3" style="margin-top:18px">
+        <div>
+          <div class="col-head">
+            <h3>监控详情 · 一眼</h3>
+            <p>今日节奏一行 · 走势预览 · 两链</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body today-strip">
+              <div class="pad">
+                <div class="back">‹ 今日</div>
+                <div class="brand">抖音</div>
+                <div class="sub">已用 18 / 30 分 · 打开 3 / 8</div>
+                <div class="lab">今天 · 何时在用</div>
+              </div>
+              <div class="scroller">
+                <div class="ruler">
+                  <div class="hours detail-hours"></div>
+                  <div class="track"><div class="grid"></div>
+                    <span class="blk" style="left:37.5%;width:4.2%"></span>
+                    <span class="blk" style="left:58.3%;width:7.5%"></span>
+                    <span class="now" style="left:90.3%"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="pad">
+                <div class="link"><span></span><em>一周节奏 ›</em></div>
+                <div class="lab">近 10 日</div>
+                <div class="chart-dur" style="height:48px">
+                  <svg viewBox="0 0 200 48" preserveAspectRatio="none">
+                    <rect x="8" y="24" width="12" height="22" fill="rgba(232,237,230,.22)" rx="1"/>
+                    <rect x="28" y="18" width="12" height="28" fill="rgba(232,237,230,.22)" rx="1"/>
+                    <rect x="48" y="14" width="12" height="32" fill="rgba(232,237,230,.22)" rx="1"/>
+                    <rect x="68" y="20" width="12" height="26" fill="rgba(232,237,230,.22)" rx="1"/>
+                    <rect x="94" y="26" width="12" height="20" fill="rgba(61,122,74,.75)" rx="1"/>
+                    <rect x="114" y="30" width="12" height="16" fill="rgba(61,122,74,.75)" rx="1"/>
+                    <rect x="134" y="28" width="12" height="18" fill="rgba(61,122,74,.75)" rx="1"/>
+                    <rect x="154" y="32" width="12" height="14" fill="rgba(61,122,74,.75)" rx="1"/>
+                    <rect x="174" y="34" width="12" height="12" fill="rgba(61,122,74,.85)" rx="1"/>
+                    <polyline fill="none" stroke="rgba(232,237,230,.4)" stroke-width="1.2"
+                      points="14,26 34,20 54,16 74,22 100,28 120,32 140,30 160,34 180,36"/>
+                  </svg>
+                </div>
+                <div class="delta">比加入前少 34%</div>
+                <div class="link"><span>走势 ›</span><em></em></div>
+              </div>
+              <div class="cta">去改规则</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>未监控 · 轻详情</h3>
+            <p>同尺今日条 · 系统口径</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body today-strip">
+              <div class="pad">
+                <div class="back">‹ 今日</div>
+                <div class="brand">小红书</div>
+                <div class="sub">近 7 日 · 5.6 时 · 打开 63 次</div>
+                <div class="lab">今天 · 系统前台</div>
+              </div>
+              <div class="scroller">
+                <div class="ruler">
+                  <div class="hours detail-hours"></div>
+                  <div class="track"><div class="grid"></div>
+                    <span class="blk" style="left:42%;width:5%"></span>
+                    <span class="blk" style="left:72%;width:11%"></span>
+                    <span class="now" style="left:88%"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="pad">
+                <div class="link"><span></span><em>一周节奏 ›</em></div>
+                <div class="lab">近 7 日 · 时长</div>
+                <div class="chart-dur" style="height:56px">
+                  <svg viewBox="0 0 200 56" preserveAspectRatio="none">
+                    <rect x="14" y="22" width="18" height="30" fill="rgba(61,122,74,.7)" rx="1"/>
+                    <rect x="42" y="14" width="18" height="38" fill="rgba(61,122,74,.7)" rx="1"/>
+                    <rect x="70" y="28" width="18" height="24" fill="rgba(61,122,74,.7)" rx="1"/>
+                    <rect x="98" y="10" width="18" height="42" fill="rgba(61,122,74,.7)" rx="1"/>
+                    <rect x="126" y="18" width="18" height="34" fill="rgba(61,122,74,.7)" rx="1"/>
+                    <rect x="154" y="24" width="18" height="28" fill="rgba(61,122,74,.55)" rx="1"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="cta">加入少</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>刻度说明</h3>
+            <p>字与线怎么配</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body" style="padding:16px">
+              <div class="brand" style="font-size:17px">尺子约定</div>
+              <div class="sub" style="margin-top:12px;line-height:1.7">
+                · 一天几何宽 ≈ <strong style="color:var(--sand)">1.5 × 内容宽</strong><br />
+                · 24 根整点竖细线（含 0）<br />
+                · 数字：0 2 4 … 22（偶时）<br />
+                &nbsp;&nbsp;或重要时段加粗：6 / 12 / 18<br />
+                · 左列星期粘住，右滑轨<br />
+                · 今日「此刻」竖线<br />
+                · 详情与周页<strong style="color:var(--sand)">同尺同线</strong>
+              </div>
+              <div class="note-line" style="padding:0;margin-top:auto">框外 note · 不进产品文案</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 走势双量 -->
+    <div>
+      <div class="sec"><strong>3 · 走势细看</strong>　上时长（柱+折）· 下打开次数（矮柱 · 同日轴）</div>
+      <div class="row2" style="margin-top:18px;max-width:680px;margin-left:auto;margin-right:auto">
+        <div>
+          <div class="col-head">
+            <h3>双量叠放</h3>
+            <p>共用日期轴 · 打开更矮</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="pad">
+                <div class="back">‹ 抖音</div>
+                <div class="brand">走势</div>
+                <div class="sub">9月11日 – 20日</div>
+                <div class="lab">时长 · 分</div>
+              </div>
+              <div class="pad">
+                <div class="chart-dur">
+                  <svg viewBox="0 0 220 110" preserveAspectRatio="none">
+                    <line x1="0" y1="96" x2="220" y2="96" stroke="rgba(232,237,230,.12)"/>
+                    <line x1="0" y1="42" x2="220" y2="42" stroke="rgba(159,212,168,.35)" stroke-dasharray="3 3"/>
+                    <line x1="0" y1="24" x2="220" y2="24" stroke="rgba(196,163,90,.4)"/>
+                    <line x1="88" y1="6" x2="88" y2="96" stroke="rgba(196,163,90,.45)"/>
+                    <text x="92" y="14" fill="rgba(196,163,90,.8)" font-size="8">加入</text>
+                    <rect x="10" y="50" width="12" height="46" fill="rgba(232,237,230,.22)" rx="1"/>
+                    <rect x="28" y="40" width="12" height="56" fill="rgba(232,237,230,.22)" rx="1"/>
+                    <rect x="46" y="36" width="12" height="60" fill="rgba(232,237,230,.22)" rx="1"/>
+                    <rect x="64" y="44" width="12" height="52" fill="rgba(232,237,230,.22)" rx="1"/>
+                    <rect x="96" y="58" width="12" height="38" fill="rgba(61,122,74,.78)" rx="1"/>
+                    <rect x="114" y="64" width="12" height="32" fill="rgba(61,122,74,.78)" rx="1"/>
+                    <rect x="132" y="60" width="12" height="36" fill="rgba(61,122,74,.78)" rx="1"/>
+                    <rect x="150" y="68" width="12" height="28" fill="rgba(61,122,74,.78)" rx="1"/>
+                    <rect x="168" y="72" width="12" height="24" fill="rgba(61,122,74,.78)" rx="1"/>
+                    <rect x="186" y="76" width="12" height="20" fill="rgba(61,122,74,.9)" rx="1"/>
+                    <text x="186" y="72" fill="rgba(159,212,168,.9)" font-size="7">18</text>
+                    <polyline fill="none" stroke="rgba(232,237,230,.4)" stroke-width="1.2"
+                      points="16,52 34,42 52,38 70,46 102,60 120,66 138,62 156,70 174,74 192,78"/>
+                  </svg>
+                </div>
+                <div class="legend">
+                  <span><i class="avg"></i>加入前均</span>
+                  <span><i class="cap"></i>日限</span>
+                  <span><i class="ln"></i>折线</span>
+                </div>
+                <div class="lab">打开 · 次</div>
+                <div class="chart-open">
+                  <svg viewBox="0 0 220 52" preserveAspectRatio="none">
+                    <line x1="0" y1="48" x2="220" y2="48" stroke="rgba(232,237,230,.1)"/>
+                    <line x1="88" y1="2" x2="88" y2="48" stroke="rgba(196,163,90,.3)"/>
+                    <rect x="10" y="22" width="12" height="26" fill="rgba(232,237,230,.28)" rx="1"/>
+                    <rect x="28" y="16" width="12" height="32" fill="rgba(232,237,230,.28)" rx="1"/>
+                    <rect x="46" y="12" width="12" height="36" fill="rgba(232,237,230,.28)" rx="1"/>
+                    <rect x="64" y="20" width="12" height="28" fill="rgba(232,237,230,.28)" rx="1"/>
+                    <rect x="96" y="28" width="12" height="20" fill="rgba(232,237,230,.45)" rx="1"/>
+                    <rect x="114" y="32" width="12" height="16" fill="rgba(232,237,230,.45)" rx="1"/>
+                    <rect x="132" y="26" width="12" height="22" fill="rgba(232,237,230,.45)" rx="1"/>
+                    <rect x="150" y="34" width="12" height="14" fill="rgba(232,237,230,.45)" rx="1"/>
+                    <rect x="168" y="30" width="12" height="18" fill="rgba(232,237,230,.45)" rx="1"/>
+                    <rect x="186" y="36" width="12" height="12" fill="rgba(232,237,230,.55)" rx="1"/>
+                    <text x="186" y="32" fill="rgba(232,237,230,.55)" font-size="7">3</text>
+                  </svg>
+                </div>
+                <div class="legend"><span><i class="op"></i>日打开</span></div>
+              </div>
+              <div class="sessions">
+                <div>今天 · 18 分 · 打开 3</div>
+                <div>14:02 – 14:11 · 刷逛</div>
+                <div>16:40 – 16:48 · 事务</div>
+                <div class="mute">19:01 · 未进入 · 不计时</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>点日联动</h3>
+            <p>上下柱对齐同一天</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="pad">
+                <div class="back">‹ 抖音</div>
+                <div class="brand">走势</div>
+                <div class="sub">选中 · 9月18日</div>
+                <div class="lab">时长</div>
+                <div class="chart-dur" style="height:72px">
+                  <svg viewBox="0 0 220 72" preserveAspectRatio="none">
+                    <rect x="10" y="30" width="12" height="36" fill="rgba(232,237,230,.15)" rx="1"/>
+                    <rect x="28" y="24" width="12" height="42" fill="rgba(232,237,230,.15)" rx="1"/>
+                    <rect x="46" y="20" width="12" height="46" fill="rgba(232,237,230,.15)" rx="1"/>
+                    <rect x="64" y="28" width="12" height="38" fill="rgba(232,237,230,.15)" rx="1"/>
+                    <rect x="96" y="36" width="12" height="30" fill="rgba(61,122,74,.5)" rx="1"/>
+                    <rect x="114" y="40" width="12" height="26" fill="rgba(61,122,74,.5)" rx="1"/>
+                    <rect x="132" y="18" width="12" height="48" fill="rgba(61,122,74,.95)" rx="1"/>
+                    <rect x="150" y="42" width="12" height="24" fill="rgba(61,122,74,.5)" rx="1"/>
+                    <rect x="168" y="46" width="12" height="20" fill="rgba(61,122,74,.5)" rx="1"/>
+                    <rect x="186" y="48" width="12" height="18" fill="rgba(61,122,74,.5)" rx="1"/>
+                    <rect x="130" y="0" width="16" height="72" fill="rgba(159,212,168,.08)"/>
+                  </svg>
+                </div>
+                <div class="lab">打开</div>
+                <div class="chart-open">
+                  <svg viewBox="0 0 220 52" preserveAspectRatio="none">
+                    <rect x="10" y="28" width="12" height="20" fill="rgba(232,237,230,.15)" rx="1"/>
+                    <rect x="28" y="22" width="12" height="26" fill="rgba(232,237,230,.15)" rx="1"/>
+                    <rect x="46" y="18" width="12" height="30" fill="rgba(232,237,230,.15)" rx="1"/>
+                    <rect x="64" y="26" width="12" height="22" fill="rgba(232,237,230,.15)" rx="1"/>
+                    <rect x="96" y="32" width="12" height="16" fill="rgba(232,237,230,.3)" rx="1"/>
+                    <rect x="114" y="34" width="12" height="14" fill="rgba(232,237,230,.3)" rx="1"/>
+                    <rect x="132" y="10" width="12" height="38" fill="rgba(232,237,230,.7)" rx="1"/>
+                    <rect x="150" y="36" width="12" height="12" fill="rgba(232,237,230,.3)" rx="1"/>
+                    <rect x="168" y="30" width="12" height="18" fill="rgba(232,237,230,.3)" rx="1"/>
+                    <rect x="186" y="38" width="12" height="10" fill="rgba(232,237,230,.3)" rx="1"/>
+                    <rect x="130" y="0" width="16" height="52" fill="rgba(159,212,168,.08)"/>
+                    <text x="132" y="8" fill="rgba(159,212,168,.9)" font-size="8">7</text>
+                  </svg>
+                </div>
+              </div>
+              <div class="sessions">
+                <div><strong style="color:var(--paper);font-weight:500">9月18日</strong> · 42 分 · 打开 7</div>
+                <div>时长下来了，打开仍偏勤 → 器械可盯次数</div>
+              </div>
+              <div class="note-line">同一选中日 · 上下高亮对齐</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="cap">
+      <strong>挂法：</strong>周节奏 = 1.5 屏尺子 + 整点线 + 偶时数字；
+      详情 = 当天一行同尺（可滑）+「一周节奏 ›」；
+      走势细看 = 时长主图 + 打开矮图，共轴点日。
+    </p>
+  </div>
+
+  <script>
+    function fillHours(el, { majorEvery = 2, showOdd = false } = {}) {
+      if (!el) return;
+      el.innerHTML = "";
+      for (let h = 0; h < 24; h++) {
+        const s = document.createElement("span");
+        const isMajor = h % majorEvery === 0;
+        if (isMajor) {
+          s.textContent = String(h);
+          s.className = "major";
+        } else if (showOdd) {
+          s.textContent = String(h);
+        } else {
+          s.textContent = String(h);
+          s.className = "hide";
+        }
+        el.appendChild(s);
+      }
+    }
+    fillHours(document.getElementById("weekHours"));
+    document.querySelectorAll(".detail-hours").forEach((el) => fillHours(el));
+    // 默认滚到下午偏后，方便看见「晚上」色块
+    const week = document.getElementById("weekScroll");
+    if (week) {
+      requestAnimationFrame(() => {
+        week.scrollLeft = week.scrollWidth * 0.42;
+      });
+    }
+  </script>
+</body>
+</html>

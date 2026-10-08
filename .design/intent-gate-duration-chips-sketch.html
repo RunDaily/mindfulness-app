@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>意图门 · 尺子 · 草图</title>
+  <style>
+    :root {
+      --ink: #070908;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --sand: #c4a35a;
+      --line: rgba(232, 237, 230, 0.16);
+      --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: var(--page);
+      color: var(--paper);
+      font-family: "SF Pro Display", "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 48px 28px 72px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; }
+    header { margin-bottom: 36px; max-width: 520px; }
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--mist);
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 28px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    header p {
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--fog);
+    }
+    .frames {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 28px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .frames { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col { display: grid; gap: 14px; justify-items: center; width: 100%; }
+    .cap {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--mist);
+      max-width: 280px;
+    }
+    .phone {
+      width: min(300px, 100%);
+      min-height: 620px;
+      background: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      padding: 28px 26px 22px;
+      display: flex;
+      flex-direction: column;
+    }
+    .app {
+      font-size: 12px;
+      letter-spacing: 0.32em;
+      color: var(--fog);
+    }
+    .cue {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-weight: 400;
+      color: var(--paper);
+      margin-top: 18px;
+    }
+    .cue.hero { font-size: 28px; letter-spacing: 0.06em; line-height: 1.35; }
+    .cue.quiet { font-size: 15px; letter-spacing: 0.08em; color: var(--fog); margin-top: 14px; }
+    .stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 36px;
+      min-height: 300px;
+    }
+    .ruler {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      padding: 6px 0 6px 0;
+    }
+    .ruler::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 10px;
+      bottom: 10px;
+      width: 1px;
+      background: rgba(232, 237, 230, 0.22);
+    }
+    .mark {
+      height: 46px;
+      display: grid;
+      grid-template-columns: 20px 32px;
+      align-items: center;
+    }
+    .tick {
+      height: 1px;
+      width: 9px;
+      background: var(--mist);
+    }
+    .mark.on .tick { width: 16px; background: var(--sand); }
+    .n {
+      font-weight: 300;
+      font-size: 14px;
+      color: var(--fog);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    .mark.on .n { color: var(--paper); }
+    .figure { width: 78px; }
+    .num {
+      font-weight: 260;
+      font-size: 64px;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .unit {
+      margin-top: 10px;
+      font-size: 11px;
+      letter-spacing: 0.34em;
+      color: var(--sand);
+    }
+    .base {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+      min-height: 62px;
+    }
+    .stay, .go {
+      font-size: 15px;
+      letter-spacing: 0.18em;
+    }
+    .stay { display: flex; align-items: center; gap: 8px; color: var(--paper); }
+    .sq { width: 4px; height: 4px; background: var(--sand); }
+    .go { color: var(--mist); }
+    .stay.on,
+    .go.on {
+      color: var(--ink);
+      background: var(--paper);
+      letter-spacing: 0.2em;
+      padding: 11px 16px 12px;
+      border-radius: 2px;
+      gap: 0;
+    }
+    .stay.on .sq { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">意图门</div>
+      <h1>不必打开，是这页的完成</h1>
+      <p>标题和左右两边成对。停住时，纸色在「不必」上。要打开，先在尺子上定多久，纸色才移到「打开」。</p>
+    </header>
+    <div class="frames">
+      <div class="col">
+        <div class="phone">
+          <div class="app">小红书</div>
+          <div class="cue hero">有必要打开吗</div>
+          <div class="stage">
+            <div class="ruler">
+              <div class="mark"><span class="tick"></span><span class="n">5</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">10</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">15</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">20</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">30</span></div>
+            </div>
+          </div>
+          <div class="base">
+            <div class="stay on">不必</div>
+            <div class="go">打开</div>
+          </div>
+        </div>
+        <div class="cap">还没选时长。纸色在不必上，打开还只是字。</div>
+      </div>
+      <div class="col">
+        <div class="phone" id="chosen">
+          <div class="app">小红书</div>
+          <div class="cue quiet">有必要打开吗</div>
+          <div class="stage">
+            <div class="ruler">
+              <div class="mark"><span class="tick"></span><span class="n">5</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">10</span></div>
+              <div class="mark on"><span class="tick"></span><span class="n">15</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">20</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">30</span></div>
+            </div>
+            <div class="figure">
+              <div class="num">15</div>
+              <div class="unit">分钟</div>
+            </div>
+          </div>
+          <div class="base">
+            <div class="stay"><span class="sq"></span>不必</div>
+            <div class="go on">打开</div>
+          </div>
+        </div>
+        <div class="cap">定了 15 分钟。纸色移到打开，时长写在数字上，例外是有边界的。</div>
+      </div>
+      <div class="col">
+        <div class="phone">
+          <div class="app">微信</div>
+          <div class="cue hero">有必要打开吗</div>
+          <div class="stage">
+            <div class="ruler">
+              <div class="mark"><span class="tick"></span><span class="n">1</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">3</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">5</span></div>
+              <div class="mark"><span class="tick"></span><span class="n">10</span></div>
+            </div>
+          </div>
+          <div class="base">
+            <div class="stay on">不必</div>
+            <div class="go">打开</div>
+          </div>
+        </div>
+        <div class="cap">微信同一对文案，刻度更短。哔哩哔哩在 30 下再加一道 40。</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

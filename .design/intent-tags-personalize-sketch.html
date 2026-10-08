@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心锚 · 快捷标签个性化</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --sand: #c4a35a;
+      --line: rgba(232,237,230,.12); --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 40px; }
+    header { max-width: 680px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 48em; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .flow {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      font-size: 12px; color: var(--mist);
+    }
+    .flow span {
+      padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
+      background: rgba(255,255,255,.03); color: #c5d0c6;
+    }
+    .flow span.on {
+      border-color: rgba(196,163,90,.4); background: rgba(196,163,90,.16); color: #e4d4a4;
+    }
+    .flow i { font-style: normal; color: #3a403c; padding: 0 2px; }
+
+    .sec { text-align: center; font-size: 11px; letter-spacing: .12em; color: var(--sand); font-weight: 600; }
+    .phones {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start;
+    }
+    .phones3 { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 1100px) {
+      .phones, .phones3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 260px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.45; }
+
+    .phone {
+      width: min(260px, 100%); aspect-ratio: 9 / 17.2; border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+      padding: 22px 20px 16px;
+    }
+    .app { font-size: 12px; letter-spacing: .04em; color: var(--mist); }
+    .facts { margin-top: 6px; font-size: 12px; color: var(--fog); font-variant-numeric: tabular-nums; }
+    .hero {
+      margin-top: 28px;
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 22px; font-weight: 500; line-height: 1.35;
+    }
+    .field {
+      margin-top: 16px; border-bottom: 1px solid rgba(232,237,230,.2);
+      padding: 6px 0 10px; font-size: 15px; color: var(--mist);
+    }
+    .label-row {
+      margin-top: 20px; display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .label { font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .edit { font-size: 12px; color: var(--mist); }
+    .edit.leaf { color: var(--leaf-text); }
+    .tags {
+      margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 11px 14px;
+    }
+    .tag { font-size: 13px; color: var(--fog); }
+    .tag.on { color: var(--leaf-text); }
+    .tag.dim { color: var(--mist); opacity: .55; }
+    .recent { margin-top: 18px; }
+    .recent-row {
+      margin-top: 10px; display: flex; justify-content: space-between; gap: 10px;
+      font-size: 14px; color: var(--fog);
+    }
+    .when { font-size: 12px; color: var(--mist); white-space: nowrap; }
+    .acts {
+      margin-top: auto; display: flex; justify-content: space-between; align-items: center;
+      padding-top: 18px;
+    }
+    .act { font-size: 15px; color: var(--mist); }
+    .act.go { color: var(--leaf-text); font-weight: 500; }
+    .leave {
+      margin-top: auto; text-align: center; padding-top: 16px;
+    }
+    .leave .t { font-size: 15px; color: var(--leaf-text); font-weight: 500; }
+    .leave .s { margin-top: 5px; font-size: 12px; color: rgba(159,212,168,.55); }
+
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 8px; }
+    .brand {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 18px; font-weight: 500;
+    }
+    .sub { margin-top: 4px; font-size: 12px; color: var(--fog); line-height: 1.45; }
+    .sec-label { margin-top: 22px; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .row {
+      margin-top: 12px; display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; padding: 10px 0; border-top: 1px solid var(--line);
+    }
+    .row:first-of-type { border-top: none; padding-top: 2px; }
+    .row .name { font-size: 15px; color: var(--paper); }
+    .row .meta { font-size: 12px; color: var(--mist); }
+    .row .side { font-size: 13px; color: var(--mist); white-space: nowrap; }
+    .row .side.on { color: var(--leaf-text); }
+    .row .side.warn { color: var(--sand); }
+    .handle { font-size: 14px; color: rgba(139,147,140,.45); letter-spacing: .08em; }
+    .add-field {
+      margin-top: 14px; display: flex; justify-content: space-between; align-items: baseline;
+      border-bottom: 1px solid rgba(232,237,230,.18); padding: 8px 0;
+    }
+    .add-field .ph { font-size: 15px; color: var(--mist); }
+    .add-field .go { font-size: 14px; color: var(--leaf-text); }
+    .foot {
+      margin-top: auto; padding-top: 16px; display: flex; justify-content: space-between;
+      font-size: 15px;
+    }
+    .foot .dim { color: var(--mist); }
+    .foot .go { color: var(--leaf-text); font-weight: 500; }
+    .count { margin-top: 8px; font-size: 12px; color: var(--mist); font-variant-numeric: tabular-nums; }
+
+    .notes {
+      border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px;
+      font-size: 12px; line-height: 1.8; color: var(--fog); max-width: 880px;
+    }
+    .notes h2 { font-size: 12px; color: var(--sand); letter-spacing: .08em; margin-bottom: 8px; font-weight: 600; }
+    .notes strong { color: var(--paper); font-weight: 600; }
+    .notes ul { padding-left: 1.1em; }
+    .notes li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Write Intent · Quick Tags</div>
+      <h1>快捷标签该可配。默认按 App 预设，个人改成自己的办事词。</h1>
+      <p>
+        写意图路上，标签是主操作。内置词（回复消息、看收藏）只是起点；
+        真正加速的是「我常干的那几件」。配置按 App 隔离，放在方案侧，不在门口塞齿轮。
+      </p>
+      <div class="thesis">预设起步 · 按 App 私有 · 最多 6 个 · 门口只「调整」</div>
+    </header>
+
+    <div class="flow">
+      <span class="on">1 门口见标签</span><i>→</i>
+      <span class="on">2 点调整</span><i>→</i>
+      <span class="on">3 管理页</span><i>→</i>
+      <span>4 回门口生效</span>
+    </div>
+
+    <div class="sec">主路径</div>
+    <section class="phones">
+      <div>
+        <div class="col-head">
+          <h3>1 · 写意图 · 默认可调</h3>
+          <p>标签区右侧「调整」；不进设置齿轮</p>
+        </div>
+        <div class="phone">
+          <div class="app">小红书</div>
+          <div class="facts">今日第 7 次 · 已用 12/25 分钟</div>
+          <div class="hero">你要干什么？</div>
+          <div class="field">这一次…</div>
+          <div class="label-row">
+            <span class="label">快捷标签</span>
+            <span class="edit">调整</span>
+          </div>
+          <div class="tags">
+            <span class="tag">回复消息</span>
+            <span class="tag">改资料</span>
+            <span class="tag">发布内容</span>
+            <span class="tag">看主页</span>
+            <span class="tag">看收藏</span>
+            <span class="tag">看数据</span>
+          </div>
+          <div class="recent">
+            <div class="label">最近</div>
+            <div class="recent-row">
+              <span>改简介</span>
+              <span class="when">今天 11:20</span>
+            </div>
+          </div>
+          <div class="acts">
+            <span class="act">返回</span>
+            <span class="act">进入</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>2 · 管理 · 我的标签</h3>
+          <p>已启用可拖排序；长按删除自制</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 返回</div>
+          <div class="brand">快捷标签</div>
+          <div class="sub">小红书 · 写意图时点一下就填入</div>
+          <div class="count">已启用 4 / 6</div>
+          <div class="sec-label">我的</div>
+          <div class="row">
+            <span class="handle">⠿</span>
+            <div style="flex:1">
+              <div class="name">改简介</div>
+              <div class="meta">自制</div>
+            </div>
+            <span class="side on">开</span>
+          </div>
+          <div class="row">
+            <span class="handle">⠿</span>
+            <div style="flex:1">
+              <div class="name">回私信</div>
+              <div class="meta">自制</div>
+            </div>
+            <span class="side on">开</span>
+          </div>
+          <div class="row">
+            <span class="handle">⠿</span>
+            <div style="flex:1">
+              <div class="name">看收藏</div>
+              <div class="meta">预设</div>
+            </div>
+            <span class="side on">开</span>
+          </div>
+          <div class="row">
+            <span class="handle">⠿</span>
+            <div style="flex:1">
+              <div class="name">发布内容</div>
+              <div class="meta">预设</div>
+            </div>
+            <span class="side on">开</span>
+          </div>
+          <div class="foot">
+            <span class="dim">恢复预设</span>
+            <span class="go">完成</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>3 · 加标签</h3>
+          <p>从预设池勾选，或手写一条</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 返回</div>
+          <div class="brand">添加标签</div>
+          <div class="sub">最多再加 2 个</div>
+          <div class="sec-label">手写</div>
+          <div class="add-field">
+            <span class="ph">例如：看数据后台</span>
+            <span class="go">加入</span>
+          </div>
+          <div class="sec-label">来自预设</div>
+          <div class="row">
+            <div class="name">回复消息</div>
+            <span class="side">选取</span>
+          </div>
+          <div class="row">
+            <div class="name">改资料</div>
+            <span class="side">选取</span>
+          </div>
+          <div class="row">
+            <div class="name">看主页</div>
+            <span class="side">选取</span>
+          </div>
+          <div class="row">
+            <div class="name">看数据</div>
+            <span class="side on">已在列表</span>
+          </div>
+          <div class="foot">
+            <span class="dim"></span>
+            <span class="go">完成</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>4 · 回门口 · 已是我的</h3>
+          <p>顺序 = 管理页顺序；最近仍辅助</p>
+        </div>
+        <div class="phone">
+          <div class="app">小红书</div>
+          <div class="facts">今日第 7 次 · 已用 12/25 分钟</div>
+          <div class="hero">你要干什么？</div>
+          <div class="field">这一次…</div>
+          <div class="label-row">
+            <span class="label">快捷标签</span>
+            <span class="edit">调整</span>
+          </div>
+          <div class="tags">
+            <span class="tag">改简介</span>
+            <span class="tag">回私信</span>
+            <span class="tag">看收藏</span>
+            <span class="tag">发布内容</span>
+          </div>
+          <div class="recent">
+            <div class="label">最近</div>
+            <div class="recent-row">
+              <span>改简介</span>
+              <span class="when">今天 11:20</span>
+            </div>
+          </div>
+          <div class="acts">
+            <span class="act">返回</span>
+            <span class="act">进入</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sec">旁路 · 方案入口与空态</div>
+    <section class="phones phones3">
+      <div>
+        <div class="col-head">
+          <h3>方案 · App 详情</h3>
+          <p>正规入口；与门口「调整」同一页</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 方案</div>
+          <div class="brand" style="font-size:17px;">小红书</div>
+          <div class="sub">日限 25 分 · 意图门开</div>
+          <div class="sec-label">门口</div>
+          <div class="row">
+            <div>
+              <div class="name">快捷标签</div>
+              <div class="meta">4 个 · 写意图时用</div>
+            </div>
+            <span class="side">›</span>
+          </div>
+          <div class="row">
+            <div>
+              <div class="name">搜索直达</div>
+              <div class="meta">已开</div>
+            </div>
+            <span class="side on">开</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>空 · 全关了</h3>
+          <p>门口不装死空壳；一句 + 去加</p>
+        </div>
+        <div class="phone">
+          <div class="app">小红书</div>
+          <div class="hero">你要干什么？</div>
+          <div class="field">这一次…</div>
+          <div class="label-row">
+            <span class="label">快捷标签</span>
+            <span class="edit leaf">去添加</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:var(--fog);line-height:1.5;">
+            还没有标签
+          </div>
+          <div class="recent">
+            <div class="label">最近</div>
+            <div class="recent-row">
+              <span>改简介</span>
+              <span class="when">今天 11:20</span>
+            </div>
+          </div>
+          <div class="acts">
+            <span class="act">返回</span>
+            <span class="act">进入</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>可选 · 从最近晋升</h3>
+          <p>v2；点「收为标签」不自动打扰</p>
+        </div>
+        <div class="phone">
+          <div class="app">小红书</div>
+          <div class="hero">你要干什么？</div>
+          <div class="field">这一次…</div>
+          <div class="label-row">
+            <span class="label">快捷标签</span>
+            <span class="edit">调整</span>
+          </div>
+          <div class="tags">
+            <span class="tag">改简介</span>
+            <span class="tag">回私信</span>
+            <span class="tag">看收藏</span>
+          </div>
+          <div class="recent">
+            <div class="label-row" style="margin-top:0">
+              <span class="label">最近</span>
+            </div>
+            <div class="recent-row">
+              <span>看数据后台</span>
+              <span class="when edit leaf">收为标签</span>
+            </div>
+            <div class="recent-row">
+              <span>回客户</span>
+              <span class="when">昨天 21:04</span>
+            </div>
+          </div>
+          <div class="acts">
+            <span class="act">返回</span>
+            <span class="act">进入</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="notes">
+      <h2>框外 · 规划约定（不进界面）</h2>
+      <ul>
+        <li><strong>要不要做：</strong>要。预设解决冷启动；个性化解决「真的快」。否则标签永远像别人的办事清单。</li>
+        <li><strong>范围：</strong>按 App 私有。小红书的标签不影响 B 站。与全局「常用意图」若并存，统一叫「快捷标签」，避免两套词。</li>
+        <li><strong>默认：</strong>首次 = <code>IntentGateProfiles.quickIntentTags</code> 预设；用户改过则读本地覆盖；「恢复预设」可回滚。</li>
+        <li><strong>上限：</strong>最多 6（与现常量对齐）。满了先关或删再加。0 个合法——只剩手写 + 最近。</li>
+        <li><strong>入口：</strong>① 写意图页标签旁「调整」；② 方案 · App 详情「快捷标签」。门口不放齿轮、不做半屏设置。</li>
+        <li><strong>操作：</strong>启用/关闭预设、手写新增、拖排序、删自制。不做花哨分类、不做 emoji。</li>
+        <li><strong>与最近：</strong>标签是稳定主操作；最近是辅助复用。v1 不自动把最近写成标签；v2 可「收为标签」。</li>
+        <li><strong>不进框：</strong>教学旁白、架构说明、大卡片开关墙。</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>

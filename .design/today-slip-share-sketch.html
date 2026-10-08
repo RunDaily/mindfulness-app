@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>今日笺 · 最佳形态</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --leaf-soft: rgba(61,122,74,.14);
+      --sand: #c4a35a; --line: rgba(232,237,230,.12);
+      --hold: #c4a35a; --search: #7eb8c9; --write: #a8b4c4; --browse: #c47a9a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 88px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 44px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px;
+    }
+    .hero h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: var(--leaf-soft); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start; }
+    .row4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: start; }
+    @media (max-width: 980px) {
+      .row2, .row3, .row4 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 300px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+    .col-head .pick {
+      display: inline-block; margin-top: 6px; font-size: 11px; color: var(--leaf-text);
+      border: 1px solid rgba(61,122,74,.4); padding: 2px 8px; border-radius: 999px;
+    }
+
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9/18.6; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+      position: relative;
+    }
+    .bar {
+      height: 28px; padding: 10px 14px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex: none;
+    }
+    .body { flex: 1; padding: 2px 0 0; display: flex; flex-direction: column; min-height: 0; }
+    .pad { padding: 0 18px; }
+    .toprow {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .back { font-size: 12px; color: var(--mist); }
+    .leave {
+      font-size: 13px; color: var(--leaf-text); font-weight: 500;
+      letter-spacing: .02em;
+    }
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500;
+    }
+    .daynav {
+      margin-top: 6px; display: flex; align-items: center; gap: 8px;
+      font-size: 11px; color: rgba(232,237,230,.32);
+      font-variant-numeric: tabular-nums;
+    }
+    .daynav .on { color: rgba(232,237,230,.48); }
+
+    /* 读法句 · 今日主旋律 */
+    .readline {
+      margin-top: 14px;
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 17px; font-weight: 500; line-height: 1.35;
+      color: var(--paper);
+    }
+    .readline.quiet { color: rgba(232,237,230,.42); font-size: 16px; }
+    .readline.hold-tone { color: #d4c08a; }
+    .readline.intent-tone { color: #c5d4c9; }
+    .readline.browse-tone { color: #d4b8c4; }
+
+    .sum {
+      margin-top: 8px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px; color: var(--fog); line-height: 1.5;
+    }
+    .sum b { color: var(--paper); font-weight: 600; }
+    .sum .sep { color: rgba(232,237,230,.22); margin: 0 7px; }
+    .sum .z { color: rgba(232,237,230,.22); }
+    .sum .z b { color: rgba(232,237,230,.22); font-weight: 500; }
+
+    .scroll { flex: 1; overflow: hidden; padding: 8px 0 0; }
+
+    .tl-row {
+      display: grid;
+      grid-template-columns: 28px 40px 16px 1fr;
+      gap: 0 2px;
+      min-height: 44px;
+      padding: 0 12px 0 10px;
+      align-items: start;
+    }
+    .hour {
+      text-align: right; padding-top: 12px;
+      font: 600 11px/1 ui-monospace, Menlo, monospace;
+      color: rgba(232,237,230,.38);
+    }
+    .clock {
+      text-align: right; padding-top: 13px; padding-right: 2px;
+      font: 500 11px/1 ui-monospace, Menlo, monospace;
+      color: rgba(232,237,230,.32);
+    }
+    .spine {
+      position: relative; display: flex; justify-content: center; padding-top: 14px;
+    }
+    .spine::before {
+      content: ""; position: absolute; top: 0; bottom: 0; left: 50%;
+      width: 1px; margin-left: -.5px; background: rgba(232,237,230,.1);
+    }
+    .dot {
+      position: relative; z-index: 1; width: 7px; height: 7px; border-radius: 50%;
+      background: rgba(232,237,230,.4); box-shadow: 0 0 0 3px #050706;
+    }
+    .dot.hold { background: var(--hold); }
+    .dot.search { background: var(--search); }
+    .dot.write { background: var(--write); }
+    .dot.browse { background: var(--browse); }
+
+    .scene { padding: 8px 0 10px 4px; }
+    .main { font-size: 13px; font-weight: 500; line-height: 1.35; color: var(--paper); }
+    .main .app { color: rgba(232,237,230,.88); }
+    .kind { margin-top: 3px; font-size: 11px; }
+    .kind.hold { color: var(--hold); }
+    .kind.search { color: var(--search); }
+    .kind.write { color: var(--write); }
+    .kind.browse { color: var(--browse); }
+
+    .quiet {
+      display: grid; grid-template-columns: 28px 40px 16px 1fr;
+      gap: 0 2px; height: 18px; align-items: center;
+      padding: 0 12px 0 10px;
+    }
+    .quiet .h {
+      text-align: right; font: 500 10px ui-monospace, Menlo, monospace;
+      color: rgba(232,237,230,.18);
+    }
+    .quiet .lbl { font-size: 10px; color: rgba(232,237,230,.18); padding-left: 4px; }
+
+    .empty-spine {
+      padding: 36px 18px 0;
+      font-size: 13px; color: rgba(232,237,230,.28); line-height: 1.5;
+    }
+
+    /* 预览半屏叠在手机上 */
+    .sheet-mask {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.55);
+      display: flex; flex-direction: column; justify-content: flex-end;
+    }
+    .sheet {
+      background: #0a0c0b;
+      border-radius: 18px 18px 0 0;
+      border-top: 1px solid rgba(232,237,230,.1);
+      padding: 10px 16px 18px;
+      display: flex; flex-direction: column; gap: 12px;
+      max-height: 78%;
+    }
+    .sheet-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: rgba(232,237,230,.18); margin: 0 auto 4px;
+    }
+    .sheet-title {
+      font-size: 13px; color: rgba(232,237,230,.55);
+      text-align: center;
+    }
+    .sheet-actions {
+      display: flex; gap: 0; justify-content: space-around;
+      padding-top: 4px; border-top: 1px solid var(--line);
+    }
+    .sheet-actions span {
+      font-size: 14px; padding: 10px 8px; color: var(--leaf-text); font-weight: 500;
+    }
+    .sheet-actions .sec-act { color: rgba(232,237,230,.45); font-weight: 400; }
+
+    /* 今日笺本体 · 固定竖比 */
+    .slip {
+      width: 100%; aspect-ratio: 3/4;
+      border-radius: 10px;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(26,36,32,.9) 0%, transparent 55%),
+        #080a09;
+      border: 1px solid rgba(232,237,230,.1);
+      padding: 18px 16px 14px;
+      display: flex; flex-direction: column;
+      box-shadow: 0 8px 28px rgba(0,0,0,.35);
+    }
+    .slip-date {
+      font-size: 11px; color: rgba(232,237,230,.38);
+      font-variant-numeric: tabular-nums; letter-spacing: .04em;
+    }
+    .slip-read {
+      margin-top: 22px;
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500; line-height: 1.35;
+      color: var(--paper);
+    }
+    .slip-read.quiet { color: rgba(232,237,230,.45); font-size: 20px; }
+    .slip-nums {
+      margin-top: 14px;
+      font-size: 11px; color: rgba(232,237,230,.4); line-height: 1.5;
+    }
+    .slip-nums b { color: rgba(232,237,230,.72); font-weight: 600; }
+    .slip-nums .sep { margin: 0 6px; color: rgba(232,237,230,.18); }
+    .slip-nums .z { color: rgba(232,237,230,.18); }
+    .slip-nums .z b { color: rgba(232,237,230,.18); font-weight: 500; }
+
+    /* 节奏带 · 一天的点 */
+    .slip-pulse {
+      margin-top: auto;
+      padding-top: 18px;
+      display: flex; align-items: center; gap: 3px;
+      height: 28px;
+    }
+    .slip-pulse i {
+      flex: 1; height: 3px; border-radius: 1px;
+      background: rgba(232,237,230,.06);
+      align-self: center;
+    }
+    .slip-pulse i.on {
+      height: 8px; background: rgba(232,237,230,.28);
+    }
+    .slip-pulse i.hold { background: rgba(196,163,90,.55); height: 8px; }
+    .slip-pulse i.intent { background: rgba(126,184,201,.5); height: 8px; }
+    .slip-pulse i.browse { background: rgba(196,122,154,.45); height: 8px; }
+
+    .slip-foot {
+      margin-top: 14px;
+      display: flex; justify-content: space-between; align-items: baseline;
+      border-top: 1px solid rgba(232,237,230,.08);
+      padding-top: 10px;
+    }
+    .slip-brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 13px; color: rgba(232,237,230,.5);
+    }
+    .slip-mark {
+      font-size: 10px; color: rgba(232,237,230,.22); letter-spacing: .06em;
+    }
+
+    /* 独立大笺 · 对照用 */
+    .slip-lg {
+      width: min(220px, 100%); aspect-ratio: 3/4;
+      border-radius: 12px;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(26,36,32,.9) 0%, transparent 55%),
+        #080a09;
+      border: 1px solid rgba(232,237,230,.12);
+      padding: 22px 18px 16px;
+      display: flex; flex-direction: column;
+      margin: 0 auto;
+      box-shadow: 0 12px 40px rgba(0,0,0,.4);
+    }
+    .slip-lg .slip-date { font-size: 12px; }
+    .slip-lg .slip-read { margin-top: 28px; font-size: 24px; }
+    .slip-lg .slip-read.quiet { font-size: 22px; }
+    .slip-lg .slip-nums { margin-top: 16px; font-size: 12px; }
+    .slip-lg .slip-pulse { height: 32px; }
+    .slip-lg .slip-brand { font-size: 14px; }
+
+    .rules {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      max-width: 760px; margin: 0 auto;
+    }
+    @media (max-width: 700px) { .rules { grid-template-columns: 1fr; } }
+    .rule {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.65;
+    }
+    .rule h4 { color: var(--paper); font-size: 13px; margin-bottom: 8px; font-weight: 600; }
+    .rule.keep h4 { color: var(--leaf-text); }
+    .rule.drop h4 { color: #c47a6a; }
+    .rule li { list-style: none; padding: 3px 0; }
+    .rule li::before { content: "· "; color: var(--mist); }
+
+    .read {
+      max-width: 760px; margin: 0 auto;
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.75;
+    }
+    .read strong { color: var(--paper); }
+    .read table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .read td { padding: 5px 8px 5px 0; vertical-align: top; }
+    .read td:first-child { color: var(--sand); white-space: nowrap; width: 88px; }
+
+    .cap {
+      max-width: 720px; margin: 0 auto; font-size: 12px; color: var(--mist);
+      text-align: center; line-height: 1.7;
+    }
+    .cap strong { color: var(--sand); font-weight: 500; }
+
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.7; max-width: 760px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); }
+
+    .flow {
+      max-width: 680px; margin: 0 auto;
+      display: flex; flex-wrap: wrap; gap: 8px 0; justify-content: center;
+      font-size: 12px; color: var(--fog); align-items: center;
+    }
+    .flow .step {
+      padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+      color: var(--paper);
+    }
+    .flow .arrow { color: var(--mist); padding: 0 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">今天 · 收据 × 今日笺</div>
+      <h1>一句读法 · 一张可递的笺</h1>
+      <p>
+        今日页仍是脊线收据。多一层「今天怎样」的读法句，顶栏一个「留下」。
+        分享物是从同一天收成的竖笺：稀密只改密度，骨架不变。
+      </p>
+      <div class="thesis">页是收据 · 笺是带走 · 一天一句</div>
+    </header>
+
+    <!-- 骨架 -->
+    <div>
+      <div class="sec" style="margin-bottom:14px"><strong>形态定论</strong></div>
+      <div class="rules">
+        <div class="rule keep">
+          <h4>最佳形态</h4>
+          <ul>
+            <li>标题「今天」+ 顶栏「留下」</li>
+            <li>读法一句（衬线，主视觉）</li>
+            <li>其下仍是四词摘要一行</li>
+            <li>脊线不变（门口故事）</li>
+            <li>笺：日期 · 读法 · 淡数 · 节奏带 · 心锚</li>
+            <li>空日也可留下（读法更淡）</li>
+          </ul>
+        </div>
+        <div class="rule drop">
+          <h4>不取</h4>
+          <ul>
+            <li>四格成绩单 / 百分比 / 对比昨天</li>
+            <li>「你很棒」类评价</li>
+            <li>笺上印意图词或 App 明细</li>
+            <li>长截图当分享物</li>
+            <li>空日藏掉「留下」</li>
+            <li>预览里再编辑指标</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ① 今日页 + 预览 -->
+    <div>
+      <div class="sec"><strong>① 主路径</strong>　今日收据 → 留下 → 笺预览</div>
+      <div class="row2" style="margin-top:18px; max-width:640px; margin-left:auto; margin-right:auto">
+        <div>
+          <div class="col-head">
+            <h3>今日 · 收据页</h3>
+            <p>读法在摘要上 · 「留下」在右上</p>
+            <span class="pick">记录本体</span>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>21:40</span><span>心锚</span></div>
+            <div class="body">
+              <div class="pad">
+                <div class="toprow">
+                  <div class="back">‹ 今日</div>
+                  <div class="leave">留下</div>
+                </div>
+                <div class="brand">今天</div>
+                <div class="daynav">
+                  <span>‹</span>
+                  <span class="on">10 月 8 日</span>
+                  <span>›</span>
+                </div>
+                <div class="readline intent-tone">今天进门大多有目的</div>
+                <div class="sum">
+                  <span>守住 <b>2</b></span><span class="sep">·</span>
+                  <span>搜索 <b>2</b></span><span class="sep">·</span>
+                  <span>写下 <b>3</b></span><span class="sep">·</span>
+                  <span class="z">刷一刷 <b>1</b></span>
+                </div>
+              </div>
+              <div class="scroll">
+                <div class="quiet">
+                  <div class="h">0–8</div><div></div><div></div><div class="lbl">安静</div>
+                </div>
+                <div class="tl-row">
+                  <div class="hour">9</div>
+                  <div class="clock">09:12</div>
+                  <div class="spine"><div class="dot hold"></div></div>
+                  <div class="scene">
+                    <div class="main"><span class="app">小红书</span> · 先不进去了</div>
+                    <div class="kind hold">守住</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="hour"></div>
+                  <div class="clock">09:40</div>
+                  <div class="spine"><div class="dot write"></div></div>
+                  <div class="scene">
+                    <div class="main"><span class="app">小红书</span> · 回一条私信 · 6 分</div>
+                    <div class="kind write">写下意图</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="hour">11</div>
+                  <div class="clock">11:22</div>
+                  <div class="spine"><div class="dot search"></div></div>
+                  <div class="scene">
+                    <div class="main">「相机选购」</div>
+                    <div class="kind search">搜索</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="hour">14</div>
+                  <div class="clock">14:05</div>
+                  <div class="spine"><div class="dot write"></div></div>
+                  <div class="scene">
+                    <div class="main"><span class="app">抖音</span> · 找周末去处 · 12 分</div>
+                    <div class="kind write">写下意图</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="hour">20</div>
+                  <div class="clock">20:18</div>
+                  <div class="spine"><div class="dot browse"></div></div>
+                  <div class="scene">
+                    <div class="main"><span class="app">抖音</span> · 8 分</div>
+                    <div class="kind browse">刷一刷</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>留下 · 预览</h3>
+            <p>半屏 · 笺即所得 · 分享 / 保存</p>
+            <span class="pick">分享物</span>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>21:40</span><span>心锚</span></div>
+            <div class="body" style="opacity:.35; pointer-events:none">
+              <div class="pad">
+                <div class="toprow">
+                  <div class="back">‹ 今日</div>
+                  <div class="leave">留下</div>
+                </div>
+                <div class="brand">今天</div>
+                <div class="daynav"><span class="on">10 月 8 日</span></div>
+                <div class="readline intent-tone">今天进门大多有目的</div>
+                <div class="sum">
+                  <span>守住 <b>2</b></span><span class="sep">·</span>
+                  <span>搜索 <b>2</b></span><span class="sep">·</span>
+                  <span>写下 <b>3</b></span><span class="sep">·</span>
+                  <span class="z">刷一刷 <b>1</b></span>
+                </div>
+              </div>
+            </div>
+            <div class="sheet-mask">
+              <div class="sheet">
+                <div class="sheet-handle"></div>
+                <div class="sheet-title">今日笺</div>
+                <div class="slip">
+                  <div class="slip-date">10 月 8 日 · 周四</div>
+                  <div class="slip-read">今天进门大多有目的</div>
+                  <div class="slip-nums">
+                    <span>守住 <b>2</b></span><span class="sep">·</span>
+                    <span>搜索 <b>2</b></span><span class="sep">·</span>
+                    <span>写下 <b>3</b></span><span class="sep">·</span>
+                    <span class="z">刷一刷 <b>1</b></span>
+                  </div>
+                  <div class="slip-pulse" aria-hidden="true">
+                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                    <i class="hold"></i><i class="intent"></i><i></i>
+                    <i class="intent"></i><i></i><i></i>
+                    <i class="intent"></i><i></i><i></i><i></i><i></i><i></i>
+                    <i class="browse"></i><i></i><i></i><i></i>
+                  </div>
+                  <div class="slip-foot">
+                    <span class="slip-brand">心锚</span>
+                    <span class="slip-mark">今日笺</span>
+                  </div>
+                </div>
+                <div class="sheet-actions">
+                  <span class="sec-act">保存</span>
+                  <span>分享</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="cap" style="margin-top:16px">
+        入口只有一个字<strong>留下</strong>（与周回望「留下这一周」同动词）。
+        预览半屏盖住收据，笺是 <strong>3:4</strong> 竖幅；动作只有保存与分享。
+      </p>
+    </div>
+
+    <!-- ② 三种日型 · 同一骨架 -->
+    <div>
+      <div class="sec"><strong>② 稀密同形</strong>　三种日型 · 笺骨架不变</div>
+      <div class="row3" style="margin-top:18px">
+        <div>
+          <div class="col-head">
+            <h3>有目的日</h3>
+            <p>写下 / 搜索偏多</p>
+          </div>
+          <div class="slip-lg">
+            <div class="slip-date">10 月 8 日 · 周四</div>
+            <div class="slip-read">今天进门大多有目的</div>
+            <div class="slip-nums">
+              <span>守住 <b>2</b></span><span class="sep">·</span>
+              <span>搜索 <b>2</b></span><span class="sep">·</span>
+              <span>写下 <b>3</b></span><span class="sep">·</span>
+              <span class="z">刷一刷 <b>1</b></span>
+            </div>
+            <div class="slip-pulse">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i class="hold"></i><i class="intent"></i><i></i>
+              <i class="intent"></i><i></i><i></i>
+              <i class="intent"></i><i></i><i></i><i></i><i></i><i></i>
+              <i class="browse"></i><i></i><i></i><i></i>
+            </div>
+            <div class="slip-foot">
+              <span class="slip-brand">心锚</span>
+              <span class="slip-mark">今日笺</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>守住日</h3>
+            <p>守住明显多于进入</p>
+          </div>
+          <div class="slip-lg">
+            <div class="slip-date">10 月 7 日 · 周三</div>
+            <div class="slip-read" style="color:#d4c08a">今天多半守住了</div>
+            <div class="slip-nums">
+              <span>守住 <b>5</b></span><span class="sep">·</span>
+              <span class="z">搜索 <b>0</b></span><span class="sep">·</span>
+              <span class="z">写下 <b>1</b></span><span class="sep">·</span>
+              <span class="z">刷一刷 <b>1</b></span>
+            </div>
+            <div class="slip-pulse">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i class="hold"></i><i></i><i class="hold"></i>
+              <i></i><i class="hold"></i><i></i>
+              <i class="intent"></i><i></i><i class="hold"></i><i></i><i></i>
+              <i class="hold"></i><i class="browse"></i><i></i><i></i>
+            </div>
+            <div class="slip-foot">
+              <span class="slip-brand">心锚</span>
+              <span class="slip-mark">今日笺</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>空日 / 少日</h3>
+            <p>几乎没门口 · 仍可留下</p>
+          </div>
+          <div class="slip-lg">
+            <div class="slip-date">10 月 6 日 · 周二</div>
+            <div class="slip-read quiet">今天几乎没开</div>
+            <div class="slip-nums">
+              <span class="z">守住 <b>0</b></span><span class="sep">·</span>
+              <span class="z">搜索 <b>0</b></span><span class="sep">·</span>
+              <span class="z">写下 <b>0</b></span><span class="sep">·</span>
+              <span class="z">刷一刷 <b>0</b></span>
+            </div>
+            <div class="slip-pulse">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i>
+            </div>
+            <div class="slip-foot">
+              <span class="slip-brand">心锚</span>
+              <span class="slip-mark">今日笺</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="cap" style="margin-top:16px">
+        空日的满足感来自<strong>留白被收好了</strong>，不是假装有数据。
+        节奏带 24 格对应小时：有门口才亮，空日全暗仍是完整构图。
+      </p>
+    </div>
+
+    <!-- ③ 空日的今日页 -->
+    <div>
+      <div class="sec"><strong>③ 空日页</strong>　读法更淡 · 「留下」仍在</div>
+      <div class="row2" style="margin-top:18px; max-width:640px; margin-left:auto; margin-right:auto">
+        <div>
+          <div class="col-head">
+            <h3>几乎没开</h3>
+            <p>摘要全零淡掉 · 脊线一句</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>22:10</span><span>心锚</span></div>
+            <div class="body">
+              <div class="pad">
+                <div class="toprow">
+                  <div class="back">‹ 今日</div>
+                  <div class="leave" style="opacity:.7">留下</div>
+                </div>
+                <div class="brand">今天</div>
+                <div class="daynav"><span class="on">10 月 6 日</span></div>
+                <div class="readline quiet">今天几乎没开</div>
+                <div class="sum">
+                  <span class="z">守住 <b>0</b></span><span class="sep">·</span>
+                  <span class="z">搜索 <b>0</b></span><span class="sep">·</span>
+                  <span class="z">写下 <b>0</b></span><span class="sep">·</span>
+                  <span class="z">刷一刷 <b>0</b></span>
+                </div>
+              </div>
+              <div class="empty-spine">还没有门口</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>刷一刷偏多</h3>
+            <p>事实句 · 不评判</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>23:05</span><span>心锚</span></div>
+            <div class="body">
+              <div class="pad">
+                <div class="toprow">
+                  <div class="back">‹ 今日</div>
+                  <div class="leave">留下</div>
+                </div>
+                <div class="brand">今天</div>
+                <div class="daynav"><span class="on">10 月 5 日</span></div>
+                <div class="readline browse-tone">今天多半是刷一刷</div>
+                <div class="sum">
+                  <span class="z">守住 <b>1</b></span><span class="sep">·</span>
+                  <span class="z">搜索 <b>0</b></span><span class="sep">·</span>
+                  <span class="z">写下 <b>0</b></span><span class="sep">·</span>
+                  <span>刷一刷 <b>6</b></span>
+                </div>
+              </div>
+              <div class="scroll">
+                <div class="quiet">
+                  <div class="h">0–19</div><div></div><div></div><div class="lbl">安静</div>
+                </div>
+                <div class="tl-row">
+                  <div class="hour">20</div>
+                  <div class="clock">20:02</div>
+                  <div class="spine"><div class="dot browse"></div></div>
+                  <div class="scene">
+                    <div class="main"><span class="app">抖音</span> · 15 分</div>
+                    <div class="kind browse">刷一刷</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="hour"></div>
+                  <div class="clock">20:40</div>
+                  <div class="spine"><div class="dot browse"></div></div>
+                  <div class="scene">
+                    <div class="main"><span class="app">小红书</span> · 22 分</div>
+                    <div class="kind browse">刷一刷</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="hour">22</div>
+                  <div class="clock">22:11</div>
+                  <div class="spine"><div class="dot hold"></div></div>
+                  <div class="scene">
+                    <div class="main"><span class="app">抖音</span> · 先不进去了</div>
+                    <div class="kind hold">守住</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 读法判定 -->
+    <div>
+      <div class="sec" style="margin-bottom:12px"><strong>读法句 · 怎么定</strong></div>
+      <div class="read">
+        从四词摘要抽<strong>一个主旋律</strong>。只陈述结构，不打分。一天一句。
+        <table>
+          <tr><td>几乎没开</td><td>四词全 0，或门口合计 ≤ 1</td></tr>
+          <tr><td>多半守住了</td><td>守住 ≥ 进入合计，且守住 ≥ 2</td></tr>
+          <tr><td>大多有目的</td><td>（搜索 + 写下）明显多于刷一刷，且有目的 ≥ 2</td></tr>
+          <tr><td>多半是刷一刷</td><td>刷一刷明显多于（搜索 + 写下），且刷 ≥ 2</td></tr>
+          <tr><td>守住和进入都有</td><td>以上都不占优 · 均衡日</td></tr>
+          <tr><td>只用了很少</td><td>有门口但合计很少（如 2–3），且无单一主导</td></tr>
+        </table>
+        <br />
+        <strong>文案定稿可用：</strong>「今天几乎没开」「今天多半守住了」「今天进门大多有目的」「今天多半是刷一刷」「今天守住和进入都有」「今天只用了很少」。
+        第一版不换句；日后可同型 2–3 句轮换。
+      </div>
+    </div>
+
+    <!-- 流程 -->
+    <div>
+      <div class="sec" style="margin-bottom:14px"><strong>路径</strong></div>
+      <div class="flow">
+        <span class="step">今日 peek</span>
+        <span class="arrow">→</span>
+        <span class="step">今日收据</span>
+        <span class="arrow">→</span>
+        <span class="step">留下</span>
+        <span class="arrow">→</span>
+        <span class="step">笺预览</span>
+        <span class="arrow">→</span>
+        <span class="step">分享 / 保存</span>
+      </div>
+      <p class="cap" style="margin-top:12px">
+        可选弱入口：晚间首次打开今日时，若已有门口，底下一行淡字「今天可以留下一张」· 可关。
+        不做弹窗、不做成绩推送。
+      </p>
+    </div>
+
+    <!-- 页面骨架 -->
+    <div>
+      <div class="sec" style="margin-bottom:14px"><strong>页面骨架</strong></div>
+      <p class="cap" style="margin-bottom:0; text-align:left; max-width:420px">
+        <strong>‹ 返回</strong>　　　　　　　　<strong>留下</strong><br />
+        <strong>今天</strong><br />
+        ‹ 月日 ›　← 次级<br />
+        <strong>读法一句</strong>　← 主视觉（衬线）<br />
+        守住 N · 搜索 N · 写下 N · 刷一刷 N<br />
+        ────────────────<br />
+        小时 | 钟点 · 脊点 · 场景<br />
+        …<br /><br />
+        <strong>笺 3:4</strong><br />
+        月日 · 周几<br />
+        读法一句<br />
+        四词淡数<br />
+        24 格节奏带<br />
+        心锚　　今日笺
+      </p>
+    </div>
+
+    <div class="note">
+      <strong>与现有收据：</strong>不换脊线骨架；只在摘要之上加读法，顶栏加「留下」。<br />
+      <strong>与周回望：</strong>周是「留下这一周」+ 一句真话；日是「留下」+ 今日读法。动词对齐，粒度不同。<br />
+      <strong>隐私：</strong>笺默认不印意图词、App 名、具体时长；节奏带只暴露「哪几小时有门口」。<br />
+      <strong>名字：</strong>页内仍可叫收据；分享物与预览标题用「今日笺」。<br />
+      <strong>不做：</strong>仪表盘、贴纸评价、长截图分享、空日禁用留下。
+    </div>
+  </div>
+</body>
+</html>

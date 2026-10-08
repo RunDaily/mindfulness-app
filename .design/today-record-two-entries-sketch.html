@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>今日记录 · 三个入口（现网口径）</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --leaf-soft: rgba(61,122,74,.14);
+      --sand: #c4a35a; --line: rgba(232,237,230,.12);
+      --hold: #c4a35a; --search: #7eb8c9; --write: #a8b4c4; --browse: #c47a9a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 80px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 40px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px;
+    }
+    .hero h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: var(--leaf-soft); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+    .scope {
+      margin-top: 12px; font-size: 12px; color: var(--mist); line-height: 1.55;
+    }
+    .scope strong { color: var(--sand); font-weight: 500; }
+
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start; }
+    @media (max-width: 900px) {
+      .row2, .row3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 280px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+    .col-head .pick {
+      display: inline-block; margin-top: 6px; font-size: 11px; color: var(--leaf-text);
+      border: 1px solid rgba(61,122,74,.4); padding: 2px 8px; border-radius: 999px;
+    }
+    .col-head .drop {
+      display: inline-block; margin-top: 6px; font-size: 11px; color: #c47a6a;
+      border: 1px solid rgba(196,122,106,.4); padding: 2px 8px; border-radius: 999px;
+    }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9/17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4);
+    }
+    .phone.tall { aspect-ratio: 9/18.4; }
+    .bar {
+      height: 28px; padding: 10px 14px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600;
+    }
+    .body { flex: 1; padding: 2px 18px 12px; display: flex; flex-direction: column; min-height: 0; }
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500;
+    }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 6px; }
+    .sub { font-size: 12px; color: var(--fog); margin-top: 2px; line-height: 1.4; }
+
+    .rowi {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 11px 0; border-bottom: 1px solid var(--line); gap: 10px;
+    }
+    .rowi .n { font-size: 15px; font-weight: 500; }
+    .rowi .m { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.35; }
+    .rowi .r { font-size: 13px; color: #c5d0c6; text-align: right; font-variant-numeric: tabular-nums; line-height: 1.35; }
+
+    .peek {
+      margin-top: auto;
+      padding: 14px 0 4px;
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+      border-top: 1px solid var(--line);
+    }
+    .peek .txt {
+      font-size: 13px; color: rgba(232,237,230,.72); font-weight: 500;
+      letter-spacing: -.01em; line-height: 1.35;
+    }
+    .peek .txt em {
+      font-style: normal; color: rgba(232,237,230,.38); font-weight: 400;
+    }
+    .peek .chev { font-size: 13px; color: rgba(232,237,230,.32); flex: none; }
+    .peek.quiet .txt { color: rgba(232,237,230,.32); font-weight: 400; font-size: 12px; }
+    .peek.hot {
+      outline: 1px dashed rgba(159,212,168,.45); outline-offset: 4px; border-radius: 6px;
+    }
+
+    .metrics3 {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+      margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line);
+    }
+    .metrics3 .c { text-align: center; }
+    .metrics3 .n { font-size: 18px; font-weight: 600; }
+    .metrics3 .l { font-size: 10px; color: var(--mist); margin-top: 2px; }
+
+    .nav {
+      margin-top: 10px; display: flex; justify-content: space-around; padding: 8px 0 2px;
+      border-top: 1px solid var(--line); font-size: 10px; color: var(--mist);
+    }
+    .nav .on { color: var(--leaf-text); font-weight: 600; }
+
+    .sum {
+      display: flex; flex-wrap: wrap; gap: 10px 14px; margin-top: 10px; margin-bottom: 6px;
+      font-size: 12px; color: var(--fog);
+    }
+    .sum b { font-weight: 600; color: var(--paper); }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 4px 0 8px;
+      font-size: 10px; color: var(--mist);
+    }
+    .legend i {
+      font-style: normal; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .legend i::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+    }
+    .legend .hold { color: var(--hold); }
+    .legend .search { color: var(--search); }
+    .legend .write { color: var(--write); }
+    .legend .browse { color: var(--browse); }
+
+    .tl { margin-top: 4px; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .tl-row {
+      display: grid; grid-template-columns: 36px 14px 1fr; gap: 0 6px;
+      min-height: 44px; align-items: start;
+    }
+    .tl-time {
+      text-align: right; padding-top: 12px;
+      font: 500 11px/1 ui-monospace, Menlo, monospace; color: rgba(232,237,230,.36);
+    }
+    .tl-spine { position: relative; display: flex; justify-content: center; padding-top: 14px; }
+    .tl-spine::before {
+      content: ""; position: absolute; top: 0; bottom: 0; left: 50%;
+      width: 1px; margin-left: -.5px; background: rgba(232,237,230,.1);
+    }
+    .tl-dot {
+      position: relative; z-index: 1; width: 7px; height: 7px; border-radius: 50%;
+      background: rgba(232,237,230,.45); box-shadow: 0 0 0 3px #050706;
+    }
+    .tl-dot.hold { background: var(--hold); }
+    .tl-dot.search { background: var(--search); }
+    .tl-dot.write { background: var(--write); }
+    .tl-dot.browse { background: var(--browse); }
+    .tl-body { padding: 8px 0 10px; }
+    .tl-main { font-size: 13px; font-weight: 500; line-height: 1.35; }
+    .tl-kind { font-size: 11px; color: var(--mist); margin-top: 3px; }
+    .tl-kind.hold { color: var(--hold); }
+    .tl-kind.search { color: var(--search); }
+    .tl-kind.write { color: var(--write); }
+    .tl-kind.browse { color: var(--browse); }
+    .quiet-hour {
+      display: grid; grid-template-columns: 36px 14px 1fr; gap: 0 6px; height: 18px; align-items: center;
+    }
+    .quiet-hour .h {
+      text-align: right; font: 500 10px ui-monospace, Menlo, monospace; color: rgba(232,237,230,.2);
+    }
+    .quiet-hour .lbl { font-size: 10px; color: rgba(232,237,230,.2); padding-left: 4px; }
+
+    .desk {
+      width: min(270px, 100%); aspect-ratio: 9/17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #000;
+      margin: 0 auto; padding: 10px 8px 12px;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4);
+      display: flex; flex-direction: column;
+    }
+    .desk .dbar {
+      height: 22px; padding: 0 12px; display: flex; justify-content: space-between;
+      font-size: 10px; color: #aeaeb2; font-weight: 600;
+    }
+    .wall {
+      flex: 1; border-radius: 22px; border: 1px solid #1e2024; position: relative; overflow: hidden;
+      background: linear-gradient(165deg, #1a2420 0%, #101418 45%, #0b0c0e 100%);
+    }
+    .icons {
+      position: absolute; inset: 24px 16px auto 16px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 8px; opacity: .4;
+    }
+    .app {
+      width: 36px; height: 36px; margin: 0 auto; border-radius: 10px;
+      background: rgba(255,255,255,.08);
+    }
+    .app-n { margin-top: 4px; text-align: center; font-size: 9px; color: #636366; }
+    .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.22); }
+    .panel {
+      position: absolute; right: 12px; bottom: 64px; width: 82%;
+      border-radius: 20px; padding: 14px 14px 12px;
+      background: #16181c; border: .6px solid rgba(255,255,255,.14);
+    }
+    .panel .t {
+      font-size: 13px; color: rgba(255,255,255,.55); margin-bottom: 10px;
+    }
+    .panel .t em { font-style: normal; color: #fff; font-weight: 600; }
+    .heat {
+      display: flex; align-items: flex-end; gap: 3px; height: 36px; margin-bottom: 12px;
+    }
+    .heat i {
+      flex: 1; border-radius: 2px 2px 0 0; background: rgba(52,199,89,.45);
+      font-style: normal;
+    }
+    .apps-rank { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 12px; }
+    .chip { text-align: center; }
+    .chip .ico {
+      width: 26px; height: 26px; border-radius: 7px; margin: 0 auto;
+      display: grid; place-items: center; font-size: 10px; color: #fff; font-weight: 600;
+    }
+    .chip .min { margin-top: 3px; font-size: 11px; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
+    .rank-unit { font-size: 10px; color: #636366; align-self: flex-end; padding-bottom: 2px; }
+    .foot {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: 10px; border-top: .6px solid rgba(255,255,255,.1);
+      font-size: 12px;
+    }
+    .foot .left { color: rgba(255,255,255,.55); font-weight: 500; }
+    .foot .go { color: #34c759; font-weight: 600; }
+    .foot.hot .left {
+      outline: 1px dashed rgba(159,212,168,.5); outline-offset: 3px; border-radius: 4px;
+    }
+    .orb {
+      position: absolute; right: 18px; bottom: 16px; width: 44px; height: 44px;
+      border-radius: 50%; border: none;
+      background: radial-gradient(circle at 35% 30%, #2a3a30, #0e1411 70%);
+      box-shadow: 0 4px 16px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08);
+    }
+    .orb .jewel {
+      display: block; width: 10px; height: 10px; margin: 17px auto 0; border-radius: 50%;
+      background: #34c759; box-shadow: 0 0 10px rgba(52,199,89,.5);
+    }
+
+    .verbs {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+      max-width: 760px; margin: 0 auto;
+    }
+    @media (max-width: 720px) { .verbs { grid-template-columns: 1fr 1fr; } }
+    .verb {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+      font-size: 12px; color: var(--fog); line-height: 1.5;
+    }
+    .verb b { display: block; font-size: 13px; margin-bottom: 4px; }
+    .verb.hold b { color: var(--hold); }
+    .verb.search b { color: var(--search); }
+    .verb.write b { color: var(--write); }
+    .verb.browse b { color: var(--browse); }
+    .verb .tag { font-size: 10px; color: var(--mist); margin-bottom: 6px; }
+
+    .cap {
+      max-width: 700px; margin: 0 auto; font-size: 12px; color: var(--mist);
+      text-align: center; line-height: 1.65;
+    }
+    .cap strong { color: var(--sand); font-weight: 500; }
+    .x { color: #c47a6a; font-size: 11px; margin-top: 8px; text-align: center; }
+    .bad { outline: 1px dashed rgba(196,122,106,.45); outline-offset: 6px; border-radius: 8px; }
+
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.7; max-width: 720px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">今日记录 · 三个入口 · 现网口径</div>
+      <h1>今日 peek · 桌面用字 · App 详情 narrow</h1>
+      <p>
+        前两入口进全日收据；第三入口在少详情，只看这个 App 今天的门口决策。
+        同套脊线，范围变窄，不另造列表。
+      </p>
+      <div class="thesis">全日 = ①②　·　单 App = ③　·　骨架同一条</div>
+      <p class="scope">
+        <strong>本阶段不含：</strong>正向 / 多 App、「去做了」、正向出口写入今日。<br />
+        <strong>本阶段含：</strong>守住 · 搜索直达 · 写下意图 · 刷一刷（含承诺时长）。
+      </p>
+    </header>
+
+    <!-- 词表 -->
+    <div>
+      <div class="sec" style="margin-bottom:14px"><strong>收据动词 · 现网四类</strong></div>
+      <div class="verbs">
+        <div class="verb hold">
+          <div class="tag">门上离开</div>
+          <b>守住</b>
+          不进去了 / 劝离离开。不计使用时长。
+        </div>
+        <div class="verb search">
+          <div class="tag">进法 · SEARCH</div>
+          <b>搜索</b>
+          知道要搜什么；搜词进 App。不定本次时长。
+        </div>
+        <div class="verb write">
+          <div class="tag">进法 · PURPOSEFUL</div>
+          <b>写下意图</b>
+          知道要干什么；写下后进。可有本次时长。
+        </div>
+        <div class="verb browse">
+          <div class="tag">进法 · 刷一刷</div>
+          <b>刷一刷</b>
+          承认无目的；必须先认本次多久。
+        </div>
+      </div>
+      <p class="cap" style="margin-top:14px">
+        peek 行不堆四类全名。首页只报两数：<strong>守住</strong>与<strong>进入</strong>（搜索 + 写下 + 刷一刷合计）。
+        分型只在收据脊线上读。
+      </p>
+    </div>
+
+    <!-- ① 入口一 -->
+    <div>
+      <div class="sec"><strong>① 入口一 · 今日 Tab</strong>　只有少 · 镜子下方一行</div>
+      <div class="row3" style="margin-top:18px">
+        <div>
+          <div class="col-head">
+            <h3>取 · 守住 / 进入</h3>
+            <p>不写「带着意图」统称</p>
+            <span class="pick">推荐</span>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>21:40</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">今日</div>
+              <div class="sub">2 个 App 在规则里</div>
+              <div class="rowi">
+                <div>
+                  <div class="n">抖音</div>
+                  <div class="m">日限 30 分 · 打开 3 / 8</div>
+                </div>
+                <div class="r">18 / 30 分</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">小红书</div>
+                  <div class="m">日限 45 分 · 打开 4 / 6</div>
+                </div>
+                <div class="r">22 / 45 分</div>
+              </div>
+
+              <div class="peek hot">
+                <span class="txt">今天 <em>·</em> 守住 3 <em>·</em> 进入 5</span>
+                <span class="chev">›</span>
+              </div>
+              <div class="nav"><span class="on">今日</span><span>方案</span><span>我</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>空日</h3>
+            <p>没有门口动作时更淡</p>
+            <span class="pick">同骨架</span>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:12</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">今日</div>
+              <div class="sub">2 个 App 在规则里</div>
+              <div class="rowi">
+                <div>
+                  <div class="n">抖音</div>
+                  <div class="m">日限 30 分 · 打开 0 / 8</div>
+                </div>
+                <div class="r">0 / 30 分</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">小红书</div>
+                  <div class="m">日限 45 分 · 打开 0 / 6</div>
+                </div>
+                <div class="r">0 / 45 分</div>
+              </div>
+
+              <div class="peek quiet">
+                <span class="txt">今天 · 还没有门口</span>
+                <span class="chev">›</span>
+              </div>
+              <div class="nav"><span class="on">今日</span><span>方案</span><span>我</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>不好 · 超前 / 糊成一类</h3>
+            <p>多 · 去做了 · 统称意图</p>
+            <span class="drop">不取</span>
+          </div>
+          <div class="phone bad">
+            <div class="bar"><span>21:40</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">今日</div>
+              <div class="sub">带着意图 · 守住 · 去做了</div>
+              <div class="metrics3">
+                <div class="c"><div class="n" style="color:var(--search)">5</div><div class="l">带着意图</div></div>
+                <div class="c"><div class="n" style="color:var(--hold)">3</div><div class="l">守住</div></div>
+                <div class="c"><div class="n" style="color:var(--browse)">2</div><div class="l">去做了</div></div>
+              </div>
+              <div class="rowi" style="margin-top:8px">
+                <div><div class="n">多邻国</div><div class="m">多 · 现网没有</div></div>
+                <div class="r">12 分</div>
+              </div>
+              <div class="nav" style="margin-top:auto"><span class="on">今日</span><span>方案</span><span>我</span></div>
+            </div>
+          </div>
+          <p class="x">× 搜/刷被糊掉 · 正向未上线</p>
+        </div>
+      </div>
+      <p class="cap" style="margin-top:18px">
+        <strong>文案：</strong>「今天 · 守住 N · 进入 N」。进入 = 搜索 + 写下意图 + 刷一刷。
+        不在首页拆四类，也不出现「去做了 / 多」。
+      </p>
+    </div>
+
+    <!-- ② 入口二 -->
+    <div>
+      <div class="sec"><strong>② 入口二 · 桌面球</strong>　底栏用字 · 仍不讲故事</div>
+      <div class="row2" style="margin-top:18px; max-width:620px; margin-left:auto; margin-right:auto">
+        <div>
+          <div class="col-head">
+            <h3>取 · 「今天」离开</h3>
+            <p>与入口一同名落地</p>
+            <span class="pick">推荐</span>
+          </div>
+          <div class="desk">
+            <div class="dbar"><span>21:40</span><span>心锚</span></div>
+            <div class="wall">
+              <div class="icons">
+                <div><div class="app"></div><div class="app-n">信息</div></div>
+                <div><div class="app"></div><div class="app-n">日历</div></div>
+                <div><div class="app"></div><div class="app-n">照片</div></div>
+                <div><div class="app"></div><div class="app-n">相机</div></div>
+              </div>
+              <div class="scrim"></div>
+              <div class="panel">
+                <div class="t">今日 <em>1小时04分</em> · 下午热</div>
+                <div class="heat" aria-hidden="true">
+                  <i style="height:18%"></i><i style="height:12%"></i><i style="height:22%"></i>
+                  <i style="height:28%"></i><i style="height:36%"></i><i style="height:44%"></i>
+                  <i style="height:70%"></i><i style="height:88%"></i><i style="height:64%"></i>
+                  <i style="height:40%"></i><i style="height:24%"></i><i style="height:16%"></i>
+                </div>
+                <div class="apps-rank">
+                  <div class="chip"><div class="ico" style="background:#c43a4a">红</div><div class="min">36</div></div>
+                  <div class="chip"><div class="ico" style="background:#111">抖</div><div class="min">18</div></div>
+                  <div class="chip"><div class="ico" style="background:#5a6d8c">B</div><div class="min">10</div></div>
+                  <span class="rank-unit">分</span>
+                </div>
+                <div class="foot hot">
+                  <span class="left">今天</span>
+                  <span class="go">打开心锚</span>
+                </div>
+              </div>
+              <div class="orb"><span class="jewel"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>不好 · 面板里分型</h3>
+            <p>桌面不是收据</p>
+            <span class="drop">不取</span>
+          </div>
+          <div class="desk bad">
+            <div class="dbar"><span>21:40</span><span>心锚</span></div>
+            <div class="wall">
+              <div class="scrim"></div>
+              <div class="panel" style="bottom:56px">
+                <div class="t">守住 3 · 搜索 2 · 刷 2</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.4);line-height:1.55;margin:8px 0 10px">
+                  14:09　刷一刷 · 抖音 10 分<br />
+                  13:40　守住 · 抖音<br />
+                  11:22　搜索 · 相机选购<br />
+                  10:18　写下 · 回消息
+                </div>
+                <div class="foot">
+                  <span class="left">更多</span>
+                  <span class="go">打开心锚</span>
+                </div>
+              </div>
+              <div class="orb"><span class="jewel"></span></div>
+            </div>
+          </div>
+          <p class="x">× 分型只在落地页</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 入口三：少详情 -->
+    <div>
+      <div class="sec"><strong>③ 入口三 · 少详情</strong>　今日契约下 · 只看这个 App</div>
+      <div class="row3" style="margin-top:18px">
+        <div>
+          <div class="col-head">
+            <h3>取 · 契约下同一 peek</h3>
+            <p>数字仍是契约；底下进 narrow</p>
+            <span class="pick">推荐</span>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>21:40</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 今日</div>
+              <div class="brand" style="font-size:20px">小红书</div>
+              <div class="sub" style="margin-top:10px;color:var(--mist)">近 7 日 · 不含今天</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+                <div>
+                  <div style="font-size:10px;color:var(--mist)">日均</div>
+                  <div style="font-size:26px;font-weight:500;letter-spacing:-.02em">55<span style="font-size:13px;color:var(--mist)">分</span></div>
+                </div>
+                <div>
+                  <div style="font-size:10px;color:var(--mist)">打开</div>
+                  <div style="font-size:26px;font-weight:500;letter-spacing:-.02em">14<span style="font-size:13px;color:var(--mist)">次</span></div>
+                </div>
+              </div>
+              <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+                <div style="font-size:10px;color:var(--mist);margin-bottom:4px">今日</div>
+                <div style="font-size:18px;font-weight:500">22 / 45 分</div>
+                <div style="font-size:12px;color:var(--fog);margin-top:4px">打开 4 / 6 · 守住 2</div>
+              </div>
+              <div class="peek hot" style="margin-top:14px">
+                <span class="txt">今天 <em>·</em> 守住 2 <em>·</em> 进入 3</span>
+                <span class="chev">›</span>
+              </div>
+              <div style="margin-top:auto;padding-top:12px">
+                <div style="font-size:13px;color:var(--leaf-text)">去改规则</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>落地 · 今天 · 小红书</h3>
+            <p>同脊线 · 只留本 App · 行里不再写 App 名</p>
+            <span class="pick">narrow</span>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>21:40</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 小红书</div>
+              <div class="brand" style="font-size:20px">今天 · 小红书</div>
+              <div class="sum">
+                <span>守住 <b>2</b></span>
+                <span>搜索 <b>1</b></span>
+                <span>写下 <b>1</b></span>
+                <span>刷一刷 <b>1</b></span>
+              </div>
+              <div class="legend">
+                <i class="hold">守住</i>
+                <i class="search">搜索</i>
+                <i class="write">写下</i>
+                <i class="browse">刷一刷</i>
+              </div>
+              <div class="tl">
+                <div class="tl-row">
+                  <div class="tl-time">14:02</div>
+                  <div class="tl-spine"><div class="tl-dot browse"></div></div>
+                  <div class="tl-body">
+                    <div class="tl-main">15 分</div>
+                    <div class="tl-kind browse">刷一刷</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="tl-time">13:40</div>
+                  <div class="tl-spine"><div class="tl-dot hold"></div></div>
+                  <div class="tl-body">
+                    <div class="tl-main">先不进去了</div>
+                    <div class="tl-kind hold">守住</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="tl-time">11:22</div>
+                  <div class="tl-spine"><div class="tl-dot search"></div></div>
+                  <div class="tl-body">
+                    <div class="tl-main">「相机选购」</div>
+                    <div class="tl-kind search">搜索</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="tl-time">10:18</div>
+                  <div class="tl-spine"><div class="tl-dot write"></div></div>
+                  <div class="tl-body">
+                    <div class="tl-main">回消息给老板 · 8 分</div>
+                    <div class="tl-kind write">写下意图</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="tl-time">09:14</div>
+                  <div class="tl-spine"><div class="tl-dot hold"></div></div>
+                  <div class="tl-body">
+                    <div class="tl-main">先不进去了</div>
+                    <div class="tl-kind hold">守住</div>
+                  </div>
+                </div>
+              </div>
+              <div class="peek quiet" style="margin-top:8px;border-top:1px solid var(--line)">
+                <span class="txt">全部 App 的今天</span>
+                <span class="chev">›</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>不好 · 两处</h3>
+            <p>详情内嵌流水 · 或埋进更多</p>
+            <span class="drop">不取</span>
+          </div>
+          <div class="phone tall bad">
+            <div class="bar"><span>21:40</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 今日</div>
+              <div class="brand" style="font-size:20px">小红书</div>
+              <div style="margin-top:10px;font-size:18px;font-weight:500">22 / 45 分</div>
+              <div style="font-size:12px;color:var(--fog);margin-top:4px">打开 4 / 6 · 守住 2</div>
+              <div style="margin-top:14px;font-size:10px;color:var(--mist)">今天的痕迹</div>
+              <div style="margin-top:8px;font-size:12px;color:var(--fog);line-height:1.6;border-bottom:1px solid var(--line);padding-bottom:8px">
+                14:02　刷一刷 · 15 分<br />
+                11:22　搜索 · 相机选购<br />
+                10:18　写下 · 回消息
+              </div>
+              <div style="margin-top:auto;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--mist)">
+                更多 · 使用记录<br />
+                <span style="opacity:.7">打开、守住与每次时长</span>
+              </div>
+            </div>
+          </div>
+          <p class="x">× 详情被流水占满 · 入口沉底</p>
+        </div>
+      </div>
+      <p class="cap" style="margin-top:18px">
+        <strong>位置：</strong>贴在「今日」契约块下方，与入口一同一 peek 句式；日均英雄数之上不放。
+        <strong>落地：</strong>标题「今天 · {App}」；主句省掉 App 名（已在标题里）；底可淡链「全部 App 的今天 ›」回到全日。
+        <strong>不做：</strong>详情页内嵌完整脊线；只藏在「更多 → 使用记录」；另做一套「日记 / 痕迹」列表。
+      </p>
+    </div>
+
+    <!-- ④ 全日落地对照 -->
+    <div>
+      <div class="sec"><strong>④ 全日落地 · 对照</strong>　①② 进这里；③ 是它的 narrow</div>
+      <div class="row2" style="margin-top:18px; max-width:620px; margin-left:auto; margin-right:auto">
+        <div>
+          <div class="col-head">
+            <h3>今天 · 全部</h3>
+            <p>行里带 App 名</p>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>21:40</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 今日</div>
+              <div class="brand" style="font-size:20px">今天</div>
+              <div class="sum">
+                <span>守住 <b>3</b></span>
+                <span>搜索 <b>2</b></span>
+                <span>写下 <b>1</b></span>
+                <span>刷一刷 <b>2</b></span>
+              </div>
+              <div class="legend">
+                <i class="hold">守住</i>
+                <i class="search">搜索</i>
+                <i class="write">写下</i>
+                <i class="browse">刷一刷</i>
+              </div>
+              <div class="tl">
+                <div class="tl-row">
+                  <div class="tl-time">14:09</div>
+                  <div class="tl-spine"><div class="tl-dot browse"></div></div>
+                  <div class="tl-body">
+                    <div class="tl-main">抖音 · 10 分</div>
+                    <div class="tl-kind browse">刷一刷</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="tl-time">13:40</div>
+                  <div class="tl-spine"><div class="tl-dot hold"></div></div>
+                  <div class="tl-body">
+                    <div class="tl-main">抖音 · 先不进去了</div>
+                    <div class="tl-kind hold">守住</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="tl-time">11:22</div>
+                  <div class="tl-spine"><div class="tl-dot search"></div></div>
+                  <div class="tl-body">
+                    <div class="tl-main">小红书 ·「相机选购」</div>
+                    <div class="tl-kind search">搜索</div>
+                  </div>
+                </div>
+                <div class="tl-row">
+                  <div class="tl-time">10:18</div>
+                  <div class="tl-spine"><div class="tl-dot write"></div></div>
+                  <div class="tl-body">
+                    <div class="tl-main">小红书 · 回消息给老板 · 8 分</div>
+                    <div class="tl-kind write">写下意图</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>三者关系</h3>
+            <p>一页两镜深</p>
+          </div>
+          <div class="note" style="margin:0; max-width:none">
+            <strong>① 今日 peek</strong>　→ 今天（全部）　返回 ‹ 今日<br />
+            <strong>② 桌面「今天」</strong>　→ 今天（全部）　返回关页<br />
+            <strong>③ 详情 peek</strong>　→ 今天 · {App}　返回 ‹ {App}<br />
+            　　　　　　　底链可再到全部<br /><br />
+            <strong>桌面点球下钻某个 App</strong>　与 ③ 同 narrow，不是第四套。<br /><br />
+            <strong>行怎么读（narrow）：</strong><br />
+            搜索　「搜词」<br />
+            写下　意图句 · N 分<br />
+            刷一刷　N 分<br />
+            守住　先不进去了<br /><br />
+            硬挡同脊更淡，不进 peek 两数。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>三个入口：</strong>① 今日镜子下一行 · ② 桌面球底左「今天」· ③ 少详情今日契约下同一 peek。<br />
+      <strong>两个深度：</strong>全部 / 单 App；骨架、动词、分型一致。<br />
+      <strong>现网口径：</strong>无多、无去做了；进入 = 搜索 + 写下 + 刷一刷。<br />
+      <strong>替换现状：</strong>详情「更多 → 使用记录」不再当主入口；历史按日列表可沉到全日页更早的天，或以后再说。
+    </div>
+  </div>
+</body>
+</html>

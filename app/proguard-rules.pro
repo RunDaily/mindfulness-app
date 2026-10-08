@@ -36,6 +36,10 @@
 -keep class com.life.mindfulnessapp.service.** { *; }
 -keep class com.life.mindfulnessapp.receiver.** { *; }
 
+# ── pinyin4j ─────────────────────────────────────────────────────────────────
+-keep class net.sourceforge.pinyin4j.** { *; }
+-dontwarn net.sourceforge.pinyin4j.**
+
 # ── Google Play Billing ───────────────────────────────────────────────────────
 # Billing Library 自带 consumer ProGuard 规则，以下为补充保护
 -keep class com.android.billingclient.** { *; }
@@ -43,5 +47,29 @@
 # 保留 BillingManager 及其回调接口，防止被混淆后回调失效
 -keep class com.life.mindfulnessapp.billing.** { *; }
 
+# ── 微信 OpenSDK（APP 支付回调 Activity 包名不可混淆）────────────────────────
+-keep class com.tencent.mm.opensdk.** { *; }
+-keep class com.tencent.wxop.** { *; }
+-keep class com.tencent.mm.sdk.** { *; }
+-dontwarn com.tencent.mm.opensdk.**
+-keep class com.life.mindfulnessapp.wxapi.** { *; }
+-keep class com.life.mindfulnessapp.pay.** { *; }
+
 # ── Compose（R8 默认已处理，以下仅兜底）────────────────────────────────────
 -dontwarn androidx.compose.**
+# CapsuleOverlayView 拆开是为了把单方法寄存器压到 255 以下，否则 ART 会 VerifyError。
+# 禁止再内联回同一个方法。
+-keepclassmembers,allowobfuscation class com.life.mindfulnessapp.overlay.CapsuleOverlayViewKt {
+    *** CapsuleOverlayHost(...);
+    *** CapsuleOverlayEffects(...);
+    *** CapsuleIslandShell(...);
+    *** CapsuleIslandFrame(...);
+    *** CapsuleExpandedLayer(...);
+    *** CapsuleOverlayDialogs(...);
+    *** buildCapsuleMetrics(...);
+    *** deriveCapsuleChrome(...);
+    *** EndConfirmDialog(...);
+}
+-keepclassmembers,allowobfuscation class com.life.mindfulnessapp.overlay.FocusOrbComponentsKt {
+    *** CompanionTimeMiniBar(...);
+}

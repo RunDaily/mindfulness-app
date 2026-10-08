@@ -1,0 +1,31 @@
+---
+description: 浮层 Composable 按职责拆分，避免单文件和单方法膨胀
+globs: app/src/main/java/com/life/mindfulnessapp/overlay/**/*.kt
+alwaysApply: false
+---
+
+# 浮层职责边界
+
+ART 单方法寄存器上限是 255。`CapsuleOverlayView` 曾因此 `VerifyError`。改浮层时守住边界，不要把新逻辑堆回大文件。
+
+## 硬限制
+
+- 一个 Composable 只做一件事。函数体超过约 200 行，或参数超过约 15 个，拆到新文件。
+- 为寄存器上限拆开的函数不要合并回去，包括 `CapsuleOverlayHost`、`CapsuleOverlayEffects`、`CapsuleIslandShell`、`CapsuleIslandFrame`、`buildCapsuleMetrics`、`deriveCapsuleChrome`。
+- 派生数据、副作用、绘制分开。`LaunchedEffect` 里改状态；绘制函数只读快照。
+- 新浮层场景新建文件。不要往 `CapsuleOverlayView.kt` 或 `OverlayManager.kt` 末尾追加。
+- `OverlayManager` 只做窗口与会话编排。文案、动画、弹窗不要写进去。
+
+## 写法
+
+```kotlin
+// 不好：在已有大 Composable 里再加一种横幅
+@Composable
+fun CapsuleOverlayView(...) {
+    if (newMode) { /* 又一段 UI 和 LaunchedEffect */ }
+}
+
+// 好：新场景独立文件，调用方只传快照
+@Composable
+fun NewSceneOverlay(snapshot: NewSceneSnapshot) { /* 只画这一幕 */ }
+```

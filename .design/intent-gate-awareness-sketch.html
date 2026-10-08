@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>意图门 · 一次命名式察觉 · 草图</title>
+  <style>
+    :root {
+      --bg: #000;
+      --surface: #1c1c1e;
+      --line: #3a3a3c;
+      --text: #fff;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --green: #34c759;
+      --green-dim: rgba(52, 199, 89, 0.16);
+      --amber: #ffd60a;
+      --amber-dim: rgba(255, 214, 10, 0.12);
+      --blue: #64d2ff;
+      --blue-dim: rgba(100, 210, 255, 0.12);
+      --rose: #ff6482;
+      --rose-dim: rgba(255, 100, 130, 0.12);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 30% 0%, #142018 0%, transparent 45%),
+        radial-gradient(ellipse at 80% 10%, #121820 0%, transparent 40%),
+        #050506;
+      color: var(--text);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 72px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 28px; }
+
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: .14em;
+      color: var(--green); margin-bottom: 10px;
+    }
+    .hero h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+    .hero p {
+      margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.65;
+    }
+    .thesis {
+      margin-top: 16px; display: inline-block;
+      padding: 10px 16px; border-radius: 999px;
+      background: var(--green-dim); border: 1px solid rgba(52,199,89,.28);
+      color: #b7f0c4; font-size: 13px; line-height: 1.45;
+    }
+
+    .principles {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    @media (max-width: 720px) { .principles { grid-template-columns: 1fr; } }
+    .principle {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 14px;
+      padding: 14px 14px 12px;
+    }
+    .principle .k {
+      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      color: var(--green); margin-bottom: 6px;
+    }
+    .principle h3 { font-size: 14px; font-weight: 650; margin-bottom: 6px; }
+    .principle p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    .stage-tabs {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    }
+    .stage-tabs button {
+      border: 1px solid #2a2a2c; background: #121214; color: var(--muted);
+      font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 999px;
+      cursor: pointer; font-family: inherit;
+    }
+    .stage-tabs button.on {
+      border-color: rgba(52,199,89,.4); background: var(--green-dim); color: var(--green);
+    }
+
+    .phones {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;
+    }
+    @media (max-width: 860px) { .phones { grid-template-columns: 1fr; justify-items: center; } }
+
+    .phone-col { display: grid; gap: 10px; justify-items: center; width: 100%; }
+    .phone-label {
+      font-size: 12px; color: var(--muted); text-align: center; line-height: 1.45;
+      max-width: 360px;
+    }
+    .phone-label strong { color: #d1d1d6; font-weight: 600; }
+
+    .phone {
+      width: min(360px, 100%);
+      background: var(--bg);
+      border: 1px solid #2a2a2c;
+      border-radius: 36px;
+      padding: 12px 12px 20px;
+      box-shadow: 0 0 0 1px #111, 0 24px 80px rgba(0,0,0,.55);
+      display: flex; flex-direction: column; gap: 12px;
+      position: relative; overflow: hidden; min-height: 640px;
+    }
+    .status-bar {
+      height: 26px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px 2px; font-size: 12px; font-weight: 600; color: #aeaeb2;
+    }
+
+    .top {
+      display: grid; grid-template-columns: 1fr auto; gap: 10px;
+      align-items: center; padding: 4px 4px 0;
+    }
+    .app-meta { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .app-icon {
+      width: 44px; height: 44px; border-radius: 11px;
+      background: linear-gradient(145deg, #ff5a6a, #c9184a);
+      display: grid; place-items: center; font-size: 11px; font-weight: 700;
+    }
+    .app-name { font-size: 16px; font-weight: 600; }
+    .app-sub { margin-top: 3px; font-size: 11px; color: var(--muted); }
+    .clock {
+      width: 72px; height: 72px; border-radius: 50%;
+      border: 1.5px solid #3a3a3c;
+      background: radial-gradient(circle at 50% 45%, #242426 0%, #141416 70%);
+      position: relative;
+    }
+    .clock::before, .clock::after {
+      content: ""; position: absolute; left: 50%; top: 50%;
+      background: #aeaeb2; border-radius: 2px; transform-origin: bottom center;
+    }
+    .clock::before {
+      width: 2px; height: 16px; margin-left: -1px; margin-top: -16px; transform: rotate(25deg);
+    }
+    .clock::after {
+      width: 1.5px; height: 22px; margin-left: -.75px; margin-top: -22px;
+      transform: rotate(120deg); background: #8e8e93;
+    }
+    .clock-dot {
+      position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
+      margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--green);
+    }
+
+    .mid {
+      background: var(--surface); border: 1px solid #2a2a2c;
+      border-radius: var(--radius); padding: 18px 16px 14px;
+      display: flex; flex-direction: column; gap: 12px;
+      flex: 1;
+    }
+    .ask {
+      font-size: 20px; font-weight: 650; letter-spacing: -.02em; line-height: 1.3;
+    }
+    .cue {
+      font-size: 12px; color: var(--dim); line-height: 1.45;
+      padding: 8px 10px; border-radius: 10px;
+      background: #121214; border: 1px solid #262628;
+      display: flex; gap: 8px; align-items: flex-start;
+    }
+    .cue .tag {
+      flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: .06em;
+      color: var(--blue); background: var(--blue-dim);
+      border: 1px solid rgba(100,210,255,.25);
+      border-radius: 999px; padding: 2px 7px; margin-top: 1px;
+    }
+    .cue.urge .tag { color: var(--amber); background: var(--amber-dim); border-color: rgba(255,214,10,.28); }
+    .cue.body .tag { color: #bf5af2; background: rgba(191,90,242,.12); border-color: rgba(191,90,242,.28); }
+
+    .chips-row {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .name-chip {
+      border: 1px solid var(--line); background: #141416; color: #d1d1d6;
+      font-size: 12px; font-weight: 500; padding: 8px 11px; border-radius: 999px;
+      cursor: pointer; font-family: inherit;
+    }
+    .name-chip:hover { border-color: #5a5a5e; }
+    .name-chip.on {
+      border-color: rgba(52,199,89,.45); background: var(--green-dim); color: var(--green);
+    }
+    .name-chip.honest {
+      border-color: rgba(255,214,10,.28); color: #ffe08a;
+      background: var(--amber-dim);
+    }
+    .name-chip.honest.on {
+      border-color: rgba(255,214,10,.55); color: var(--amber);
+    }
+
+    .input-shell {
+      background: #0e0e10; border: 1px solid var(--line);
+      border-radius: 14px; padding: 12px 12px 10px;
+    }
+    .input-shell textarea {
+      width: 100%; min-height: 72px; resize: none; border: 0; outline: 0;
+      background: transparent; color: var(--text); font-size: 15px;
+      line-height: 1.45; font-family: inherit;
+    }
+    .input-shell textarea::placeholder { color: #636366; }
+    .input-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 6px; gap: 8px;
+    }
+    .input-meta .hint { font-size: 11px; color: var(--dim); }
+    .input-meta .hint.warn { color: #c7a84a; }
+    .btn-primary {
+      border: 0; background: var(--green); color: #003a12;
+      font-size: 13px; font-weight: 700; padding: 8px 14px;
+      border-radius: 10px; cursor: pointer; font-family: inherit;
+      white-space: nowrap;
+    }
+    .btn-primary:disabled {
+      background: #2a2a2c; color: #636366; cursor: not-allowed;
+    }
+
+    .exits {
+      display: grid; gap: 8px; margin-top: 2px;
+    }
+    .exit-leave {
+      text-align: center; font-size: 14px; font-weight: 650;
+      color: var(--green); padding: 10px; cursor: pointer;
+    }
+    .positive {
+      border: 1px dashed #3a3a3c; border-radius: 14px;
+      padding: 12px; background: #141416;
+    }
+    .positive .pt {
+      font-size: 11px; color: var(--muted); margin-bottom: 8px;
+    }
+    .positive .pt span { color: var(--blue); margin-right: 4px; }
+    .positive-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .pos {
+      aspect-ratio: 1.15; border-radius: 12px; border: 1px solid #2a2a2c;
+      background: #0e0e10; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+      font-size: 11px; color: #aeaeb2; cursor: pointer;
+    }
+    .pos .dot {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 1px solid #3a3a3c; display: grid; place-items: center;
+      font-size: 11px; color: var(--blue);
+    }
+
+    .sheet-mask {
+      position: absolute; inset: 0; background: rgba(0,0,0,.62);
+      display: none; align-items: flex-end; z-index: 20;
+      border-radius: 36px;
+    }
+    .sheet-mask.show { display: flex; }
+    .sheet {
+      width: 100%; background: #1c1c1e;
+      border-radius: 22px 22px 0 0;
+      border-top: 1px solid #3a3a3c;
+      padding: 16px 16px 26px;
+      animation: up .2s ease-out;
+    }
+    @keyframes up {
+      from { transform: translateY(20px); opacity: .5; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .sheet-handle {
+      width: 36px; height: 4px; border-radius: 999px;
+      background: #3a3a3c; margin: 0 auto 12px;
+    }
+    .sheet-title { font-size: 16px; font-weight: 650; margin-bottom: 4px; }
+    .sheet-sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+    .sheet-purpose {
+      font-size: 13px; color: #d1d1d6; background: #0e0e10;
+      border: 1px solid var(--line); border-radius: 12px;
+      padding: 10px 12px; margin-bottom: 12px; line-height: 1.4;
+    }
+    .sheet-purpose .kind {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      letter-spacing: .05em; padding: 2px 7px; border-radius: 999px;
+      margin-bottom: 6px;
+    }
+    .sheet-purpose .kind.task {
+      color: var(--green); background: var(--green-dim); border: 1px solid rgba(52,199,89,.3);
+    }
+    .sheet-purpose .kind.urge {
+      color: var(--amber); background: var(--amber-dim); border: 1px solid rgba(255,214,10,.3);
+    }
+    .dur-chips { display: flex; gap: 8px; margin-bottom: 12px; }
+    .dur {
+      flex: 1; text-align: center; padding: 11px 0; border-radius: 999px;
+      border: 1px solid var(--line); font-size: 13px; color: #aeaeb2;
+      background: transparent; cursor: pointer; font-family: inherit;
+    }
+    .dur.on {
+      border-color: var(--green); color: var(--green); background: var(--green-dim);
+    }
+    .sheet-enter {
+      width: 100%; padding: 13px; border-radius: 14px; border: 0;
+      background: var(--green); color: #003a12;
+      font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .sheet-cancel {
+      width: 100%; margin-top: 8px; padding: 10px; border: 0;
+      background: transparent; color: var(--muted);
+      font-size: 13px; cursor: pointer; font-family: inherit;
+    }
+
+    /* 离开反馈轻态 */
+    .leave-toast {
+      position: absolute; left: 16px; right: 16px; top: 54px;
+      background: #1c1c1e; border: 1px solid #2a2a2c; border-radius: 14px;
+      padding: 12px 14px; display: none; z-index: 15;
+      box-shadow: 0 12px 40px rgba(0,0,0,.45);
+    }
+    .leave-toast.show { display: block; animation: fade .25s ease; }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .leave-toast .t { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .leave-toast .s { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+    .dimmed { opacity: .28; pointer-events: none; filter: saturate(.6); }
+
+    .flow {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 14px;
+      padding: 14px 16px; font-size: 12px; color: #aeaeb2; line-height: 1.7;
+    }
+    .flow b { color: var(--green); font-weight: 650; }
+    .flow .no { color: var(--rose); }
+
+    .map {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    }
+    @media (max-width: 720px) { .map { grid-template-columns: 1fr 1fr; } }
+    .map-cell {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 12px;
+      padding: 12px;
+    }
+    .map-cell .h {
+      font-size: 10px; font-weight: 700; letter-spacing: .06em; margin-bottom: 6px;
+    }
+    .map-cell.body .h { color: #bf5af2; }
+    .map-cell.vedana .h { color: var(--amber); }
+    .map-cell.citta .h { color: var(--blue); }
+    .map-cell.dhamma .h { color: var(--green); }
+    .map-cell p { font-size: 11px; color: var(--muted); line-height: 1.45; }
+    .map-cell .where {
+      margin-top: 8px; font-size: 10px; color: #aeaeb2;
+      padding-top: 8px; border-top: 1px solid #222;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">心锚 · 意图门改造草图</div>
+      <h1>一门 · 一次命名 · 三出口</h1>
+      <p>
+        不在门上走完四念处流程；用四念处约束这一下停顿的品质。<br />
+        主问从「要做什么」收成「这一次是什么」——事与冲动并列合法。
+      </p>
+      <div class="thesis">觉察 = 到场命名 · 不是克制 · 不是美德意图</div>
+    </header>
+
+    <section class="principles">
+      <div class="principle">
+        <div class="k">01 · 主问</div>
+        <h3>这一次是什么？</h3>
+        <p>给对照一个对象；允许「就是想刷」——诚实比表演更靠近觉察。</p>
+      </div>
+      <div class="principle">
+        <div class="k">02 · 轻提示</div>
+        <h3>四念处一句轮换</h3>
+        <p>身 / 受 / 心各一句线索，可跳过；法留给周回望，不进门。</p>
+      </div>
+      <div class="principle">
+        <div class="k">03 · 出口</div>
+        <h3>进入 · 离开 · 去做</h3>
+        <p>三种都是合法觉察结局；离开不是唯一的「好」，锁不冒充觉察。</p>
+      </div>
+    </section>
+
+    <div class="stage-tabs" role="tablist">
+      <button type="button" class="on" data-stage="default" onclick="showStage('default')">默认 · 命名</button>
+      <button type="button" data-stage="urge" onclick="showStage('urge')">诚实冲动</button>
+      <button type="button" data-stage="task" onclick="showStage('task')">有事要做</button>
+      <button type="button" data-stage="duration" onclick="showStage('duration')">选时长进入</button>
+      <button type="button" data-stage="leave" onclick="showStage('leave')">门外离开</button>
+    </div>
+
+    <div class="phones">
+      <!-- 左：主门 -->
+      <div class="phone-col">
+        <div class="phone" id="phoneMain">
+          <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+
+          <div class="leave-toast" id="leaveToast">
+            <div class="t">看见了，没有跟进去</div>
+            <div class="s">这一次算到场 · 不是「忍住了」</div>
+          </div>
+
+          <section class="top" id="topBlock">
+            <div class="app-meta">
+              <div class="app-icon">红</div>
+              <div>
+                <div class="app-name">小红书</div>
+                <div class="app-sub">今日第 3 次 · 已用 18 分</div>
+              </div>
+            </div>
+            <div class="clock"><div class="clock-dot"></div></div>
+          </section>
+
+          <section class="mid" id="midBlock">
+            <div class="ask">这一次是什么？</div>
+
+            <div class="cue body" id="cue">
+              <span class="tag">身</span>
+              <span id="cueText">拇指已经悬在图标上了吗</span>
+            </div>
+
+            <div class="chips-row" id="chips">
+              <button type="button" class="name-chip" data-text="回一条私信" onclick="pickChip(this)">回一条私信</button>
+              <button type="button" class="name-chip" data-text="找一个菜谱" onclick="pickChip(this)">找一个菜谱</button>
+              <button type="button" class="name-chip honest" data-text="就是想刷一会" onclick="pickChip(this)">就是想刷一会</button>
+              <button type="button" class="name-chip honest" data-text="手已经在点了" onclick="pickChip(this)">手已经在点了</button>
+            </div>
+
+            <div class="input-shell">
+              <textarea id="nameInput" placeholder="也可以自己写：事、冲动、身体感觉…"
+                oninput="onInput()"></textarea>
+              <div class="input-meta">
+                <span class="hint" id="inputHint">事与冲动都算命名</span>
+                <button type="button" class="btn-primary" id="btnGo" disabled onclick="openDuration()">带着这个进入</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="exits" id="exitsBlock">
+            <div class="exit-leave" onclick="showStage('leave')">不进去了</div>
+            <div class="positive">
+              <div class="pt"><span>—</span>也可以去做</div>
+              <div class="positive-row">
+                <div class="pos"><div class="dot">◎</div>目标</div>
+                <div class="pos"><div class="dot">☰</div>待办</div>
+                <div class="pos"><div class="dot">✧</div>习惯</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet-mask" id="sheetMask" onclick="if(event.target===this) closeDuration()">
+            <div class="sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title">这一次给多久？</div>
+              <div class="sheet-sub">命名已定 · 再选时长后进入</div>
+              <div class="sheet-purpose" id="sheetPurpose">
+                <div class="kind task" id="sheetKind">事</div>
+                <div id="sheetText">—</div>
+              </div>
+              <div class="dur-chips">
+                <button type="button" class="dur" onclick="pickDur(this)">5 分</button>
+                <button type="button" class="dur on" onclick="pickDur(this)">15 分</button>
+                <button type="button" class="dur" onclick="pickDur(this)">30 分</button>
+              </div>
+              <button type="button" class="sheet-enter" onclick="closeDuration()">确认进入</button>
+              <button type="button" class="sheet-cancel" onclick="closeDuration()">返回改命名</button>
+            </div>
+          </div>
+        </div>
+        <div class="phone-label" id="mainLabel">
+          <strong>主态</strong>：单页完成一次察觉 · 轻提示可换 · 不强制四步
+        </div>
+      </div>
+
+      <!-- 右：对照说明 / 第二态说明卡 -->
+      <div class="phone-col">
+        <div class="phone" style="background:#0c0c0e; min-height:640px; padding:18px 16px 22px;">
+          <div style="font-size:11px; font-weight:700; letter-spacing:.1em; color:var(--green); margin-bottom:12px;">
+            和旧门比 · 改了什么
+          </div>
+
+          <div style="display:grid; gap:10px; font-size:12px; line-height:1.55; color:#aeaeb2;">
+            <div style="background:#161618; border:1px solid #2a2a2c; border-radius:12px; padding:12px;">
+              <div style="color:#d1d1d6; font-weight:650; margin-bottom:4px;">主问</div>
+              <div><span class="no" style="color:#ff6482;">旧</span> 这次要做什么</div>
+              <div><b>新</b> 这一次是什么？</div>
+            </div>
+            <div style="background:#161618; border:1px solid #2a2a2c; border-radius:12px; padding:12px;">
+              <div style="color:#d1d1d6; font-weight:650; margin-bottom:4px;">预设</div>
+              <div><span style="color:#ff6482;">旧</span> 偏任务 / 美德意图</div>
+              <div><b>新</b> 任务芯片 + 诚实冲动芯片并列</div>
+            </div>
+            <div style="background:#161618; border:1px solid #2a2a2c; border-radius:12px; padding:12px;">
+              <div style="color:#d1d1d6; font-weight:650; margin-bottom:4px;">四念处</div>
+              <div><span style="color:#ff6482;">不做</span> 身→受→心→法问卷</div>
+              <div><b>做</b> 一句轮换轻提示 · 合法命名 · 法在回望</div>
+            </div>
+            <div style="background:#161618; border:1px solid #2a2a2c; border-radius:12px; padding:12px;">
+              <div style="color:#d1d1d6; font-weight:650; margin-bottom:4px;">进入后咬合</div>
+              <div>命名 → 供「和意图比」三档对照</div>
+              <div>「跑偏了」= 成功的第二次察觉</div>
+            </div>
+            <div style="background:#161618; border:1px solid #2a2a2c; border-radius:12px; padding:12px;">
+              <div style="color:#d1d1d6; font-weight:650; margin-bottom:4px;">不算觉察的</div>
+              <div>秒过门套话 · 硬锁拦住 · 跳过对照</div>
+            </div>
+          </div>
+
+          <div style="margin-top:auto; padding-top:18px; font-size:11px; color:#636366; line-height:1.5;">
+            搜索直达可保留为次入口（本草图先压成「命名为主」）；
+            若保留，也应产出同一条命名供对照。
+          </div>
+        </div>
+        <div class="phone-label">
+          <strong>设计纪律</strong>：门是缺口，不是道场
+        </div>
+      </div>
+    </div>
+
+    <section class="map">
+      <div class="map-cell body">
+        <div class="h">身 · 门上</div>
+        <p>轻提示：「拇指悬着吗」；预设：「手已经在点了」</p>
+        <div class="where">落点：cue + 诚实芯片</div>
+      </div>
+      <div class="map-cell vedana">
+        <div class="h">受 · 门上</div>
+        <p>轻提示：「是无聊，还是有事」；不强制选情绪</p>
+        <div class="where">落点：轮换 cue</div>
+      </div>
+      <div class="map-cell citta">
+        <div class="h">心 · 门上</div>
+        <p>「就是想刷一会」= 给念头贴标签，不是觉悟不够</p>
+        <div class="where">落点：诚实芯片 / 手写</div>
+      </div>
+      <div class="map-cell dhamma">
+        <div class="h">法 · 门外</div>
+        <p>模式、钟点、老剧本 → 周回望与对照分布，不进门问卷</p>
+        <div class="where">落点：回望 / 统计</div>
+      </div>
+    </section>
+
+    <div class="flow">
+      <b>交互流</b>：打开门 → 看见主问 + 一句四念处 cue → 点选或手写命名 →
+      <b>带着这个进入</b> → 弹层选时长 → 进 App<br />
+      或 → <b>不进去了</b> / <b>正向出口</b>（两种也算一次到场）<br />
+      <b>不改</b>：时长仍在命名之后；下区正向出口保留；上区 App + 时钟语境保留。<br />
+      <span class="no">避免</span>：强制呼吸倒计时 · 四步念处 · 只许「有意义意图」过门 · 离开才算成功。
+    </div>
+  </div>
+
+  <script>
+    const CUES = [
+      { cls: "body", tag: "身", text: "拇指已经悬在图标上了吗" },
+      { cls: "urge", tag: "受", text: "是无聊在赶你，还是真有事" },
+      { cls: "", tag: "心", text: "「看一眼就好」是不是在说话" },
+      { cls: "body", tag: "身", text: "肩膀有没有跟着抬起来" },
+      { cls: "urge", tag: "受", text: "这一下想亮屏，是空还是痒" },
+    ];
+    let cueIndex = 0;
+
+    function rotateCue(i) {
+      const c = CUES[(i ?? cueIndex) % CUES.length];
+      const el = document.getElementById("cue");
+      el.className = "cue" + (c.cls ? " " + c.cls : "");
+      el.querySelector(".tag").textContent = c.tag;
+      document.getElementById("cueText").textContent = c.text;
+      if (i == null) cueIndex = (cueIndex + 1) % CUES.length;
+    }
+
+    function classify(text) {
+      const t = text.trim();
+      const urge = /想刷|手已经|无聊|看一眼|没什么|随便刷|冲动/.test(t);
+      return urge ? "urge" : "task";
+    }
+
+    function onInput() {
+      const v = document.getElementById("nameInput").value.trim();
+      document.getElementById("btnGo").disabled = v.length < 1;
+      const hint = document.getElementById("inputHint");
+      if (!v) {
+        hint.textContent = "事与冲动都算命名";
+        hint.className = "hint";
+        return;
+      }
+      if (/^(看看|随便|刷刷|玩一会)$/.test(v)) {
+        hint.textContent = "可以更具体一点，结束时更好对照（不拦）";
+        hint.className = "hint warn";
+      } else if (classify(v) === "urge") {
+        hint.textContent = "诚实的命名 · 也算到场";
+        hint.className = "hint";
+      } else {
+        hint.textContent = "有对象了 · 结束时可对照";
+        hint.className = "hint";
+      }
+      document.querySelectorAll(".name-chip").forEach((c) => {
+        c.classList.toggle("on", c.dataset.text === v);
+      });
+    }
+
+    function pickChip(el) {
+      document.getElementById("nameInput").value = el.dataset.text;
+      onInput();
+    }
+
+    function openDuration() {
+      const text = document.getElementById("nameInput").value.trim();
+      if (!text) return;
+      const kind = classify(text);
+      const kindEl = document.getElementById("sheetKind");
+      kindEl.className = "kind " + kind;
+      kindEl.textContent = kind === "urge" ? "冲动 · 合法" : "事";
+      document.getElementById("sheetText").textContent = text;
+      document.getElementById("sheetMask").classList.add("show");
+      document.getElementById("leaveToast").classList.remove("show");
+    }
+
+    function closeDuration() {
+      document.getElementById("sheetMask").classList.remove("show");
+    }
+
+    function pickDur(el) {
+      document.querySelectorAll(".dur").forEach((c) => c.classList.remove("on"));
+      el.classList.add("on");
+    }
+
+    function showStage(stage) {
+      document.querySelectorAll(".stage-tabs button").forEach((b) => {
+        b.classList.toggle("on", b.dataset.stage === stage);
+      });
+      const input = document.getElementById("nameInput");
+      const toast = document.getElementById("leaveToast");
+      const sheet = document.getElementById("sheetMask");
+      const top = document.getElementById("topBlock");
+      const mid = document.getElementById("midBlock");
+      const exits = document.getElementById("exitsBlock");
+      const label = document.getElementById("mainLabel");
+
+      toast.classList.remove("show");
+      sheet.classList.remove("show");
+      top.classList.remove("dimmed");
+      mid.classList.remove("dimmed");
+      exits.classList.remove("dimmed");
+
+      if (stage === "default") {
+        input.value = "";
+        rotateCue(0);
+        onInput();
+        document.querySelectorAll(".name-chip").forEach((c) => c.classList.remove("on"));
+        label.innerHTML = "<strong>主态</strong>：单页完成一次察觉 · 轻提示可换 · 不强制四步";
+      } else if (stage === "urge") {
+        rotateCue(2);
+        input.value = "就是想刷一会";
+        onInput();
+        label.innerHTML = "<strong>诚实冲动</strong>：高品质抽离 · 进入后仍可对照「和命名比」";
+      } else if (stage === "task") {
+        rotateCue(1);
+        input.value = "回一条私信";
+        onInput();
+        label.innerHTML = "<strong>有事要做</strong>：对象清晰 · 供结束时三档对照";
+      } else if (stage === "duration") {
+        rotateCue(0);
+        input.value = "找一个菜谱";
+        onInput();
+        openDuration();
+        label.innerHTML = "<strong>时长在后</strong>：先命名，再边界 · 避免还没看见就被时长打断";
+      } else if (stage === "leave") {
+        input.value = "";
+        onInput();
+        mid.classList.add("dimmed");
+        exits.classList.add("dimmed");
+        toast.classList.add("show");
+        label.innerHTML = "<strong>离开</strong>：也是一次到场 · 文案避免「忍住了 / 真有毅力」";
+      }
+    }
+
+    // 点击轻提示可换下一句（演示轮换）
+    document.getElementById("cue").style.cursor = "pointer";
+    document.getElementById("cue").title = "点一下换下一句轻提示";
+    document.getElementById("cue").addEventListener("click", () => rotateCue());
+  </script>
+</body>
+</html>

@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>设置 · 精简 + 主题气质</title>
+  <style>
+    :root {
+      --ink: #070908;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --leaf: #3d7a4a;
+      --leaf-text: #9fd4a8;
+      --sand: #c4a35a;
+      --warn: #c47a6a;
+      --line: rgba(232, 237, 230, 0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background:
+        radial-gradient(ellipse at 38% -8%, #1a2420 0%, transparent 48%),
+        var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 88px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 48px; }
+
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf);
+      font-weight: 600; margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .sec {
+      text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist);
+    }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+
+    .row2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;
+      max-width: 680px; margin: 0 auto; width: 100%;
+    }
+    .row3 {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start;
+      max-width: 900px; margin-left: auto; margin-right: auto;
+    }
+    @media (max-width: 960px) {
+      .row2, .row3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head {
+      text-align: center; margin-bottom: 10px;
+      max-width: 280px; margin-left: auto; margin-right: auto;
+    }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9 / 17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .phone.bad {
+      outline: 1px dashed rgba(196,122,106,.45);
+      outline-offset: 6px;
+    }
+    .phone.theme-night { background: #0f1117; }
+    .phone.theme-day {
+      background: #f4f6f9;
+      border-color: rgba(0,0,0,.08);
+      color: #1a1f2a;
+    }
+    .phone.theme-mist {
+      background: #e6ece8;
+      border-color: rgba(40,60,50,.1);
+      color: #24302a;
+    }
+
+    .bar {
+      height: 28px; padding: 10px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex-shrink: 0;
+    }
+    .phone.theme-day .bar,
+    .phone.theme-mist .bar { color: rgba(30,40,36,.35); }
+
+    .body {
+      flex: 1; padding: 4px 18px 14px; display: flex; flex-direction: column;
+      min-height: 0; overflow: hidden;
+    }
+
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 8px; }
+    .phone.theme-day .back,
+    .phone.theme-mist .back { color: rgba(50,70,60,.45); }
+
+    .page-title {
+      font-size: 17px; font-weight: 550; color: var(--paper);
+      margin-bottom: 4px;
+    }
+    .phone.theme-day .page-title { color: #1a1f2a; }
+    .phone.theme-mist .page-title { color: #24302a; }
+
+    .row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 12px; padding: 13px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .phone.theme-day .row { border-bottom-color: rgba(20,30,40,.08); }
+    .phone.theme-mist .row { border-bottom-color: rgba(40,70,55,.1); }
+
+    .row .n { font-size: 15px; font-weight: 500; color: var(--paper); line-height: 1.3; }
+    .phone.theme-day .row .n { color: #1a1f2a; }
+    .phone.theme-mist .row .n { color: #24302a; }
+
+    .row .m {
+      font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.35;
+    }
+    .phone.theme-day .row .m { color: rgba(50,60,75,.5); }
+    .phone.theme-mist .row .m { color: rgba(55,80,68,.5); }
+
+    .row .r {
+      font-size: 13px; color: #c5d0c6; text-align: right;
+      font-variant-numeric: tabular-nums; flex-shrink: 0;
+    }
+    .row .r.quiet { color: var(--mist); font-size: 12px; }
+    .phone.theme-day .row .r.quiet { color: rgba(50,60,75,.45); }
+    .phone.theme-mist .row .r.quiet { color: rgba(55,80,68,.45); }
+    .row .r.danger { color: rgba(196,122,106,.85); font-size: 13px; }
+    .row.strike .n,
+    .row.strike .m { text-decoration: line-through; opacity: .45; }
+    .row.gone {
+      opacity: .28;
+      padding: 9px 0;
+    }
+    .row.gone .n { font-size: 13px; font-weight: 450; }
+
+    .lab {
+      margin-top: 18px; margin-bottom: 2px;
+      font-size: 10px; letter-spacing: .1em; color: var(--mist);
+    }
+    .lab.first { margin-top: 14px; }
+    .phone.theme-day .lab { color: rgba(50,60,75,.4); }
+    .phone.theme-mist .lab { color: rgba(55,80,68,.42); }
+
+    .sw {
+      width: 34px; height: 19px; border-radius: 999px; position: relative;
+      background: rgba(232,237,230,.16); flex-shrink: 0; align-self: center;
+    }
+    .sw.on { background: rgba(61,122,74,.85); }
+    .sw i {
+      position: absolute; top: 2px; left: 2px; width: 15px; height: 15px;
+      border-radius: 50%; background: var(--paper);
+    }
+    .sw.on i { left: 17px; }
+    .phone.theme-day .sw { background: rgba(20,30,40,.12); }
+    .phone.theme-day .sw.on { background: rgba(27,158,85,.9); }
+    .phone.theme-day .sw i { background: #fff; }
+    .phone.theme-mist .sw { background: rgba(40,70,55,.14); }
+    .phone.theme-mist .sw.on { background: rgba(70,120,95,.75); }
+    .phone.theme-mist .sw i { background: #f5f8f6; }
+
+    .seg {
+      display: flex; gap: 12px; font-size: 12px; color: var(--mist);
+      align-self: center;
+    }
+    .seg .on { color: var(--paper); font-weight: 550; }
+    .phone.theme-day .seg .on { color: #1a1f2a; }
+    .phone.theme-mist .seg .on { color: #24302a; }
+    .phone.theme-day .seg { color: rgba(50,60,75,.4); }
+    .phone.theme-mist .seg { color: rgba(55,80,68,.4); }
+
+    .x {
+      color: var(--warn); font-size: 11px; margin-top: 8px; text-align: center;
+    }
+    .ok {
+      color: var(--leaf-text); font-size: 11px; margin-top: 8px; text-align: center;
+    }
+
+    /* 外观页 · 主题卡：上日夜 · 下雾青通栏 */
+    .pack-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      margin-top: 14px;
+    }
+    .pack {
+      border-radius: 14px;
+      border: 1px solid rgba(232,237,230,.14);
+      overflow: hidden;
+      padding: 0;
+      background: transparent;
+      position: relative;
+    }
+    .pack.wide { grid-column: 1 / -1; }
+    .pack.wide .canvas { height: 56px; }
+    .pack.wide .meta { padding-top: 7px; }
+    .pack.on {
+      border-color: rgba(159,212,168,.55);
+      box-shadow: 0 0 0 1px rgba(61,122,74,.25);
+    }
+    .pack .canvas {
+      height: 72px; padding: 10px; position: relative;
+    }
+    .pack .surface {
+      height: 100%; border-radius: 8px; padding: 9px 10px;
+      display: flex; flex-direction: column; gap: 7px;
+    }
+    .pack .bar-chip {
+      width: 28px; height: 4px; border-radius: 3px;
+    }
+    .pack .line1 {
+      height: 5px; width: 72%; border-radius: 3px;
+    }
+    .pack .line2 {
+      height: 5px; width: 46%; border-radius: 3px;
+    }
+    .pack .meta {
+      padding: 8px 10px 10px;
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .pack .meta .t { font-size: 12px; font-weight: 550; }
+    .pack .meta .s { font-size: 10px; opacity: .45; }
+    .pack .check {
+      position: absolute; top: 8px; right: 8px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: rgba(61,122,74,.9);
+      color: #e8ede6; font-size: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+
+    /* 三套气质色 */
+    .p-night .canvas { background: #0f1117; }
+    .p-night .surface { background: #1a1e2c; }
+    .p-night .bar-chip { background: #26bb68; }
+    .p-night .line1 { background: rgba(38,187,104,.22); }
+    .p-night .line2 { background: rgba(38,187,104,.12); }
+    .p-night .meta .t { color: #edf0f7; }
+
+    .p-day .canvas { background: #f4f6f9; }
+    .p-day .surface { background: #ffffff; box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+    .p-day .bar-chip { background: #1b9e55; }
+    .p-day .line1 { background: rgba(27,158,85,.2); }
+    .p-day .line2 { background: rgba(27,158,85,.1); }
+    .p-day .meta .t { color: #1a1f2a; }
+    .p-day { border-color: rgba(20,30,40,.1); }
+    .p-day.on { border-color: rgba(27,158,85,.45); }
+
+    .p-mist .canvas { background: #e6ece8; }
+    .p-mist .surface { background: rgba(255,255,255,.55); }
+    .p-mist .bar-chip { background: #5a8f72; }
+    .p-mist .line1 { background: rgba(90,143,114,.22); }
+    .p-mist .line2 { background: rgba(90,143,114,.12); }
+    .p-mist .meta .t { color: #24302a; }
+    .p-mist { border-color: rgba(40,70,55,.12); }
+    .p-mist.on { border-color: rgba(90,143,114,.5); }
+
+    .mode-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid var(--line);
+    }
+    .mode-row .n { font-size: 14px; font-weight: 500; }
+    .mode-row .s { font-size: 11px; color: var(--mist); margin-top: 2px; }
+    .mode-row .tick { color: var(--leaf-text); font-size: 13px; font-weight: 600; }
+    .phone.theme-day .mode-row { border-bottom-color: rgba(20,30,40,.08); }
+    .phone.theme-day .mode-row .n { color: #1a1f2a; }
+    .phone.theme-mist .mode-row { border-bottom-color: rgba(40,70,55,.1); }
+    .phone.theme-mist .mode-row .n { color: #24302a; }
+    .phone.theme-mist .mode-row .tick { color: #5a8f72; }
+
+    .hint {
+      margin-top: 12px; font-size: 11px; line-height: 1.5;
+      color: rgba(139,147,140,.55);
+    }
+    .phone.theme-day .hint { color: rgba(50,60,75,.4); }
+    .phone.theme-mist .hint { color: rgba(55,80,68,.45); }
+
+    /* 胶囊气质示意 */
+    .capsule-demo {
+      margin-top: 16px; display: flex; flex-direction: column; gap: 10px;
+      align-items: flex-end;
+    }
+    .cap-bar {
+      display: flex; align-items: center; gap: 8px;
+      border-radius: 999px; padding: 7px 12px 7px 10px;
+      font-size: 11px; font-variant-numeric: tabular-nums;
+      backdrop-filter: blur(8px);
+    }
+    .cap-orb {
+      width: 28px; height: 28px; border-radius: 50%;
+      align-self: flex-end;
+    }
+    .cap-bar .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+    }
+
+    .notes {
+      max-width: 720px; margin: 0 auto;
+      font-size: 12.5px; color: var(--fog); line-height: 1.65;
+    }
+    .notes h2 {
+      font-size: 13px; font-weight: 600; color: var(--sand); margin-bottom: 10px;
+    }
+    .notes ul { list-style: none; display: grid; gap: 8px; }
+    .notes li strong { color: var(--paper); font-weight: 550; }
+    .map {
+      margin-top: 14px; padding: 12px 14px; border-radius: 10px;
+      background: rgba(0,0,0,.28); border: 1px solid var(--line);
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11.5px; color: #a8b4aa; line-height: 1.7; white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">SETTINGS · APPEARANCE</div>
+      <h1>设置精简 · 外观做成气质套</h1>
+      <p>
+        规则已自动管陪伴：意图门挂条、形态跟建议。
+        设置只留用户想改、规则改不了的项；外观从「明暗」升级成几套可预览的气质。
+      </p>
+      <div class="thesis">三套气质 · 雾青收透明度 · 跟随只绑日夜</div>
+    </header>
+
+    <!-- 1 · 设置 before / after -->
+    <div>
+      <div class="sec"><strong>1 · 设置</strong>　同一脊线，少两行噪声</div>
+      <div class="row2" style="margin-top:18px">
+
+        <div>
+          <div class="col-head">
+            <h3>现在 · 偏工程</h3>
+            <p>陪伴开关 · 形态 · 透明度</p>
+          </div>
+          <div class="phone bad">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹</div>
+              <div class="page-title">设置</div>
+
+              <div class="lab first">通用</div>
+              <div class="row">
+                <div class="n">外观</div>
+                <div class="r quiet">跟随系统</div>
+              </div>
+
+              <div class="lab">胶囊</div>
+              <div class="row">
+                <div>
+                  <div class="n">桌面心锚</div>
+                  <div class="m">监测开启时桌面微粒</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="row">
+                <div class="n">悬浮圆球大小</div>
+                <div class="seg"><span class="on">标准</span><span>紧凑</span></div>
+              </div>
+              <div class="row gone">
+                <div>
+                  <div class="n">使用中陪伴条</div>
+                  <div class="m">关则用桌面那种圆球</div>
+                </div>
+                <div class="sw"><i></i></div>
+              </div>
+              <div class="row gone">
+                <div class="n">陪伴透明度</div>
+                <div class="r quiet">82%</div>
+              </div>
+              <div class="row">
+                <div class="n">暂停等待时长</div>
+                <div class="seg"><span>1 分</span><span class="on">2 分</span><span>5 分</span></div>
+              </div>
+
+              <div class="lab">试验</div>
+              <div class="row soft">
+                <div>
+                  <div class="n" style="font-size:14px;color:var(--fog);font-weight:450">试玩</div>
+                  <div class="m">壁纸、格言</div>
+                </div>
+              </div>
+
+              <div class="lab">数据</div>
+              <div class="row">
+                <div>
+                  <div class="n" style="color:rgba(196,122,106,.9)">清除本地数据</div>
+                  <div class="m">删除使用记录，限额保留</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="x">× 规则已自动 · 再开开关是噪声</p>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>之后 · 只留偏好</h3>
+            <p>外观进气质 · 胶囊三项够用</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹</div>
+              <div class="page-title">设置</div>
+
+              <div class="lab first">通用</div>
+              <div class="row">
+                <div class="n">外观</div>
+                <div class="r quiet">夜锚</div>
+              </div>
+
+              <div class="lab">胶囊</div>
+              <div class="row">
+                <div>
+                  <div class="n">桌面心锚</div>
+                  <div class="m">监测开启时桌面微粒</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="row">
+                <div class="n">悬浮圆球大小</div>
+                <div class="seg"><span class="on">标准</span><span>紧凑</span></div>
+              </div>
+              <div class="row">
+                <div class="n">暂停等待时长</div>
+                <div class="seg"><span>1 分</span><span class="on">2 分</span><span>5 分</span></div>
+              </div>
+
+              <div class="lab">试验</div>
+              <div class="row">
+                <div>
+                  <div class="n" style="font-size:14px;color:var(--fog);font-weight:450">试玩</div>
+                  <div class="m">壁纸、格言</div>
+                </div>
+              </div>
+
+              <div class="lab">数据</div>
+              <div class="row">
+                <div>
+                  <div class="n" style="color:rgba(196,122,106,.9)">清除本地数据</div>
+                  <div class="m">删除使用记录，限额保留</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="ok">✓ 陪伴跟规则 · 透明度进主题</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · 外观页 -->
+    <div>
+      <div class="sec"><strong>2 · 外观</strong>　气质套 + 明暗模式，不是参数面板</div>
+      <div class="row2" style="margin-top:18px">
+
+        <div>
+          <div class="col-head">
+            <h3>现在</h3>
+            <p>只有日间 / 夜间 / 跟随系统</p>
+          </div>
+          <div class="phone bad theme-night">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹</div>
+              <div class="page-title">外观</div>
+
+              <div class="lab first">外观模式</div>
+              <div class="mode-row">
+                <div>
+                  <div class="n">日间</div>
+                  <div class="s">明亮清晰</div>
+                </div>
+              </div>
+              <div class="mode-row">
+                <div>
+                  <div class="n">夜间</div>
+                  <div class="s">护眼沉浸</div>
+                </div>
+                <div class="tick">✓</div>
+              </div>
+              <div class="mode-row">
+                <div>
+                  <div class="n">跟随系统</div>
+                  <div class="s">与手机浅色 / 深色一致</div>
+                </div>
+              </div>
+              <div class="hint">主界面、拦截页与胶囊会一起切换。</div>
+            </div>
+          </div>
+          <p class="x">× 像系统设置，不像选气质</p>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>之后</h3>
+            <p>先选气质 · 再选是否跟随系统</p>
+          </div>
+          <div class="phone theme-night">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹</div>
+              <div class="page-title">外观</div>
+
+              <div class="lab first">气质</div>
+              <div class="pack-grid">
+                <div class="pack p-night on">
+                  <div class="check">✓</div>
+                  <div class="canvas">
+                    <div class="surface">
+                      <div class="bar-chip"></div>
+                      <div class="line1"></div>
+                      <div class="line2"></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <span class="t">夜锚</span>
+                    <span class="s">沉浸</span>
+                  </div>
+                </div>
+                <div class="pack p-day">
+                  <div class="canvas">
+                    <div class="surface">
+                      <div class="bar-chip"></div>
+                      <div class="line1"></div>
+                      <div class="line2"></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <span class="t">日间</span>
+                    <span class="s">清晰</span>
+                  </div>
+                </div>
+                <div class="pack p-mist wide">
+                  <div class="canvas">
+                    <div class="surface">
+                      <div class="bar-chip"></div>
+                      <div class="line1"></div>
+                      <div class="line2"></div>
+                    </div>
+                  </div>
+                  <div class="meta">
+                    <span class="t">雾青</span>
+                    <span class="s">轻存在 · 壳更透</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="lab">明暗</div>
+              <div class="row">
+                <div class="n">跟随系统</div>
+                <div class="sw"><i></i></div>
+              </div>
+              <div class="hint">跟随只在日间 ↔ 夜锚之间切。选雾青是刻意锁定，不跟系统。</div>
+            </div>
+          </div>
+          <p class="ok">✓ 三套情境 · 透明度进气质</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · 三套气质活页 -->
+    <div>
+      <div class="sec"><strong>3 · 三套气质</strong>　沉浸 · 清晰 · 轻存在</div>
+      <div class="row3" style="margin-top:18px">
+
+        <div>
+          <div class="col-head">
+            <h3>夜锚</h3>
+            <p>沉浸护眼 · 壳约 82%</p>
+          </div>
+          <div class="phone theme-night">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="page-title">今日</div>
+              <div class="row" style="margin-top:10px">
+                <div>
+                  <div class="n">有意识</div>
+                  <div class="m">本次 18 / 60 分</div>
+                </div>
+                <div class="r quiet">绿</div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">哔哩哔哩</div>
+                  <div class="m">今日 42 分</div>
+                </div>
+                <div class="r quiet">沉浸</div>
+              </div>
+              <div class="capsule-demo">
+                <div class="cap-bar" style="background:rgba(26,30,44,.82);color:#edf0f7;border:1px solid rgba(38,187,104,.25)">
+                  <span class="dot" style="background:#26bb68"></span>
+                  <span>18:24 · 回消息</span>
+                </div>
+                <div class="cap-orb" style="background:radial-gradient(circle at 35% 30%,#3d8f5a,#1a2a22 70%)"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>日间</h3>
+            <p>清晰明亮 · 壳约 88%</p>
+          </div>
+          <div class="phone theme-day">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="page-title">今日</div>
+              <div class="row" style="margin-top:10px">
+                <div>
+                  <div class="n">有意识</div>
+                  <div class="m">本次 18 / 60 分</div>
+                </div>
+                <div class="r quiet">绿</div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">哔哩哔哩</div>
+                  <div class="m">今日 42 分</div>
+                </div>
+                <div class="r quiet">沉浸</div>
+              </div>
+              <div class="capsule-demo">
+                <div class="cap-bar" style="background:rgba(255,255,255,.88);color:#1a1f2a;border:1px solid rgba(27,158,85,.22);box-shadow:0 2px 10px rgba(0,0,0,.06)">
+                  <span class="dot" style="background:#1b9e55"></span>
+                  <span>18:24 · 回消息</span>
+                </div>
+                <div class="cap-orb" style="background:radial-gradient(circle at 35% 30%,#4caf72,#d8ebe0 70%)"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>雾青</h3>
+            <p>轻存在 · 壳约 70%</p>
+          </div>
+          <div class="phone theme-mist">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="page-title">今日</div>
+              <div class="row" style="margin-top:10px">
+                <div>
+                  <div class="n">有意识</div>
+                  <div class="m">本次 18 / 60 分</div>
+                </div>
+                <div class="r quiet" style="color:rgba(55,80,68,.45)">绿</div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">哔哩哔哩</div>
+                  <div class="m">今日 42 分</div>
+                </div>
+                <div class="r quiet" style="color:rgba(55,80,68,.45)">沉浸</div>
+              </div>
+              <div class="capsule-demo">
+                <div class="cap-bar" style="background:rgba(230,236,232,.7);color:#24302a;border:1px solid rgba(90,143,114,.2)">
+                  <span class="dot" style="background:#5a8f72"></span>
+                  <span>18:24 · 回消息</span>
+                </div>
+                <div class="cap-orb" style="background:radial-gradient(circle at 35% 30%,#7aaa90,#c5d4cb 70%);opacity:.85"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="notes">
+      <h2>框外 · 设计约定</h2>
+      <ul>
+        <li><strong>删：</strong>使用中陪伴条开关、形态段、陪伴透明度滑条。意图门挂条、形态跟建议、单 App 覆盖仍在规则侧。</li>
+        <li><strong>留：</strong>桌面心锚、悬浮圆球大小、暂停等待、试玩、清除数据。「已用显示到秒」可进高级或跟主题无关则仍可留一行。</li>
+        <li><strong>三套气质：</strong>夜锚（沉浸）· 日间（清晰）· 雾青（轻存在）。墨色不做独立套，后期可并进夜锚高对比档。</li>
+        <li><strong>外观结构：</strong>上半气质预览（日夜并排，雾青通栏）；下半「跟随系统」一行。不拆透明度、形态参数。</li>
+        <li><strong>气质绑定：</strong>每套 = 主色板 + 卡片面 + 胶囊壳透明度（夜锚 82 / 日间 88 / 雾青 70）。</li>
+        <li><strong>跟随系统：</strong>只在日间 ↔ 夜锚之间切。选雾青即刻意锁定，关闭跟随。</li>
+        <li><strong>文案：</strong>框内只写「夜锚 / 日间 / 雾青」与短标签（沉浸 / 清晰 / 轻存在）。不解释「规则已自动」。</li>
+      </ul>
+      <div class="map">设置
+  通用 ── 外观 → 夜锚 / 日间 / 雾青 · 跟随系统(仅日↔夜)
+  胶囊 ── 桌面心锚 · 圆球大小 · 暂停等待
+  试验 ── 试玩
+  数据 ── 清除本地数据
+
+删：使用中陪伴条 · 形态段 · 透明度滑条 · 墨色套
+陪伴：意图门→条 · 跟建议(类型) · 单 App 覆盖
+主题：色板 + 壳透明度 一体
+雾青：轻存在，不跟系统</div>
+    </section>
+  </div>
+</body>
+</html>

@@ -4,8 +4,8 @@ import com.life.mindfulnessapp.data.db.dao.AppTotalUsage
 import com.life.mindfulnessapp.data.db.dao.DailyUsageSummary
 import com.life.mindfulnessapp.data.db.dao.HourlyUsage
 import com.life.mindfulnessapp.data.db.dao.UsageRecordDao
+import com.life.mindfulnessapp.data.db.entity.PurposeStatFullRow
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
-import com.life.mindfulnessapp.domain.model.RecentPurpose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.util.Calendar
@@ -22,12 +22,18 @@ class UsageRecordRepository @Inject constructor(
 
     suspend fun getRecordById(id: Long): UsageRecordEntity? = dao.getRecordById(id)
 
+    suspend fun getOpenRecords(): List<UsageRecordEntity> = dao.getOpenRecords()
+
     /** 仅更新指定记录的备注，传入 null 表示清空备注 */
     suspend fun updateNote(id: Long, note: String?) = dao.updateNote(id, note)
 
     /** 同时更新备注与对照档位 */
-    suspend fun updateNoteAndMindfulness(id: Long, note: String?, mindfulnessLevel: Int?) =
-        dao.updateNoteAndMindfulness(id, note, mindfulnessLevel)
+    suspend fun updateNoteAndMindfulness(
+        id: Long,
+        note: String?,
+        mindfulnessLevel: Int?,
+        driftSeconds: Long? = null
+    ) = dao.updateNoteAndMindfulness(id, note, mindfulnessLevel, driftSeconds)
 
     /** 仅更新指定记录的效果评分 */
     suspend fun updateEffectScore(id: Long, score: Int?) = dao.updateEffectScore(id, score)
@@ -59,6 +65,60 @@ class UsageRecordRepository @Inject constructor(
     fun getWeekRecords(weekStartMs: Long, weekEndMs: Long): Flow<List<UsageRecordEntity>> =
         dao.getWeekRecords(weekStartMs, weekEndMs)
 
+    suspend fun getRecentPurposeStats(
+        packageName: String,
+        limit: Int = 20
+    ): List<com.life.mindfulnessapp.domain.model.RecentPurposeStat> {
+        val (dayStart, dayEnd) = getDayRange(System.currentTimeMillis())
+        return dao.getPurposeStats(packageName, dayStart, dayEnd, limit).map { row ->
+            com.life.mindfulnessapp.domain.model.RecentPurposeStat(
+                purpose = row.purpose,
+                useCount = row.useCount,
+                lastUsedAt = row.lastUsedAt,
+                todaySeconds = row.todaySeconds
+            )
+        }
+    }
+
+    /** 软门搜索直达的近期搜词 */
+    suspend fun getRecentSearchPurposeStats(
+        packageName: String,
+        limit: Int = 20
+    ): List<com.life.mindfulnessapp.domain.model.RecentPurposeStat> {
+        val (dayStart, dayEnd) = getDayRange(System.currentTimeMillis())
+        return dao.getSearchPurposeStats(packageName, dayStart, dayEnd, limit).map { row ->
+            com.life.mindfulnessapp.domain.model.RecentPurposeStat(
+                purpose = row.purpose,
+                useCount = row.useCount,
+                lastUsedAt = row.lastUsedAt,
+                todaySeconds = row.todaySeconds
+            )
+        }
+    }
+
+    suspend fun getFullPurposeStats(packageName: String): List<PurposeStatFullRow> {
+        val (dayStart, dayEnd) = getDayRange(System.currentTimeMillis())
+        return dao.getPurposeStatsFull(packageName, dayStart, dayEnd)
+    }
+
+    /** 今日「随意浏览」类意图已用秒数（已收口会话）。 */
+    suspend fun getTodayBrowseCasualSeconds(packageName: String): Long =
+        getFullPurposeStats(packageName)
+            .asSequence()
+            .filter {
+                com.life.mindfulnessapp.domain.model.BrowseCasualIntent.isBrowseLike(it.purpose)
+            }
+            .sumOf { it.todaySeconds.coerceAtLeast(0L) }
+
+    suspend fun getRecordsForPurposes(
+        packageName: String,
+        purposes: List<String>,
+        limit: Int = 100
+    ): List<UsageRecordEntity> {
+        if (purposes.isEmpty()) return emptyList()
+        return dao.getRecordsForPurposes(packageName, purposes, limit)
+    }
+
     suspend fun getDailyUsageSeconds(packageName: String, dateMs: Long = System.currentTimeMillis()): Long {
         val (start, end) = getDayRange(dateMs)
         return dao.getDailyUsageSeconds(packageName, start, end)
@@ -82,9 +142,29 @@ class UsageRecordRepository @Inject constructor(
     /** 清除全部本地使用记录（「清除本地数据」功能调用）*/
     suspend fun deleteAllRecords() = dao.deleteAllRecords()
 
-    /** 获取 sinceMs 之后的所有已完成记录 */
-    suspend fun getAllCompletedRecordsSince(sinceMs: Long): List<UsageRecordEntity> =
-        dao.getAllCompletedRecordsSince(sinceMs)
+    /** Debug：批量插入演示记录（id 重置为 0） */
+    suspend fun insertRecords(records: List<UsageRecordEntity>) {
+        if (records.isEmpty()) return
+        dao.insertAll(records.map { it.copy(id = 0L) })
+    }
+
+    /** Debug：按包名 + 时间窗删除，便于重复注入演示数据 */
+    suspend fun deleteInRangeForPackages(
+        packageNames: List<String>,
+        startMs: Long,
+        endMs: Long
+    ): Int {
+        if (packageNames.isEmpty()) return 0
+        return dao.deleteInRangeForPackages(packageNames, startMs, endMs)
+    }
+
+    /** 某 App 在时间窗内的已完成记录（不含系统种子） */
+    suspend fun getCompletedRecordsForAppInRange(
+        packageName: String,
+        startMs: Long,
+        endMsExclusive: Long
+    ): List<UsageRecordEntity> =
+        dao.getCompletedRecordsForAppInRange(packageName, startMs, endMsExclusive)
 
     /**
      * 获取某一天内指定 App 的所有已完成记录（按开始时间倒序，最新在上）。
@@ -148,12 +228,27 @@ class UsageRecordRepository @Inject constructor(
         dao.getGlobalHourlyDistribution(startMs, endMs)
 
     /**
-     * 获取某天内「克制退出」的累计次数（今日第几次没进去）。
-     * 用于退出仪式弹窗展示「今日已守住 N 次」。
+     * 获取某天内「克制退出」的累计次数（全 App）。
      */
     suspend fun getDayDismissCount(dateMs: Long = System.currentTimeMillis()): Int {
         val (start, end) = getDayRange(dateMs)
         return dao.getDayDismissCount(start, end)
+    }
+
+    /**
+     * 某 App 今日「克制退出」次数（用于离开轻条 / 里程碑文案）。
+     */
+    suspend fun getDayDismissCountForApp(
+        packageName: String,
+        dateMs: Long = System.currentTimeMillis()
+    ): Int {
+        val (start, end) = getDayRange(dateMs)
+        return dao.getDayDismissCountForApp(packageName, start, end)
+    }
+
+    suspend fun getDayPositiveExitCount(dateMs: Long = System.currentTimeMillis()): Int {
+        val (start, end) = getDayRange(dateMs)
+        return dao.getDayPositiveExitCount(start, end)
     }
 
     /**
@@ -168,26 +263,12 @@ class UsageRecordRepository @Inject constructor(
         return dao.getDayRecordsForApp(packageName, start, end)
     }
 
-    /**
-     * 获取指定 App 去重后的最近意图（按最近使用优先）。
-     * 过滤过短文本，避免单字乱填污染快捷 tag。
-     */
-    suspend fun getRecentPurposes(
+    suspend fun getDayRecordsForAppIncludingOpen(
         packageName: String,
-        limit: Int = 3
-    ): List<RecentPurpose> {
-        if (limit <= 0) return emptyList()
-        val raw = dao.getRecentPurposesRaw(packageName, fetchLimit = 40)
-        val seen = linkedSetOf<String>()
-        val result = mutableListOf<RecentPurpose>()
-        for (row in raw) {
-            val trimmed = row.purpose.trim()
-            if (trimmed.length < 2) continue
-            if (!seen.add(trimmed)) continue
-            result.add(RecentPurpose(purpose = trimmed))
-            if (result.size >= limit) break
-        }
-        return result
+        dateMs: Long = System.currentTimeMillis()
+    ): List<UsageRecordEntity> {
+        val (start, end) = getDayRange(dateMs)
+        return dao.getDayRecordsForAppIncludingOpen(packageName, start, end)
     }
 
     companion object {

@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>我 · 基建 · 高级感脊线</title>
+  <style>
+    :root {
+      --ink: #070908;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --leaf: #3d7a4a;
+      --leaf-text: #9fd4a8;
+      --sand: #c4a35a;
+      --warn: #c47a6a;
+      --line: rgba(232, 237, 230, 0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background:
+        radial-gradient(ellipse at 38% -8%, #1a2420 0%, transparent 48%),
+        var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 88px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 40px; }
+
+    .hero { text-align: center; max-width: 620px; margin: 0 auto; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf);
+      font-weight: 600; margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .sec {
+      text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist);
+    }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+
+    .row3 {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start;
+    }
+    .row2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;
+      max-width: 680px; margin: 0 auto; width: 100%;
+    }
+    @media (max-width: 960px) {
+      .row3, .row2 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head {
+      text-align: center; margin-bottom: 10px;
+      max-width: 280px; margin-left: auto; margin-right: auto;
+    }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9 / 17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .phone.bad {
+      outline: 1px dashed rgba(196,122,106,.45);
+      outline-offset: 6px;
+    }
+    .bar {
+      height: 28px; padding: 10px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex-shrink: 0;
+    }
+    .body {
+      flex: 1; padding: 4px 18px 10px; display: flex; flex-direction: column;
+      min-height: 0;
+    }
+
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500; letter-spacing: .01em;
+    }
+    .back {
+      font-size: 12px; color: var(--mist); margin-bottom: 8px;
+    }
+    .page-title {
+      font-size: 17px; font-weight: 550; color: var(--paper);
+      margin-bottom: 4px;
+    }
+
+    /* 健康态：一行字，不是状态墙 */
+    .pulse {
+      margin-top: 10px; margin-bottom: 6px;
+      font-size: 13px; color: var(--leaf-text); letter-spacing: .01em;
+    }
+    .pulse .chev { color: var(--mist); font-size: 12px; margin-left: 4px; }
+    .warn {
+      margin-top: 8px; margin-bottom: 4px;
+      font-size: 12px; color: var(--warn); line-height: 1.45;
+    }
+
+    /* 脊线行：无卡片、无图标、无粗边 */
+    .row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 12px; padding: 13px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .row .n { font-size: 15px; font-weight: 500; color: var(--paper); line-height: 1.3; }
+    .row .m {
+      font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.35;
+    }
+    .row .r {
+      font-size: 13px; color: #c5d0c6; text-align: right;
+      font-variant-numeric: tabular-nums; flex-shrink: 0;
+    }
+    .row .r.ok { color: rgba(159,212,168,.55); font-size: 12px; }
+    .row .r.bad { color: var(--warn); font-size: 12px; }
+    .row .r.quiet { color: var(--mist); font-size: 12px; }
+    .row .r.danger { color: rgba(196,122,106,.85); font-size: 13px; }
+    .row.faint .n { color: rgba(232,237,230,.38); }
+    .row.faint .r { color: rgba(139,147,140,.45); }
+    .row.soft .n { font-size: 14px; color: var(--fog); font-weight: 450; }
+
+    .badge {
+      display: inline-block; margin-left: 6px;
+      font-size: 11px; color: var(--sand); font-weight: 550;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lab {
+      margin-top: 18px; margin-bottom: 2px;
+      font-size: 10px; letter-spacing: .1em; color: var(--mist);
+    }
+    .lab.first { margin-top: 14px; }
+
+    .foot {
+      margin-top: auto; padding-top: 16px;
+      font-size: 10.5px; color: rgba(139,147,140,.38);
+      text-align: center; line-height: 1.4;
+    }
+
+    .nav {
+      flex-shrink: 0; display: flex; justify-content: space-around;
+      padding: 10px 4px 12px; border-top: 1px solid var(--line);
+      font-size: 10px; color: var(--mist);
+    }
+    .nav .on { color: var(--leaf-text); font-weight: 600; }
+
+    .sw {
+      width: 34px; height: 19px; border-radius: 999px; position: relative;
+      background: rgba(232,237,230,.16); flex-shrink: 0; align-self: center;
+    }
+    .sw.on { background: rgba(61,122,74,.85); }
+    .sw i {
+      position: absolute; top: 2px; left: 2px; width: 15px; height: 15px;
+      border-radius: 50%; background: var(--paper);
+    }
+    .sw.on i { left: 17px; }
+
+    .seg {
+      display: flex; gap: 12px; font-size: 12px; color: var(--mist);
+      align-self: center;
+    }
+    .seg .on { color: var(--paper); font-weight: 550; }
+
+    .x {
+      color: var(--warn); font-size: 11px; margin-top: 8px; text-align: center;
+    }
+
+    .notes {
+      max-width: 720px; margin: 0 auto;
+      font-size: 12.5px; color: var(--fog); line-height: 1.65;
+    }
+    .notes h2 {
+      font-size: 13px; font-weight: 600; color: var(--sand); margin-bottom: 10px;
+    }
+    .notes ul { list-style: none; display: grid; gap: 8px; }
+    .notes li strong { color: var(--paper); font-weight: 550; }
+    .map {
+      margin-top: 14px; padding: 12px 14px; border-radius: 10px;
+      background: rgba(0,0,0,.28); border: 1px solid var(--line);
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11.5px; color: #a8b4aa; line-height: 1.7; white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">TAB · 我</div>
+      <h1>基建脊线 · 字色与间距扛层级</h1>
+      <p>
+        和今日、方案同一套骨架：标题 + Hairline 行。
+        坏了才加重；好了只留一行绿灯。不要卡片墙、不要图标列、不要设置抽屉感。
+      </p>
+      <div class="thesis">健康一行 · 需修加重 · 菜单三行字</div>
+    </header>
+
+    <!-- 1 · 我 -->
+    <div>
+      <div class="sec"><strong>1 · 我</strong>　同一套行骨架</div>
+      <div class="row3" style="margin-top:18px">
+
+        <div>
+          <div class="col-head">
+            <h3>健康</h3>
+            <p>一行绿灯；菜单三行字</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">我</div>
+              <div class="pulse">监控正常<span class="chev">›</span></div>
+
+              <div class="row">
+                <div>
+                  <div class="n">设置</div>
+                  <div class="m">主题、胶囊与陪伴</div>
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">和小锚聊</div>
+                  <div class="m">问题、想法，直接说</div>
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">关于</div>
+                  <div class="m">版本、更新与协议</div>
+                </div>
+              </div>
+
+              <div class="foot">使用数据仅保存在本机</div>
+            </div>
+            <div class="nav">
+              <span>今日</span><span>方案</span><span>日程锁</span><span class="on">我</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>需修</h3>
+            <p>警告一句；异常字重，正常淡</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">我</div>
+              <div class="warn">有 2 项需处理 · 否则无法拦截</div>
+
+              <div class="row">
+                <div class="n">用量访问</div>
+                <div class="r bad">需开启</div>
+              </div>
+              <div class="row">
+                <div class="n">悬浮窗</div>
+                <div class="r bad">需开启</div>
+              </div>
+              <div class="row faint">
+                <div class="n">无障碍</div>
+                <div class="r">已开启</div>
+              </div>
+              <div class="row faint">
+                <div class="n">电池与自启</div>
+                <div class="r">已优化</div>
+              </div>
+
+              <div class="row" style="margin-top:8px; border-top:none; padding-top:18px">
+                <div>
+                  <div class="n">设置</div>
+                  <div class="m">主题、胶囊与陪伴</div>
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">和小锚聊<span class="badge">2</span></div>
+                  <div class="m">有新回复</div>
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">关于</div>
+                  <div class="m">版本、更新与协议</div>
+                </div>
+              </div>
+            </div>
+            <div class="nav">
+              <span>今日</span><span>方案</span><span>日程锁</span><span class="on">我</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>不好 · 卡片墙</h3>
+            <p>图标 + 描边容器 · 已剔除</p>
+          </div>
+          <div class="phone bad">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">我</div>
+              <div class="warn" style="opacity:.7">有 2 项权限需处理</div>
+              <div style="margin-top:10px;padding:12px;border:1px solid rgba(232,237,230,.18);border-radius:14px;background:rgba(255,255,255,.03)">
+                <div style="display:flex;gap:10px;padding:8px 0;align-items:center;opacity:.75">
+                  <span style="opacity:.4">⚙</span>
+                  <div>
+                    <div style="font-size:14px">设置</div>
+                    <div style="font-size:11px;color:var(--mist)">胶囊、主题与备份</div>
+                  </div>
+                  <span style="margin-left:auto;opacity:.3">›</span>
+                </div>
+                <div style="height:1px;background:var(--line)"></div>
+                <div style="display:flex;gap:10px;padding:8px 0;align-items:center;opacity:.75">
+                  <span style="opacity:.4">✉</span>
+                  <div>
+                    <div style="font-size:14px">和小锚聊</div>
+                    <div style="font-size:11px;color:var(--mist)">问题、想法</div>
+                  </div>
+                  <span style="margin-left:auto;opacity:.3">›</span>
+                </div>
+              </div>
+              <div class="foot" style="opacity:.5">又：试玩 · 保活指南 · 评分…</div>
+            </div>
+            <div class="nav">
+              <span>今日</span><span>方案</span><span>日程锁</span><span class="on">我</span>
+            </div>
+          </div>
+          <p class="x">× 卡片、图标列、菜单堆叠</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · 设置 -->
+    <div>
+      <div class="sec"><strong>2 · 设置</strong>　仍是脊线，不是分组卡片</div>
+      <div class="row2" style="margin-top:18px">
+
+        <div>
+          <div class="col-head">
+            <h3>设置</h3>
+            <p>淡分区字 · 开关与字值同脊</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹</div>
+              <div class="page-title">设置</div>
+
+              <div class="lab first">通用</div>
+              <div class="row">
+                <div class="n">外观</div>
+                <div class="r quiet">跟随系统</div>
+              </div>
+
+              <div class="lab">胶囊</div>
+              <div class="row">
+                <div>
+                  <div class="n">桌面心锚</div>
+                  <div class="m">监测开启时桌面微粒</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+              <div class="row">
+                <div class="n">悬浮圆球大小</div>
+                <div class="seg"><span class="on">标准</span><span>紧凑</span></div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">使用中陪伴条</div>
+                  <div class="m">关则用桌面那种圆球</div>
+                </div>
+                <div class="sw"><i></i></div>
+              </div>
+              <div class="row">
+                <div class="n">暂停等待时长</div>
+                <div class="seg"><span>1 分</span><span class="on">2 分</span><span>5 分</span></div>
+              </div>
+
+              <div class="lab">试验</div>
+              <div class="row soft">
+                <div>
+                  <div class="n">试玩</div>
+                  <div class="m">壁纸、格言</div>
+                </div>
+              </div>
+
+              <div class="lab">数据</div>
+              <div class="row">
+                <div>
+                  <div class="n" style="color:rgba(196,122,106,.9)">清除本地数据</div>
+                  <div class="m">删除使用记录，限额保留</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>健康展开</h3>
+            <p>点「监控正常 ›」后的四项</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">我</div>
+              <div class="pulse">监控正常</div>
+
+              <div class="row faint">
+                <div class="n">用量访问</div>
+                <div class="r ok">正常</div>
+              </div>
+              <div class="row faint">
+                <div class="n">悬浮窗</div>
+                <div class="r ok">正常</div>
+              </div>
+              <div class="row faint">
+                <div class="n">无障碍</div>
+                <div class="r ok">已开启</div>
+              </div>
+              <div class="row faint">
+                <div class="n">电池与自启</div>
+                <div class="r ok">已优化</div>
+              </div>
+
+              <div class="row" style="margin-top:6px; border-top:none; padding-top:16px">
+                <div>
+                  <div class="n">设置</div>
+                  <div class="m">主题、胶囊与陪伴</div>
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">和小锚聊</div>
+                  <div class="m">问题、想法，直接说</div>
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">关于</div>
+                  <div class="m">版本、更新与协议</div>
+                </div>
+              </div>
+              <div class="foot">使用数据仅保存在本机 · Xiaomi 14</div>
+            </div>
+            <div class="nav">
+              <span>今日</span><span>方案</span><span>日程锁</span><span class="on">我</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="notes">
+      <h2>框外 · 设计约定</h2>
+      <ul>
+        <li><strong>骨架：</strong>与今日 / 方案同 —— 衬线标题 + Hairline 行。不加描边卡片、不加行首图标、不加 › 装饰列。</li>
+        <li><strong>层级：</strong>需修时警告与「需开启」用暖色；已正常行降到 ~0.4 透明度。健康态默认不展开四项。</li>
+        <li><strong>菜单：</strong>只三行 —— 设置 · 和小锚聊 · 关于。未读用沙色数字，不用红胶囊。</li>
+        <li><strong>设置：</strong>淡分区标签（通用 / 胶囊 / 试验 / 数据）；开关与分段字值贴在行右侧；试玩沉在试验；无拦截背景。</li>
+        <li><strong>文案：</strong>框内只说事实与动作。设计理由只写在这里。</li>
+      </ul>
+      <div class="map">我（健康）── 监控正常 › ── 设置 / 和小锚聊 / 关于
+我（需修）── 警告 · 四项权限（异常重 / 正常淡）── 同上三行
+设置 ── 外观 · 胶囊 · 试验(试玩) · 清除数据
+删：卡片墙 · 图标列 · 保活菜单重复 · 锚豆 / AI · 拦截背景</div>
+    </section>
+  </div>
+</body>
+</html>

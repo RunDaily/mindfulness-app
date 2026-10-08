@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>少 3 · 多 3</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-soft: rgba(61,122,74,.14);
+      --sand: #c4a35a; --line: rgba(232,237,230,.12); --blue: #7eb8c9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 72px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 36px; }
+    .hero { text-align: center; max-width: 580px; margin: 0 auto; }
+    .hero .eyebrow { font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px; }
+    .hero h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: var(--leaf-soft); border: 1px solid rgba(61,122,74,.35); font-size: 12px; color: #b7d4be;
+    }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 960px) { .row, .row3 { grid-template-columns: 1fr; justify-items: center; } }
+    .col-head { text-align: center; margin-bottom: 8px; max-width: 280px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; }
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9/16.8; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4);
+    }
+    .bar {
+      height: 36px; padding: 12px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600;
+    }
+    .body { flex: 1; padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+    .brand { font-family: "Iowan Old Style", "Songti SC", Georgia, serif; font-size: 18px; font-weight: 500; }
+    .sub { font-size: 11px; color: var(--fog); line-height: 1.4; }
+    .sec-lab { font-size: 10px; color: var(--mist); letter-spacing: .04em; margin-top: 8px; }
+    .rowi {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px;
+    }
+    .rowi .n { font-size: 13px; }
+    .rowi .m { font-size: 10px; color: var(--mist); margin-top: 2px; }
+    .rowi .r { font-size: 11px; color: #c5d0c6; text-align: right; font-variant-numeric: tabular-nums; }
+    .rowi.void .n { color: var(--mist); }
+    .cta { font-size: 14px; color: var(--leaf); font-weight: 500; padding: 6px 0; }
+    .link { font-size: 12px; color: var(--mist); }
+    .nav {
+      margin-top: auto; display: flex; justify-content: space-around; padding-top: 8px;
+      border-top: 1px solid var(--line); font-size: 10px; color: var(--mist);
+    }
+    .nav .on { color: var(--paper); font-weight: 600; }
+    .center {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; gap: 10px;
+    }
+    .pulse {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--leaf);
+      box-shadow: 0 0 0 0 rgba(61,122,74,.4); animation: p 2s ease-out infinite;
+    }
+    @keyframes p {
+      0% { box-shadow: 0 0 0 0 rgba(61,122,74,.4); }
+      70% { box-shadow: 0 0 0 14px transparent; }
+    }
+    .acts { display: flex; gap: 16px; justify-content: center; }
+    .acts .dim { color: var(--mist); font-size: 13px; }
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.7; max-width: 720px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 720px; margin: 0 auto; }
+    @media (max-width: 720px) { .split { grid-template-columns: 1fr; } }
+    .card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.65;
+    }
+    .card h4 { color: var(--paper); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Three &amp; Three · Attention Poles</div>
+      <h1>少三个 · 多三个</h1>
+      <p>少的每日看有没有少下去。多的每日看有没有多起来。各三席，不配成一对。门口只拦少的。</p>
+      <div class="thesis">本阶段用户看不见 Agent。配置仍是人拨。</div>
+    </header>
+
+    <p class="sec">日常 · <strong>今日是镜子</strong></p>
+    <section class="row3">
+      <div>
+        <div class="col-head"><h3>① 今日</h3><p>两极同一条脊，数字相反</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>今日</span></div>
+          <div class="body">
+            <div class="brand">今日</div>
+            <div class="sec-lab">少 · 2/3</div>
+            <div class="rowi">
+              <div><div class="n">小红书</div><div class="m">呼吸 · 日限 · 夜间</div></div>
+              <div class="r">18 / 40 分<br /><span style="color:var(--mist);font-size:10px">打开 3/8 · −12</span></div>
+            </div>
+            <div class="rowi">
+              <div><div class="n">抖音</div><div class="m">呼吸 · 日限</div></div>
+              <div class="r">22 / 45 分<br /><span style="color:var(--mist);font-size:10px">打开 4</span></div>
+            </div>
+            <div class="rowi void"><div class="n">＋</div></div>
+            <div class="sec-lab">多 · 2/3</div>
+            <div class="rowi">
+              <div><div class="n">微信读书</div><div class="m">今日碰过</div></div>
+              <div class="r">28 分<br /><span style="color:var(--mist);font-size:10px">+9</span></div>
+            </div>
+            <div class="rowi">
+              <div><div class="n">多邻国</div></div>
+              <div class="r" style="color:var(--mist)">还没打开</div>
+            </div>
+            <div class="rowi void"><div class="n">＋</div></div>
+            <div class="nav"><span class="on">今日</span><span>方案</span><span>我</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>② 少 · 详情</h3><p>剩余、门口、去改规则</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="body">
+            <div class="sub">‹ 今日</div>
+            <div class="brand" style="font-size:16px">小红书</div>
+            <p class="sub">少</p>
+            <div class="rowi"><div class="n">已用</div><div class="r">18 / 40 分</div></div>
+            <div class="rowi"><div class="n">打开</div><div class="r">3 / 8</div></div>
+            <div class="rowi"><div class="n">比昨日</div><div class="r">−12 分</div></div>
+            <div class="rowi"><div class="n">守住离开</div><div class="r">2</div></div>
+            <div class="cta" style="margin-top:auto">去改规则</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>③ 多 · 详情</h3><p>只有用量，没有器械</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>微信读书</span></div>
+          <div class="body">
+            <div class="sub">‹ 今日</div>
+            <div class="brand" style="font-size:16px">微信读书</div>
+            <p class="sub">多</p>
+            <div class="rowi"><div class="n">今日</div><div class="r">28 分 · 2 次</div></div>
+            <div class="rowi"><div class="n">比昨日</div><div class="r">+9 分</div></div>
+            <div class="rowi"><div class="n">近 7 日均</div><div class="r">19 分</div></div>
+            <p class="sub" style="margin-top:12px">打开不拦。</p>
+            <div class="link" style="margin-top:auto">移出</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">工坊 · <strong>方案是两份花名册</strong></p>
+    <section class="row">
+      <div>
+        <div class="col-head"><h3>④ 方案</h3><p>空席看得见，满了不再加</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>方案</span></div>
+          <div class="body">
+            <div class="brand">方案</div>
+            <div class="sec-lab">少 · 2/3</div>
+            <div class="rowi">
+              <div><div class="n">小红书</div><div class="m">呼吸 8s · ≤8 · 40 分</div></div>
+              <div class="r">›</div>
+            </div>
+            <div class="rowi">
+              <div><div class="n">抖音</div><div class="m">呼吸 10s · 日限 45</div></div>
+              <div class="r">›</div>
+            </div>
+            <div class="cta">＋ 少</div>
+            <div class="sec-lab">多 · 1/3</div>
+            <div class="rowi">
+              <div><div class="n">微信读书</div><div class="m">看着用量</div></div>
+              <div class="r">›</div>
+            </div>
+            <div class="cta">＋ 多</div>
+            <div class="nav"><span>今日</span><span class="on">方案</span><span>我</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>⑤ 挑少</h3><p>选完仍去配器械</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>少</span></div>
+          <div class="body">
+            <div class="brand" style="font-size:16px">选择应用</div>
+            <p class="sub">少 · 已选 2/3</p>
+            <div class="rowi"><div><div class="n">小红书</div><div class="m">日均 48 分</div></div><div class="r">已在少</div></div>
+            <div class="rowi"><div><div class="n">抖音</div><div class="m">日均 36 分</div></div><div class="r">已在少</div></div>
+            <div class="rowi"><div><div class="n">微博</div><div class="m">日均 12 分</div></div><div class="r">○</div></div>
+            <div class="rowi"><div><div class="n">微信读书</div><div class="m">日均 19 分</div></div><div class="r">在多</div></div>
+            <div class="cta" style="margin-top:auto">下一步 · 配置</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>⑥ 挑多</h3><p>加入即生效，不配门</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>多</span></div>
+          <div class="body">
+            <div class="brand" style="font-size:16px">选择应用</div>
+            <p class="sub">多 · 已选 1/3</p>
+            <div class="rowi"><div><div class="n">微信读书</div><div class="m">日均 19 分</div></div><div class="r">已在多</div></div>
+            <div class="rowi"><div><div class="n">多邻国</div><div class="m">日均 8 分</div></div><div class="r">●</div></div>
+            <div class="rowi"><div><div class="n">小红书</div><div class="m">日均 48 分</div></div><div class="r">在少</div></div>
+            <div class="cta" style="margin-top:auto">加入</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>⑦ 门口</h3><p>只对少。多直接进</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>门</span></div>
+          <div class="body">
+            <div class="center">
+              <div class="pulse"></div>
+              <div class="n" style="font-size:15px">小红书</div>
+              <p class="sub">今日第 3/8 次 · 剩 22 分</p>
+            </div>
+            <div class="acts"><span class="cta">继续</span><span class="dim">不进去了</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="split">
+      <div class="card">
+        <h4>少</h4>
+        每日盯减少。有器械、有门口。数字是已用 / 上限，辅一行相对昨日。最多 3 席。满了只能先移再加。已超过 3 个的旧数据先留着，不再能加。
+      </div>
+      <div class="card">
+        <h4>多</h4>
+        每日盯增加。本阶段只收 App，不收「出去走走」这类无系统用量的目标。无呼吸、无次数、无日限、无门口。数字是今日量 + 相对昨日。没有昨日就不写对比。不做「每天要读满 20 分」——那会把多变成另一座牢。
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>定下来的：</strong>两极对等，不配成一对（抖音不必绑读书）。一个 App 只能在一侧。开通不锁 3+3，一少一多就能跑；空席留着，让另一极被看见。<br />
+      <strong>先不做：</strong>抽象正向目标（无用量信号）；多碰设限额；把门口「想去的地方」和多名单合并；正常用户看见 Agent / 按这个调 / 锚豆。<br />
+      <strong>Agent 以后：</strong>给它少、多、热力、相对昨日，让它谈怎么过日子。配器械只是其中一种话。本阶段不发明那个界面。
+    </div>
+  </div>
+</body>
+</html>

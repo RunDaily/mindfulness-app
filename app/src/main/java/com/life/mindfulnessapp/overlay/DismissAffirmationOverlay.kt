@@ -53,7 +53,7 @@ private val GoldSoft = Color(0xFFFFF0C8)
 /**
  * 离开后的轻量肯定：顶部居中小条。
  *
- * 可带主动作（去正向 App / 配置引导 / 去看这一次）、可选「更多」展开。
+ * 可带主动作（去正向 App / 配置引导 / 去看这一次）、可选「更多」展开、可选「详细」进 App 记录。
  */
 @Composable
 fun DismissAffirmationOverlay(
@@ -62,6 +62,7 @@ fun DismissAffirmationOverlay(
     onAction: (() -> Unit)? = null,
     onMoreChoice: ((LeaveDestinationChoice) -> Unit)? = null,
     onManage: (() -> Unit)? = null,
+    onDetail: (() -> Unit)? = null,
     onFinished: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -84,13 +85,14 @@ fun DismissAffirmationOverlay(
     val actionColor = if (isDarkTheme) Gold else Color(0xFF8A7020)
     val moreBg = if (isDarkTheme) Color(0xFF1C1F24) else Color(0xFFF7F5F0)
     val hasPrimaryAction = onAction != null && !copy.actionLabel.isNullOrBlank()
+    val hasDetail = onDetail != null && !copy.detailLabel.isNullOrBlank()
     val hasMore = (!copy.moreLabel.isNullOrBlank()) &&
         (copy.moreChoices.isNotEmpty() || copy.showManageLink)
-    val interactive = hasPrimaryAction || hasMore
+    val interactive = hasPrimaryAction || hasMore || hasDetail
     val holdMs = when {
         expanded -> 5200L
         hasMore || copy.opensSettings -> 3200L
-        hasPrimaryAction -> 2800L
+        hasPrimaryAction || hasDetail -> 2800L
         else -> 900L
     }
 
@@ -179,6 +181,27 @@ fun DismissAffirmationOverlay(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+                }
+                if (hasDetail) {
+                    Text(
+                        text = copy.detailLabel.orEmpty(),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = subtitleColor,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (finished) return@clickable
+                                finished = true
+                                onDetail?.invoke()
+                                onFinished()
+                            }
+                            .padding(horizontal = 2.dp, vertical = 2.dp)
+                    )
                 }
                 if (hasPrimaryAction) {
                     Text(

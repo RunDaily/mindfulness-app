@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>打开应用时</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="kicker">第 4 章</div>
+  <h1>打开应用时</h1>
+  <p>当某个应用已在方案中且规则生效时，从桌面或其它应用再次打开它，会先看到拦截页，而不是直接进入。</p>
+
+  <h2>拦截页上你可以做什么</h2>
+  <p>取决于当前规则与应用类型，拦截页通常提供这些选择（措辞以实机为准）：</p>
+  <ul>
+    <li><span><strong>先等几秒再决定</strong>（若开启了打开前等待）</span></li>
+    <li><span><strong>不进去了 / 离开：</strong>关闭拦截，不进入该应用</span></li>
+    <li><span><strong>搜索后直达</strong>（部分应用支持）：输入关键词后跳到应用内搜索结果，适合「只查一件事」</span></li>
+    <li><span><strong>写下要做什么并选择时长后进入：</strong>只给这一次使用设一个时限</span></li>
+    <li><span><strong>确认有事再进入</strong>（部分应用）：先劝离，再选一个较短的本次时长</span></li>
+  </ul>
+  <p>触达「日限额」或「打开次数」上限后，拦截页会明确提示今日已用完，此时通常只能离开，不能再进入。</p>
+  <figure class="slot">
+    <div class="label">图 · 可继续进入</div>
+    <figcaption>打开前等待 / 确认态</figcaption>
+  </figure>
+  <figure class="slot">
+    <div class="label">图 · 今日已用完</div>
+    <figcaption>硬拦态 · 与上图对照</figcaption>
+  </figure>
+
+  <h2>关于系统返回键与 Home</h2>
+  <p>拦截页出现期间，用 Home、最近任务或返回键，一般不会真正关掉拦截；心锚会把你拉回拦截页。</p>
+  <p>若希望这项行为稳定，请开启「无障碍」。</p>
+  <p>离开拦截的正常方式，是点页面上的离开类按钮，而不是靠系统手势「躲过去」。</p>
+
+  <h2>你怎么判断规则生效了</h2>
+  <ul>
+    <li><span>规则写「每天 30 分钟」，今天已用满 → 再打开应看到时长用尽的提示，且不能进入。</span></li>
+    <li><span>规则写了打开前等待 → 未用满时，应先看到倒数，倒数结束前不能直接进入。</span></li>
+    <li><span>规则写了某时段锁定 → 在该时段内打开，应被拦住。</span></li>
+  </ul>
+  <p>若与上述不符，优先检查权限与该应用是否仍在方案中。</p>
+
+  <div class="chap-nav">
+    <a class="prev" href="03.html">‹ 方案</a>
+    <a class="next" href="05.html">今日 ›</a>
+  </div>
+</body>
+</html>

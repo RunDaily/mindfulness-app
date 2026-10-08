@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>主动离开 · 仪式感定稿</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --sand: #c4a35a;
+      --line: rgba(232,237,230,.12); --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 40px; }
+    header { max-width: 680px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 48em; }
+    .thesis {
+      margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px;
+      font-size: 13px; line-height: 1.7; color: var(--paper);
+    }
+    .thesis strong { color: var(--sand); font-weight: 600; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+    .row4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .row2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; max-width: 760px; margin: 0 auto; }
+    @media (max-width: 960px) {
+      .row4, .row3, .row2 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 260px; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+    .tag-was {
+      display: inline-block; margin-top: 6px; font-size: 10px; color: var(--sand);
+      letter-spacing: .04em;
+    }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: var(--ink); border: 1px solid rgba(255,255,255,.08);
+      padding: 22px 24px 18px; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45); position: relative; overflow: hidden;
+    }
+    .phone.fading { opacity: .55; }
+    .phone.silent { opacity: .72; }
+    .door-tag { font-size: 11px; color: var(--mist); }
+    .top { margin-top: 14px; }
+    .name { font-size: 16px; color: var(--paper); }
+    .meta { margin-top: 4px; font-size: 12px; color: var(--fog); font-variant-numeric: tabular-nums; }
+    .center {
+      flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0;
+    }
+    .hero {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 22px; font-weight: 500; line-height: 1.35;
+    }
+    .paths { margin-top: 26px; display: grid; gap: 16px; }
+    .path {
+      display: grid; grid-template-columns: 20px 1fr; gap: 10px; align-items: start;
+      font-size: 14px; color: rgba(232,237,230,.78);
+    }
+    .path .g { color: var(--fog); }
+    .path.dim { color: rgba(92,101,94,.75); }
+    .path.dim .g { color: rgba(92,101,94,.55); }
+    .sub { margin-top: 2px; font-size: 11px; color: var(--mist); }
+
+    .leave-wrap {
+      margin-top: auto; padding-top: 18px; text-align: center;
+    }
+    .leave-main {
+      font-size: 15px; font-weight: 500; color: var(--leaf-text); letter-spacing: .03em;
+    }
+    .leave-sub {
+      margin-top: 6px; font-size: 12px; color: rgba(159,212,168,.55);
+    }
+    .leave-wrap.hold .leave-main { color: #b7efc0; }
+    .leave-wrap.hold .leave-sub {
+      color: rgba(159,212,168,.92);
+      transform: translateY(-2px);
+    }
+    .leave-wrap.cool .leave-main { color: rgba(159,212,168,.55); }
+    .leave-wrap.cool .leave-sub { color: rgba(92,101,94,.45); }
+
+    .breath {
+      position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 78%, rgba(61,122,74,.14), transparent 55%);
+      opacity: 0;
+    }
+    .phone.exhale .breath { opacity: 1; }
+    .phone.exhale .center { opacity: .35; }
+    .phone.exhale .top { opacity: .4; }
+
+    .toast {
+      position: absolute; left: 18px; right: 18px; top: 48px;
+      background: rgba(28,32,29,.92); border: 1px solid rgba(232,237,230,.1);
+      border-radius: 14px; padding: 12px 14px; text-align: center;
+    }
+    .toast .t { font-size: 14px; color: var(--paper); }
+    .toast .s { margin-top: 4px; font-size: 11px; color: var(--mist); }
+
+    .medal {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center;
+    }
+    .medal .ring {
+      width: 72px; height: 72px; border-radius: 50%;
+      border: 1.5px solid rgba(232,177,74,.55);
+      box-shadow: 0 0 28px rgba(232,177,74,.18);
+      display: grid; place-items: center;
+      color: #ffd166; font-size: 28px;
+    }
+    .medal .mt {
+      margin-top: 22px; font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 28px; color: #ffd166;
+    }
+    .medal .ms { margin-top: 8px; font-size: 13px; color: var(--fog); }
+    .medal .skip { margin-top: 28px; font-size: 12px; color: var(--mist); }
+
+    .desk {
+      flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+      gap: 10px; padding-bottom: 8px; opacity: .35;
+    }
+    .desk .icon-row { display: flex; gap: 18px; justify-content: center; }
+    .desk .ic {
+      width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,.08);
+    }
+
+    .rules {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    @media (max-width: 720px) { .rules { grid-template-columns: 1fr; } }
+    .card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+    }
+    .card h4 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .card h4.ok { color: var(--leaf-text); }
+    .card h4.no { color: #c97878; }
+    .card ul { list-style: none; display: grid; gap: 6px; }
+    .card li { font-size: 12px; line-height: 1.55; color: var(--fog); padding-left: 14px; position: relative; }
+    .card li::before {
+      content: ""; position: absolute; left: 0; top: .55em;
+      width: 5px; height: 5px; border-radius: 50%; background: var(--mist);
+    }
+    .card.ok li::before { background: var(--leaf-text); }
+    .card.no li::before { background: #c97878; }
+
+    .pool {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .pool strong { color: var(--paper); font-weight: 600; }
+    .pool .fixed { color: var(--leaf-text); }
+    .pool .rotate { color: var(--sand); }
+
+    .note {
+      max-width: 760px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+
+    table {
+      width: 100%; border-collapse: collapse; font-size: 12px; color: var(--fog);
+    }
+    th, td {
+      text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line);
+      vertical-align: top; line-height: 1.5;
+    }
+    th { color: var(--mist); font-weight: 500; font-size: 11px; letter-spacing: .04em; }
+    td strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Leave · Ritual</div>
+      <h1>主动离开像轻轻盖上一本书，而不是领奖。</h1>
+      <p>
+        只服务页上「先不进去了」。Home / 多任务不是离开路径（拉回门口）。<br />
+        守住可以记；仪式不能刷。日常短到不值得专程来看；勋章只留给稀有高潮。
+      </p>
+      <div class="thesis">
+        <strong>定稿</strong>　门上副句固定「这一次，也很好」·
+        日常 = 门内呼气收束 + 轻触感 ·
+        余韵小池轮换 ·
+        同 App 约 2 分钟冷却内静默 ·
+        第 5 / 每满 10 全屏勋章（冷却可吞）
+      </div>
+    </header>
+
+    <p class="sec">① 门上 · <strong>副句固定</strong></p>
+    <section class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>离开入口</h3>
+          <p>副句是入口的一部分，固定才认得</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">小红书</div>
+          <div class="top">
+            <div class="name">小红书</div>
+            <div class="meta">今日第 3 次 · 已用 12/50 分钟</div>
+          </div>
+          <div class="center">
+            <div class="hero">你这次要做什么？</div>
+            <div class="paths">
+              <div class="path"><span class="g">⌕</span><div>搜索直达<div class="sub">我知道要搜什么</div></div></div>
+              <div class="path"><span class="g">✎</span><div>写下意图<div class="sub">我知道要干什么</div></div></div>
+              <div class="path dim"><span class="g">≡</span><div>随意浏览<div class="sub">我不知道要干什么</div></div></div>
+            </div>
+          </div>
+          <div class="leave-wrap">
+            <div class="leave-main">先不进去了</div>
+            <div class="leave-sub">这一次，也很好</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>不轮换这里</h3>
+          <p>门上若换句，像每日一句，削弱可点感</p>
+          <span class="tag-was">固定 · 不进文案池</span>
+        </div>
+        <div class="phone silent">
+          <div class="door-tag">勿</div>
+          <div class="center">
+            <div class="hero" style="opacity:.4">你这次要做什么？</div>
+          </div>
+          <div class="leave-wrap">
+            <div class="leave-main">先不进去了</div>
+            <div class="leave-sub" style="color:var(--sand)">今日宜停 · 也行？</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">② 日常 · <strong>门内呼气收束</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>点按</h3>
+          <p>叶色稳住 · 副句略亮</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">拍 1</div>
+          <div class="top">
+            <div class="name">小红书</div>
+            <div class="meta">今日第 3 次 · 已用 12/50 分钟</div>
+          </div>
+          <div class="center" style="opacity:.55">
+            <div class="hero">你这次要做什么？</div>
+            <div class="paths">
+              <div class="path dim"><span class="g">⌕</span><div>搜索直达</div></div>
+              <div class="path dim"><span class="g">✎</span><div>写下意图</div></div>
+            </div>
+          </div>
+          <div class="leave-wrap hold">
+            <div class="leave-main">先不进去了</div>
+            <div class="leave-sub">这一次，也很好</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>呼气 · ≈500ms</h3>
+          <p>整页淡出 · 轻触感一次</p>
+        </div>
+        <div class="phone exhale fading">
+          <div class="breath"></div>
+          <div class="door-tag">拍 2</div>
+          <div class="top">
+            <div class="name">小红书</div>
+            <div class="meta">今日第 3 次 · 已用 12/50 分钟</div>
+          </div>
+          <div class="center">
+            <div class="hero">你这次要做什么？</div>
+          </div>
+          <div class="leave-wrap hold">
+            <div class="leave-main">先不进去了</div>
+            <div class="leave-sub">这一次，也很好</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>回桌面</h3>
+          <p>日常可不挂轻条；或极短余韵</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">拍 3</div>
+          <div class="desk">
+            <div class="icon-row">
+              <div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div>
+            </div>
+          </div>
+          <div class="toast">
+            <div class="t">先到这里</div>
+            <div class="s">余韵池 · 可无</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">③ 防刷 · <strong>冷却静默</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>同 App · 2 分钟内再离开</h3>
+          <p>仍记守住 · 不播仪式</p>
+        </div>
+        <div class="phone silent">
+          <div class="door-tag">冷却</div>
+          <div class="top">
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4 次 · 已用 12/50 分钟</div>
+          </div>
+          <div class="center">
+            <div class="hero">你这次要做什么？</div>
+          </div>
+          <div class="leave-wrap cool">
+            <div class="leave-main">先不进去了</div>
+            <div class="leave-sub">这一次，也很好</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>冷却内收束</h3>
+          <p>仅极短淡出 · 无余韵 · 无触感高潮 · 无勋章</p>
+        </div>
+        <div class="phone fading">
+          <div class="door-tag">≈180ms</div>
+          <div class="center" style="opacity:.25">
+            <div class="hero">…</div>
+          </div>
+          <div class="leave-wrap cool">
+            <div class="leave-main">先不进去了</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>撞上里程碑</h3>
+          <p>冷却吞掉 · 推迟到下次合格离开</p>
+          <span class="tag-was">不立刻全屏</span>
+        </div>
+        <div class="phone silent">
+          <div class="door-tag">吞</div>
+          <div class="desk">
+            <div class="icon-row">
+              <div class="ic"></div><div class="ic"></div><div class="ic"></div>
+            </div>
+          </div>
+          <div style="text-align:center;padding:20px 8px 8px;font-size:12px;color:var(--mist);line-height:1.55">
+            第 5 次已记<br />勋章下次再给
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">④ 稀有 · <strong>里程碑</strong></p>
+    <section class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>第 5 / 每满 10</h3>
+          <p>全屏短勋章 · 可点跳过 · ≈1.6s</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">高光</div>
+          <div class="medal">
+            <div class="ring">✓</div>
+            <div class="mt">守住了</div>
+            <div class="ms">今日第 5 次</div>
+            <div class="skip">点按跳过</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>限度</h3>
+          <p>同一自然日全屏至多 1～2 次；冷却内不播</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">限</div>
+          <div class="center" style="justify-content:center;gap:14px">
+            <div style="font-size:13px;color:var(--fog);line-height:1.7;text-align:left">
+              · 第 5 次 → 可播<br />
+              · 第 10 / 20… → 可播<br />
+              · 冷却内撞上 → 吞<br />
+              · 日常 1～4、6～9 → 门内收束
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">⑤ 文案 · <strong>两处两策</strong></p>
+    <div class="pool">
+      <strong>门上副句（固定）</strong>　<span class="fixed">这一次，也很好</span><br /><br />
+      <strong>离开余韵（小池轮换 · 短时不重复）</strong><br />
+      <span class="rotate">这一次，也很好</span>　·　
+      <span class="rotate">守住了</span>　·　
+      <span class="rotate">先到这里</span>　·　
+      <span class="rotate">也好</span><br /><br />
+      忌：鸡汤长句、连胜、评价人格、「你真棒戒断了」。余韵可无——门内收束已够时，不强制挂条。
+    </div>
+
+    <p class="sec">⑥ 分流表</p>
+    <table>
+      <thead>
+        <tr>
+          <th>场景</th>
+          <th>记账</th>
+          <th>门内</th>
+          <th>门外</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>页上离开 · 合格</strong></td>
+          <td>记守住</td>
+          <td>呼气 ≈500ms + 触感</td>
+          <td>无条 / 极短余韵句</td>
+        </tr>
+        <tr>
+          <td><strong>页上离开 · 冷却内</strong></td>
+          <td>仍可记</td>
+          <td>极短淡出</td>
+          <td>静默 · 无余韵 · 无勋章</td>
+        </tr>
+        <tr>
+          <td><strong>里程碑 · 合格</strong></td>
+          <td>记守住</td>
+          <td>可短收束或直切</td>
+          <td>全屏「守住了」· 可跳过</td>
+        </tr>
+        <tr>
+          <td><strong>里程碑 · 冷却内</strong></td>
+          <td>记次数</td>
+          <td>极短淡出</td>
+          <td>吞勋章 · 下次合格再播</td>
+        </tr>
+        <tr>
+          <td><strong>Home / 多任务</strong></td>
+          <td>不记守住离开</td>
+          <td>—</td>
+          <td>拉回门口 · 无仪式</td>
+        </tr>
+        <tr>
+          <td><strong>正向出口</strong></td>
+          <td>去做了</td>
+          <td>另路</td>
+          <td>不与守住仪式叠播</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="rules">
+      <div class="card ok">
+        <h4 class="ok">做</h4>
+        <ul>
+          <li>只奖励页上有意识的离开</li>
+          <li>日常短到不够刷</li>
+          <li>副句固定、余韵轮换</li>
+          <li>冷却吞表演、不吞诚实记账</li>
+          <li>勋章可跳过</li>
+        </ul>
+      </div>
+      <div class="card no">
+        <h4 class="no">不做</h4>
+        <ul>
+          <li>每次全屏奖牌 / 粒子</li>
+          <li>强制看完才能回桌面</li>
+          <li>连胜、打卡、排行</li>
+          <li>仪式里默认塞「想去的地方」</li>
+          <li>把 Home 当离开并播守住</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>与现网：</strong>总门 SoftLeaveAffirm 副句保持固定；
+      门内 leave 淡出加长为呼气拍；
+      同包 <code>dismissCeremonyCooldownMs</code>（约 2 分钟）内走静默；
+      里程碑仍第 5 / 每满 10，冷却内不播；
+      轻条余韵改小池轮换，日常可降为可选。<br />
+      <strong>一句话：</strong>守住可以记；仪式不能刷；离开像盖书，不像领奖。
+    </div>
+  </div>
+</body>
+</html>

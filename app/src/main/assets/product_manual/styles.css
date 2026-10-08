@@ -1,0 +1,297 @@
+:root,
+[data-theme="dark"] {
+  --bg: #0f1117;
+  --text: #e8ede6;
+  --text-2: rgba(232, 237, 230, 0.72);
+  --mist: #8a96b0;
+  --line: rgba(232, 237, 230, 0.12);
+  --leaf: #9fd4a8;
+  --leaf-dim: #3d7a4a;
+  --slot: rgba(232, 237, 230, 0.04);
+  --slot-border: rgba(232, 237, 230, 0.14);
+}
+
+[data-theme="light"] {
+  --bg: #f4f6f9;
+  --text: #1a1f2a;
+  --text-2: rgba(26, 31, 42, 0.72);
+  --mist: #6b7385;
+  --line: rgba(26, 31, 42, 0.1);
+  --leaf: #1b9e55;
+  --leaf-dim: #1b9e55;
+  --slot: rgba(26, 31, 42, 0.03);
+  --slot-border: rgba(26, 31, 42, 0.12);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  padding: 8px 20px 48px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.chapter[hidden] {
+  display: none !important;
+}
+
+a { color: var(--leaf); text-decoration: none; }
+a:active { opacity: 0.7; }
+
+.page-sub {
+  font-size: 12px;
+  color: var(--mist);
+  margin: 2px 0 18px;
+}
+
+.toc-item {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+}
+.toc-item .num {
+  font-size: 12px;
+  color: var(--mist);
+  font-variant-numeric: tabular-nums;
+  width: 18px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.toc-item .t {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.toc-item .d {
+  font-size: 12px;
+  color: var(--mist);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.toc-item.faint {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.kicker {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--mist);
+  margin-bottom: 8px;
+}
+
+h1 {
+  font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.3;
+  margin-bottom: 14px;
+}
+
+h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 22px 0 10px;
+}
+
+p {
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+p strong { color: var(--text); font-weight: 600; }
+
+ul, ol {
+  margin: 0 0 14px 0;
+  padding: 0;
+  list-style: none;
+}
+ul li, ol li {
+  font-size: 13.5px;
+  color: var(--text-2);
+  line-height: 1.55;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.08);
+  display: flex;
+  gap: 10px;
+}
+ol li .i {
+  color: var(--leaf);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  width: 16px;
+  flex-shrink: 0;
+}
+ul li::before {
+  content: "·";
+  color: var(--mist);
+  width: 12px;
+  flex-shrink: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 14px;
+  font-size: 13px;
+}
+th, td {
+  text-align: left;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  line-height: 1.45;
+}
+th {
+  color: var(--mist);
+  font-weight: 500;
+  width: 36%;
+  padding-right: 12px;
+}
+td { color: var(--text-2); }
+
+figure.slot {
+  margin: 14px 0;
+  padding: 22px 14px;
+  border: 1px dashed var(--slot-border);
+  border-radius: 10px;
+  background: var(--slot);
+  text-align: center;
+}
+figure.slot .label {
+  font-size: 12px;
+  color: var(--mist);
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+figure.slot figcaption {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--mist);
+  opacity: 0.75;
+}
+
+.chap-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.chap-nav .prev { color: var(--mist); }
+.chap-nav .next { color: var(--leaf); margin-left: auto; text-align: right; }
+
+.pending {
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--mist);
+  line-height: 1.6;
+}
+
+/* ── H5 目录抽屉（左侧） ── */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.22s ease, visibility 0.22s ease;
+  z-index: 40;
+}
+.drawer-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(82vw, 300px);
+  background: var(--bg);
+  z-index: 50;
+  transform: translateX(-105%);
+  transition: transform 0.24s ease;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 18px 40px;
+  box-shadow: 8px 0 28px rgba(0, 0, 0, 0.28);
+}
+.drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+.drawer-sub {
+  font-size: 12px;
+  color: var(--mist);
+  margin: 4px 0 14px;
+}
+
+.drawer-item {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.drawer-item .num {
+  font-size: 12px;
+  color: var(--mist);
+  font-variant-numeric: tabular-nums;
+  width: 18px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.drawer-item .t {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
+}
+.drawer-item .d {
+  font-size: 12px;
+  color: var(--mist);
+  margin-top: 3px;
+  line-height: 1.35;
+}
+.drawer-item.on .num,
+.drawer-item.on .t {
+  color: var(--leaf);
+}
+.drawer-item.on .t {
+  font-weight: 600;
+}
+.drawer-item.faint {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+body.drawer-lock {
+  overflow: hidden;
+  touch-action: none;
+}

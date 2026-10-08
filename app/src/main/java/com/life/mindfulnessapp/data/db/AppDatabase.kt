@@ -5,24 +5,33 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.life.mindfulnessapp.data.db.dao.AppLimitDao
-import com.life.mindfulnessapp.data.db.dao.FavoriteQuoteDao
 import com.life.mindfulnessapp.data.db.dao.LimitResetDao
+import com.life.mindfulnessapp.data.db.dao.PlanBlockDao
+import com.life.mindfulnessapp.data.db.dao.ScheduleItemDao
 import com.life.mindfulnessapp.data.db.dao.UsageRecordDao
 import com.life.mindfulnessapp.data.db.entity.AppLimitEntity
-import com.life.mindfulnessapp.data.db.entity.FavoriteQuoteEntity
 import com.life.mindfulnessapp.data.db.entity.LimitResetEntity
+import com.life.mindfulnessapp.data.db.entity.PlanBlockEntity
+import com.life.mindfulnessapp.data.db.entity.ScheduleItemEntity
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
 
 @Database(
-    entities = [AppLimitEntity::class, UsageRecordEntity::class, LimitResetEntity::class, FavoriteQuoteEntity::class],
-    version = 23,
+    entities = [
+        AppLimitEntity::class,
+        UsageRecordEntity::class,
+        LimitResetEntity::class,
+        PlanBlockEntity::class,
+        ScheduleItemEntity::class
+    ],
+    version = 41,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun appLimitDao(): AppLimitDao
     abstract fun usageRecordDao(): UsageRecordDao
     abstract fun limitResetDao(): LimitResetDao
-    abstract fun favoriteQuoteDao(): FavoriteQuoteDao
+    abstract fun planBlockDao(): PlanBlockDao
+    abstract fun scheduleItemDao(): ScheduleItemDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -343,6 +352,244 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE app_limits ADD COLUMN intentBlockKeywordsJson TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
+        /**
+         * 版本 23 → 24：移除未使用的 favorite_quotes（收藏改为服务端单向点赞）
+         */
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS favorite_quotes")
+            }
+        }
+
+        /**
+         * 版本 24 → 25：每 App 快捷意图（JSON）
+         */
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN quickIntentsJson TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
+        /**
+         * 版本 25 → 26：时间感知能力开关
+         */
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN timeAwarenessEnabled INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        /**
+         * 版本 26 → 27：拦截页快捷面板是否默认展开
+         */
+        val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN quickPanelDefaultExpanded INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        /**
+         * 版本 27 → 28：
+         * - usage_records.driftSeconds：对照跑偏时长（空转归类）
+         * - app_limits.shortSessionCompareEnabled：短时是否主动对照
+         */
+        val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE usage_records ADD COLUMN driftSeconds INTEGER")
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN shortSessionCompareEnabled INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        /** 版本 28 → 29：每 App 意图池配置（JSON） */
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN intentPoolJson TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
+        /**
+         * 版本 29 → 30：对照改为「开关 + 最低时长」
+         * - compareEnabled：默认开（对齐旧版满 10 分钟主动对照）
+         * - compareMinMinutes：默认 10；曾开「短时也要对照」的迁为 5
+         * - shortSessionCompareEnabled 列保留（实体仍声明，写入固定 false）
+         */
+        val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN compareEnabled INTEGER NOT NULL DEFAULT 1"
+                )
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN compareMinMinutes INTEGER NOT NULL DEFAULT 10"
+                )
+                db.execSQL(
+                    """
+                    UPDATE app_limits
+                    SET compareMinMinutes = 5
+                    WHERE shortSessionCompareEnabled = 1
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /** 版本 30 → 31：分身一并锁定开关（默认开） */
+        val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN lockClonesEnabled INTEGER NOT NULL DEFAULT 1"
+                )
+            }
+        }
+
+        /** 版本 31 → 32：守计划 plan_blocks 表 */
+        val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS plan_blocks (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        startMinute INTEGER NOT NULL,
+                        endMinute INTEGER NOT NULL,
+                        daysMask INTEGER NOT NULL DEFAULT 127,
+                        enabled INTEGER NOT NULL DEFAULT 1,
+                        packagesJson TEXT NOT NULL DEFAULT '[]',
+                        sortOrder INTEGER NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /** 版本 32 → 33：「随意浏览」专属策略 */
+        val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN browseCasualJson TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
+        /** 版本 33 → 34：守计划场景标签 + 为了 */
+        val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE plan_blocks ADD COLUMN scene TEXT NOT NULL DEFAULT 'LIFE'"
+                )
+                db.execSQL(
+                    "ALTER TABLE plan_blocks ADD COLUMN why TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
+        /** 版本 34 → 35：usage_records 门停留毫秒（使用日志「拦截停留」） */
+        val MIGRATION_34_35 = object : Migration(34, 35) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE usage_records ADD COLUMN gateDwellMs INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        /** 版本 35 → 36：下线时间感知运行时，清库并停用无其它能力的监控项 */
+        val MIGRATION_35_36 = object : Migration(35, 36) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE app_limits SET timeAwarenessEnabled = 0")
+                db.execSQL(
+                    """
+                    UPDATE app_limits SET isEnabled = 0
+                    WHERE requireIntentOnOpen = 0
+                      AND timeLimitEnabled = 0
+                      AND periodLockEnabled = 0
+                      AND dailyOpenLimitEnabled = 0
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /** 版本 36 → 37：曾加发现页屏蔽列；该功能已下线，列保留 */
+        val MIGRATION_36_37 = object : Migration(36, 37) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN blockDiscoverFeedEnabled INTEGER NOT NULL DEFAULT 1"
+                )
+            }
+        }
+
+        /** 版本 37 → 38：日程事项表 */
+        val MIGRATION_37_38 = object : Migration(37, 38) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS schedule_items (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        dayKey TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        note TEXT NOT NULL DEFAULT '',
+                        startMinute INTEGER,
+                        endMinute INTEGER,
+                        slot TEXT NOT NULL DEFAULT 'FORENOON',
+                        done INTEGER NOT NULL DEFAULT 0,
+                        sortOrder INTEGER NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_schedule_items_dayKey ON schedule_items(dayKey)"
+                )
+            }
+        }
+
+        /**
+         * 版本 38 → 39：加入前 7 日逐日用量快照（走势灰柱永久本地）
+         */
+        val MIGRATION_38_39 = object : Migration(38, 39) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN preJoinUsageJson TEXT NOT NULL DEFAULT ''"
+                )
+            }
+        }
+
+        /**
+         * 版本 39 → 40：配置最近改动时间（详情「今天改过」）
+         */
+        val MIGRATION_39_40 = object : Migration(39, 40) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE app_limits ADD COLUMN rulesUpdatedAt INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        /** 版本 40 → 41：日程锁锁定范围（已监控 / 指定 App） */
+        val MIGRATION_40_41 = object : Migration(40, 41) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE plan_blocks ADD COLUMN lockScope TEXT NOT NULL DEFAULT 'SPECIFIC'"
+                )
+                // 旧守计划都带包名，保持指定 App；无包名的极少，落成已监控
+                db.execSQL(
+                    """
+                    UPDATE plan_blocks
+                    SET lockScope = 'MONITORED'
+                    WHERE packagesJson = '[]' OR packagesJson = '' OR packagesJson IS NULL
+                    """.trimIndent()
                 )
             }
         }

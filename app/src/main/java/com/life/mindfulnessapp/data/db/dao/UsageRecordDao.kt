@@ -1,6 +1,8 @@
 package com.life.mindfulnessapp.data.db.dao
 
 import androidx.room.*
+import com.life.mindfulnessapp.data.db.entity.PurposeStatFullRow
+import com.life.mindfulnessapp.data.db.entity.PurposeStatRow
 import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -10,11 +12,125 @@ interface UsageRecordDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(record: UsageRecordEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(records: List<UsageRecordEntity>): List<Long>
+
     @Update
     suspend fun update(record: UsageRecordEntity)
 
     @Query("SELECT * FROM usage_records WHERE packageName = :packageName ORDER BY startTime DESC")
     fun getRecordsByApp(packageName: String): Flow<List<UsageRecordEntity>>
+
+    /** 按 App 聚合近期非空意图（不含搜索直达）；[todaySeconds] 为今日该意图已用秒数 */
+    @Query(
+        """
+        SELECT purpose AS purpose,
+               COUNT(*) AS useCount,
+               MAX(startTime) AS lastUsedAt,
+               COALESCE(SUM(
+                 CASE
+                   WHEN startTime >= :dayStartMs AND startTime < :dayEndMs AND endTime > 0
+                   THEN durationSeconds
+                   ELSE 0
+                 END
+               ), 0) AS todaySeconds
+        FROM usage_records
+        WHERE packageName = :packageName
+          AND purpose IS NOT NULL
+          AND TRIM(purpose) != ''
+          AND endReason != 'SEED_FROM_SYSTEM'
+          AND (intentKind IS NULL OR intentKind != 'SEARCH')
+        GROUP BY purpose
+        ORDER BY lastUsedAt DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getPurposeStats(
+        packageName: String,
+        dayStartMs: Long,
+        dayEndMs: Long,
+        limit: Int = 20
+    ): List<PurposeStatRow>
+
+    /** 按 App 聚合近期搜索直达词 */
+    @Query(
+        """
+        SELECT purpose AS purpose,
+               COUNT(*) AS useCount,
+               MAX(startTime) AS lastUsedAt,
+               COALESCE(SUM(
+                 CASE
+                   WHEN startTime >= :dayStartMs AND startTime < :dayEndMs AND endTime > 0
+                   THEN durationSeconds
+                   ELSE 0
+                 END
+               ), 0) AS todaySeconds
+        FROM usage_records
+        WHERE packageName = :packageName
+          AND purpose IS NOT NULL
+          AND TRIM(purpose) != ''
+          AND endReason != 'SEED_FROM_SYSTEM'
+          AND intentKind = 'SEARCH'
+        GROUP BY purpose
+        ORDER BY lastUsedAt DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getSearchPurposeStats(
+        packageName: String,
+        dayStartMs: Long,
+        dayEndMs: Long,
+        limit: Int = 20
+    ): List<PurposeStatRow>
+
+    /** 按 App 聚合全量非空意图（含累积时长） */
+    @Query(
+        """
+        SELECT purpose AS purpose,
+               COUNT(*) AS useCount,
+               COALESCE(SUM(durationSeconds), 0) AS totalSeconds,
+               COALESCE(SUM(
+                 CASE
+                   WHEN startTime >= :dayStartMs AND startTime < :dayEndMs AND endTime > 0
+                   THEN durationSeconds
+                   ELSE 0
+                 END
+               ), 0) AS todaySeconds,
+               MIN(startTime) AS firstUsedAt,
+               MAX(startTime) AS lastUsedAt
+        FROM usage_records
+        WHERE packageName = :packageName
+          AND purpose IS NOT NULL
+          AND TRIM(purpose) != ''
+          AND endReason != 'SEED_FROM_SYSTEM'
+          AND endTime > 0
+        GROUP BY purpose
+        ORDER BY totalSeconds DESC
+        """
+    )
+    suspend fun getPurposeStatsFull(
+        packageName: String,
+        dayStartMs: Long,
+        dayEndMs: Long
+    ): List<PurposeStatFullRow>
+
+    /** 查询指定意图文案集合的相关会话 */
+    @Query(
+        """
+        SELECT * FROM usage_records
+        WHERE packageName = :packageName
+          AND purpose IN (:purposes)
+          AND endTime > 0
+          AND endReason != 'SEED_FROM_SYSTEM'
+        ORDER BY startTime DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getRecordsForPurposes(
+        packageName: String,
+        purposes: List<String>,
+        limit: Int = 100
+    ): List<UsageRecordEntity>
 
     @Query("SELECT * FROM usage_records ORDER BY startTime DESC LIMIT :limit")
     fun getRecentRecords(limit: Int = 50): Flow<List<UsageRecordEntity>>
@@ -76,16 +192,48 @@ interface UsageRecordDao {
     @Query("DELETE FROM usage_records")
     suspend fun deleteAllRecords()
 
+    /** Debug：按包名 + 时间窗清掉演示数据，便于重复注入 */
+    @Query(
+        """
+        DELETE FROM usage_records
+        WHERE packageName IN (:packageNames)
+          AND startTime >= :startMs
+          AND startTime < :endMs
+        """
+    )
+    suspend fun deleteInRangeForPackages(
+        packageNames: List<String>,
+        startMs: Long,
+        endMs: Long
+    ): Int
+
     @Query("SELECT * FROM usage_records WHERE id = :id LIMIT 1")
     suspend fun getRecordById(id: Long): UsageRecordEntity?
+
+    /** 未收口记录（进行中约定 endTime=-1；兼容 ≤0 脏数据） */
+    @Query("SELECT * FROM usage_records WHERE endTime <= 0 ORDER BY startTime DESC")
+    suspend fun getOpenRecords(): List<UsageRecordEntity>
 
     /** 仅更新单条记录的备注字段，避免覆盖其他字段 */
     @Query("UPDATE usage_records SET note = :note WHERE id = :id")
     suspend fun updateNote(id: Long, note: String?)
 
-    /** 同时更新备注与对照档位 */
-    @Query("UPDATE usage_records SET note = :note, mindfulnessLevel = :mindfulnessLevel WHERE id = :id")
-    suspend fun updateNoteAndMindfulness(id: Long, note: String?, mindfulnessLevel: Int?)
+    /** 同时更新备注、对照档位与跑偏时长 */
+    @Query(
+        """
+        UPDATE usage_records
+        SET note = :note,
+            mindfulnessLevel = :mindfulnessLevel,
+            driftSeconds = :driftSeconds
+        WHERE id = :id
+        """
+    )
+    suspend fun updateNoteAndMindfulness(
+        id: Long,
+        note: String?,
+        mindfulnessLevel: Int?,
+        driftSeconds: Long?
+    )
 
     /** 仅更新单条记录的效果评分字段 */
     @Query("UPDATE usage_records SET effectScore = :score WHERE id = :id")
@@ -239,29 +387,19 @@ interface UsageRecordDao {
         dayEndMs: Long
     ): List<UsageRecordEntity>
 
-    /**
-     * 查询指定 App 近期填写过的 purpose（按时间倒序，含重复）。
-     * 去重与条数截断在 Repository 完成，保证「最近先出现」的顺序。
-     */
+    /** 含进行中（endTime ≤ 0）。门口次数要把还没收口的这一次算进去。 */
     @Query("""
-        SELECT purpose AS purpose
-        FROM usage_records
+        SELECT * FROM usage_records
         WHERE packageName = :packageName
-        AND purpose IS NOT NULL
-        AND purpose != ''
-        AND endTime > 0
+        AND startTime >= :dayStartMs
+        AND startTime < :dayEndMs
         ORDER BY startTime DESC
-        LIMIT :fetchLimit
     """)
-    suspend fun getRecentPurposesRaw(
+    suspend fun getDayRecordsForAppIncludingOpen(
         packageName: String,
-        fetchLimit: Int
-    ): List<PurposeOnly>
-
-    /** Room 查询投影：意图文案 */
-    data class PurposeOnly(
-        val purpose: String
-    )
+        dayStartMs: Long,
+        dayEndMs: Long
+    ): List<UsageRecordEntity>
 
     /**
      * 查询某天内「门外停下」的次数：意图门拦住后离开。
@@ -276,21 +414,61 @@ interface UsageRecordDao {
         AND (
             endReason = 'GATE_DISMISS'
             OR endReason = 'GATE_DISMISS_OWN_APP'
+            OR endReason = 'GATE_PASSIVE'
             OR (durationSeconds = 0 AND endReason = 'APP_CLOSED')
         )
     """)
     suspend fun getDayDismissCount(dayStartMs: Long, dayEndMs: Long): Int
 
     /**
-     * 查询指定时间点之后的所有已完成记录。
+     * 某 App 在某天内「门外停下」次数（口径同 [getDayDismissCount]）。
+     */
+    @Query("""
+        SELECT COUNT(*) FROM usage_records
+        WHERE packageName = :packageName
+        AND startTime >= :dayStartMs
+        AND startTime < :dayEndMs
+        AND endTime > 0
+        AND purpose IS NULL
+        AND (
+            endReason = 'GATE_DISMISS'
+            OR endReason = 'GATE_DISMISS_OWN_APP'
+            OR endReason = 'GATE_PASSIVE'
+            OR (durationSeconds = 0 AND endReason = 'APP_CLOSED')
+        )
+    """)
+    suspend fun getDayDismissCountForApp(
+        packageName: String,
+        dayStartMs: Long,
+        dayEndMs: Long
+    ): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM usage_records
+        WHERE startTime >= :dayStartMs
+        AND startTime < :dayEndMs
+        AND endReason = 'GATE_POSITIVE_EXIT'
+    """)
+    suspend fun getDayPositiveExitCount(dayStartMs: Long, dayEndMs: Long): Int
+
+    /**
+     * 查询某 App 在时间窗内的已完成记录（不含系统种子），按开始时间倒序。
+     * [endMsExclusive] 为开区间上界。
      */
     @Query("""
         SELECT * FROM usage_records
-        WHERE startTime >= :sinceMs
+        WHERE packageName = :packageName
         AND endTime > 0
+        AND endReason != 'SEED_FROM_SYSTEM'
+        AND startTime >= :startMs
+        AND startTime < :endMsExclusive
         ORDER BY startTime DESC
     """)
-    suspend fun getAllCompletedRecordsSince(sinceMs: Long): List<UsageRecordEntity>
+    suspend fun getCompletedRecordsForAppInRange(
+        packageName: String,
+        startMs: Long,
+        endMsExclusive: Long
+    ): List<UsageRecordEntity>
 
     /**
      * 查询某一天内指定 App 的所有已完成记录，按开始时间倒序（最新在上）。

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心锚 · Hub 快板 × App Pulse 草图</title>
+  <style>
+    :root {
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --accent: #26bb68;
+      --accent-bright: #43cc7e;
+      --line: rgba(255, 255, 255, 0.1);
+      --line-strong: rgba(38, 187, 104, 0.35);
+      --glass-top: rgba(18, 22, 28, 0.88);
+      --glass-bot: rgba(10, 12, 16, 0.78);
+      --field: rgba(255, 255, 255, 0.06);
+      --island: #0a0c0e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 18% 0%, rgba(38, 187, 104, 0.08) 0%, transparent 42%),
+        radial-gradient(ellipse at 82% 6%, rgba(80, 140, 200, 0.06) 0%, transparent 40%),
+        linear-gradient(180deg, #0c0e12, #050608 72%);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 72px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    .hero { text-align: center; max-width: 540px; margin: 0 auto 28px; }
+    .hero .eyebrow {
+      font-size: 11px; font-weight: 650; letter-spacing: 0.14em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+    }
+    .hero h1 {
+      font-size: 22px; font-weight: 650; letter-spacing: -0.02em;
+    }
+    .hero p {
+      margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.6;
+    }
+
+    .stage-row {
+      display: flex; flex-wrap: wrap; gap: 18px; justify-content: center;
+      align-items: flex-start;
+    }
+    .phone-wrap { width: min(300px, 100%); }
+    .phone-wrap .label {
+      text-align: center; font-size: 12px; color: var(--muted);
+      font-weight: 600; margin-bottom: 10px; letter-spacing: 0.02em;
+    }
+    .phone-wrap .cap {
+      margin-top: 12px; font-size: 12px; color: var(--dim);
+      text-align: center; line-height: 1.5;
+    }
+    .phone {
+      background: #000;
+      border: 1px solid #2a2a2c;
+      border-radius: 36px;
+      padding: 12px 10px 16px;
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+      position: relative;
+      overflow: hidden;
+    }
+    .statusbar {
+      height: 22px; display: flex; justify-content: space-between;
+      padding: 0 14px; font-size: 11px; color: #aeaeb2; font-weight: 600;
+    }
+    .wallpaper {
+      margin-top: 8px; height: 520px; border-radius: 22px;
+      border: 1px solid #1e2024; position: relative; overflow: hidden;
+    }
+    .wallpaper.desk {
+      background:
+        radial-gradient(circle at 70% 78%, rgba(38, 187, 104, 0.07), transparent 28%),
+        linear-gradient(165deg, #1a2420 0%, #101418 42%, #0b0c0e 100%);
+    }
+    .wallpaper.app {
+      background:
+        linear-gradient(160deg, #1c2430 0%, #12161c 48%, #0b0c0e 100%);
+    }
+    .wallpaper.app::before {
+      content: "微信";
+      position: absolute; inset: 0;
+      display: grid; place-content: center;
+      font-size: 48px; font-weight: 200; color: rgba(255,255,255,0.06);
+      letter-spacing: 0.2em;
+    }
+
+    /* ── Hub / Pulse glass panel ── */
+    .panel {
+      position: absolute; right: 12px; bottom: 64px; width: 82%;
+      border-radius: 22px;
+      padding: 12px 12px 10px;
+      background:
+        linear-gradient(165deg, rgba(22,26,32,.92), rgba(10,12,16,.82));
+      border: 1px solid transparent;
+      background-clip: padding-box;
+      box-shadow:
+        0 0 0 1px rgba(38, 187, 104, 0.22),
+        inset 0 1px 0 rgba(255,255,255,.14),
+        0 0 28px rgba(38, 187, 104, 0.12),
+        0 18px 48px rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(22px);
+      animation: rise 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+      transform-origin: 90% 100%;
+      overflow: hidden;
+    }
+    .panel::before {
+      content: "";
+      position: absolute; left: 8%; right: 8%; top: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), rgba(38,187,104,.55), transparent);
+      pointer-events: none;
+    }
+    .panel.pulse-full {
+      left: 10px; right: 10px; width: auto; bottom: 58px; top: 48px;
+      display: flex; flex-direction: column;
+      animation: slide 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: scale(0.88) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes slide {
+      from { opacity: 0; transform: translateX(18px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .panel-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .panel-head h3 {
+      font-size: 13px; font-weight: 650; letter-spacing: 0.01em;
+    }
+    .panel-head .link {
+      font-size: 11px; color: var(--accent-bright); font-weight: 650;
+      cursor: pointer;
+    }
+    .panel-head .back {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; color: var(--muted); font-weight: 600; cursor: pointer;
+    }
+
+    /* session header (in-app only) */
+    .session {
+      display: grid; grid-template-columns: 40px 1fr auto;
+      gap: 10px; align-items: center;
+      padding: 10px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(38,187,104,0.1), rgba(255,255,255,0.03));
+      border: 1px solid rgba(38, 187, 104, 0.22);
+      margin-bottom: 12px;
+      position: relative; overflow: hidden;
+    }
+    .session::after {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(105deg, transparent 40%, rgba(38,187,104,0.08) 50%, transparent 60%);
+      animation: scan 3.6s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes scan {
+      0%, 100% { transform: translateX(-40%); opacity: 0; }
+      40% { opacity: 1; }
+      70% { transform: translateX(40%); opacity: 0; }
+    }
+    .session .ico {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: #1aad19; display: grid; place-items: center;
+      font-size: 13px; font-weight: 700; color: #fff;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.12);
+    }
+    .session .meta .name { font-size: 13px; font-weight: 650; }
+    .session .meta .sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .session .live {
+      text-align: right;
+    }
+    .session .live .t {
+      font-size: 16px; font-weight: 700; color: var(--accent-bright);
+      font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+    }
+    .session .live .l {
+      font-size: 10px; color: var(--muted); margin-top: 2px;
+    }
+
+    /* app usage strip */
+    .apps {
+      display: flex; justify-content: space-between; gap: 4px;
+      margin-bottom: 12px;
+    }
+    .cell { flex: 1; text-align: center; cursor: pointer; }
+    .cell .ico {
+      width: 36px; height: 36px; margin: 0 auto; border-radius: 10px;
+      display: grid; place-items: center; font-size: 11px; font-weight: 700;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .cell .bar {
+      width: 28px; height: 3px; margin: 6px auto 3px; border-radius: 2px;
+      background: rgba(38, 187, 104, 0.14); overflow: hidden;
+    }
+    .cell .bar i {
+      display: block; height: 100%; background: var(--accent);
+      border-radius: 2px;
+      box-shadow: 0 0 8px rgba(38, 187, 104, 0.45);
+    }
+    .cell .min { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .c-wx { background: #1aad19; color: #fff; }
+    .c-dy { background: #161823; color: #fff; border-color: #fe2c55 !important; }
+    .c-xh { background: #ff2442; color: #fff; }
+    .c-bi { background: #fb7299; color: #fff; }
+    .c-tb { background: #ff5000; color: #fff; }
+
+    /* tool grid */
+    .tools {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .tool {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 11px; border-radius: 14px;
+      background: var(--field);
+      border: 1px solid var(--line);
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .tool:hover { border-color: rgba(38, 187, 104, 0.35); }
+    .tool .glyph {
+      width: 28px; height: 28px; border-radius: 9px;
+      display: grid; place-items: center;
+      background: rgba(38, 187, 104, 0.12);
+      border: 1px solid rgba(38, 187, 104, 0.22);
+      font-size: 13px;
+    }
+    .tool .t-name { font-size: 12px; font-weight: 650; }
+    .tool .t-sub { font-size: 10px; color: var(--dim); margin-top: 1px; }
+
+    .hint-row {
+      margin-top: 10px; display: flex; justify-content: space-between;
+      align-items: center;
+    }
+    .hint-row span { font-size: 11px; color: var(--dim); }
+    .hint-row .dismiss {
+      font-size: 11px; color: var(--muted); cursor: pointer;
+    }
+
+    /* ── Pulse detail ── */
+    .pulse-stats {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;
+      margin-bottom: 12px;
+    }
+    .stat {
+      padding: 10px 8px; border-radius: 12px; background: var(--field);
+      border: 1px solid var(--line); text-align: center;
+    }
+    .stat .v {
+      font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
+    }
+    .stat .v.accent { color: var(--accent-bright); }
+    .stat .k { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
+    .section-label {
+      font-size: 11px; color: var(--muted); font-weight: 600;
+      margin-bottom: 8px; letter-spacing: 0.02em;
+    }
+    .timeline {
+      flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 6px;
+      min-height: 0;
+    }
+    .row-s {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; border-radius: 12px;
+      background: var(--field); border: 1px solid transparent;
+    }
+    .row-s.live {
+      border-color: rgba(38, 187, 104, 0.3);
+      background: rgba(38, 187, 104, 0.08);
+    }
+    .row-s .time { font-size: 12px; color: rgba(242,242,247,0.82); font-variant-numeric: tabular-nums; }
+    .row-s .dur { font-size: 12px; font-weight: 650; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .row-s.live .dur { color: var(--accent-bright); }
+
+    .pulse-foot {
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .pulse-foot .chip {
+      font-size: 11px; color: var(--muted);
+      padding: 5px 10px; border-radius: 999px;
+      background: var(--field); border: 1px solid var(--line);
+    }
+    .pulse-foot .go {
+      font-size: 12px; color: var(--accent-bright); font-weight: 650; cursor: pointer;
+    }
+
+    /* orb */
+    .orb {
+      position: absolute; right: 18px; bottom: 18px;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(8, 10, 12, 0.72);
+      border: 1px solid rgba(38, 187, 104, 0.4);
+      display: grid; place-items: center;
+      box-shadow: 0 0 16px rgba(38, 187, 104, 0.18), 0 8px 20px rgba(0,0,0,0.4);
+      z-index: 2;
+    }
+    .orb.spin::before {
+      content: "";
+      position: absolute; inset: -3px; border-radius: 50%;
+      border: 1.5px solid transparent;
+      border-top-color: var(--accent);
+      border-right-color: rgba(38, 187, 104, 0.25);
+      animation: spin 2.4s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .orb .anchor { color: var(--accent); font-size: 14px; line-height: 1; }
+    .orb .app-dot {
+      width: 22px; height: 22px; border-radius: 7px;
+      background: #1aad19; color: #fff; font-size: 9px; font-weight: 700;
+      display: grid; place-items: center;
+    }
+
+    .scene { display: block; }
+
+    .legend {
+      margin: 36px auto 0; max-width: 640px;
+      padding: 16px 18px; border-radius: 16px;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--line);
+      font-size: 13px; color: var(--muted); line-height: 1.65;
+    }
+    .legend strong { color: var(--ink); font-weight: 650; }
+    .legend ol { margin: 10px 0 0 18px; }
+    .legend li { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Anchor Hub · App Pulse</div>
+      <h1>场景快板 × 共用详情</h1>
+      <p>桌面是快捷枢纽；无意图门使用中多一截当前会话；点关注 App 进入同一套 App Pulse 详情形态。</p>
+    </header>
+
+    <div class="stage-row">
+      <!-- ① Desktop Hub -->
+      <div class="phone-wrap scene" id="scene-desk">
+        <div class="label">① 桌面 · Hub</div>
+        <div class="phone">
+          <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+          <div class="wallpaper desk">
+            <div class="panel">
+              <div class="panel-head">
+                <h3>今日 · 1时31分</h3>
+                <span class="link">打开心锚</span>
+              </div>
+              <div class="apps">
+                <div class="cell" data-to="pulse" title="进入详情">
+                  <div class="ico c-wx">微</div>
+                  <div class="bar"><i style="width:100%"></i></div>
+                  <div class="min">38分</div>
+                </div>
+                <div class="cell" data-to="pulse">
+                  <div class="ico c-dy">抖</div>
+                  <div class="bar"><i style="width:58%"></i></div>
+                  <div class="min">22分</div>
+                </div>
+                <div class="cell" data-to="pulse">
+                  <div class="ico c-xh">红</div>
+                  <div class="bar"><i style="width:40%"></i></div>
+                  <div class="min">15分</div>
+                </div>
+                <div class="cell" data-to="pulse">
+                  <div class="ico c-bi">B</div>
+                  <div class="bar"><i style="width:26%"></i></div>
+                  <div class="min">10分</div>
+                </div>
+                <div class="cell" data-to="pulse">
+                  <div class="ico c-tb">淘</div>
+                  <div class="bar"><i style="width:16%"></i></div>
+                  <div class="min">6分</div>
+                </div>
+              </div>
+              <div class="tools">
+                <div class="tool">
+                  <div class="glyph">▣</div>
+                  <div>
+                    <div class="t-name">使用量</div>
+                    <div class="t-sub">日报告 / 探索</div>
+                  </div>
+                </div>
+                <div class="tool">
+                  <div class="glyph">⧉</div>
+                  <div>
+                    <div class="t-name">剪贴板</div>
+                    <div class="t-sub">最近复制</div>
+                  </div>
+                </div>
+              </div>
+              <div class="hint-row">
+                <span>点图标 → App Pulse</span>
+                <span class="dismiss">收起</span>
+              </div>
+            </div>
+            <div class="orb"><span class="anchor">⚓</span></div>
+          </div>
+        </div>
+        <p class="cap">无笔记/待办。工具区两格：用量总览 + 剪贴板。关注 App 是二级入口。</p>
+      </div>
+
+      <!-- ② In-app Hub -->
+      <div class="phone-wrap scene" id="scene-inapp">
+        <div class="label">② 无意图门 · App 内 Hub</div>
+        <div class="phone">
+          <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+          <div class="wallpaper app">
+            <div class="panel">
+              <div class="session">
+                <div class="ico">微</div>
+                <div class="meta">
+                  <div class="name">微信</div>
+                  <div class="sub">进行中 · 今日已 38 分</div>
+                </div>
+                <div class="live">
+                  <div class="t">12:48</div>
+                  <div class="l">本次</div>
+                </div>
+              </div>
+              <div class="panel-head" style="margin-bottom:8px">
+                <h3 style="font-size:12px;color:var(--muted);font-weight:600">快捷入口</h3>
+                <span class="link" data-to="pulse">详情</span>
+              </div>
+              <div class="apps" style="margin-bottom:10px">
+                <div class="cell" data-to="pulse">
+                  <div class="ico c-wx">微</div>
+                  <div class="bar"><i style="width:100%"></i></div>
+                  <div class="min">38分</div>
+                </div>
+                <div class="cell" data-to="pulse">
+                  <div class="ico c-dy">抖</div>
+                  <div class="bar"><i style="width:58%"></i></div>
+                  <div class="min">22分</div>
+                </div>
+                <div class="cell" data-to="pulse">
+                  <div class="ico c-xh">红</div>
+                  <div class="bar"><i style="width:40%"></i></div>
+                  <div class="min">15分</div>
+                </div>
+                <div class="cell" data-to="pulse">
+                  <div class="ico c-bi">B</div>
+                  <div class="bar"><i style="width:26%"></i></div>
+                  <div class="min">10分</div>
+                </div>
+                <div class="cell" data-to="pulse">
+                  <div class="ico c-tb">淘</div>
+                  <div class="bar"><i style="width:16%"></i></div>
+                  <div class="min">6分</div>
+                </div>
+              </div>
+              <div class="tools">
+                <div class="tool">
+                  <div class="glyph">▣</div>
+                  <div>
+                    <div class="t-name">使用量</div>
+                    <div class="t-sub">日报告 / 探索</div>
+                  </div>
+                </div>
+                <div class="tool">
+                  <div class="glyph">⧉</div>
+                  <div>
+                    <div class="t-name">剪贴板</div>
+                    <div class="t-sub">最近复制</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="orb spin"><span class="app-dot">微</span></div>
+          </div>
+        </div>
+        <p class="cap">与桌面同一套 Hub 体；顶部多一块当前会话（本次时长强调）。「详情」进 Pulse。</p>
+      </div>
+
+      <!-- ③ App Pulse -->
+      <div class="phone-wrap scene" id="scene-pulse">
+        <div class="label">③ App Pulse · 共用详情</div>
+        <div class="phone">
+          <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+          <div class="wallpaper app">
+            <div class="panel pulse-full">
+              <div class="panel-head">
+                <span class="back" data-to="inapp">← 返回</span>
+                <h3>微信</h3>
+                <span class="link">打开心锚</span>
+              </div>
+              <div class="session" style="margin-bottom:12px">
+                <div class="ico">微</div>
+                <div class="meta">
+                  <div class="name">本次进行中</div>
+                  <div class="sub">自 09:28 起</div>
+                </div>
+                <div class="live">
+                  <div class="t">12:48</div>
+                  <div class="l">跳动</div>
+                </div>
+              </div>
+              <div class="pulse-stats">
+                <div class="stat"><div class="v accent">38分</div><div class="k">今日累计</div></div>
+                <div class="stat"><div class="v">6次</div><div class="k">打开</div></div>
+                <div class="stat"><div class="v">12分</div><div class="k">本次</div></div>
+              </div>
+              <div class="section-label">今日使用记录</div>
+              <div class="timeline">
+                <div class="row-s live">
+                  <span class="time">09:28 – 现在</span>
+                  <span class="dur">12:48</span>
+                </div>
+                <div class="row-s">
+                  <span class="time">08:14 – 08:31</span>
+                  <span class="dur">17分</span>
+                </div>
+                <div class="row-s">
+                  <span class="time">07:42 – 07:48</span>
+                  <span class="dur">6分</span>
+                </div>
+                <div class="row-s">
+                  <span class="time">昨夜 23:10 – 23:22</span>
+                  <span class="dur">12分</span>
+                </div>
+              </div>
+              <div class="pulse-foot">
+                <span class="chip">关注中 · 无意图门</span>
+                <span class="go">完整报告 →</span>
+              </div>
+            </div>
+            <div class="orb spin"><span class="app-dot">微</span></div>
+          </div>
+        </div>
+        <p class="cap">桌面点图标、App 内点「详情」共用此形态。使用中多「进行中」语境条；桌面进入时可隐去该条。</p>
+      </div>
+    </div>
+
+    <aside class="legend">
+      <strong>交互关系</strong>
+      <ol>
+        <li>桌面点心锚 → Hub 基础版（用量带 + 工具格）</li>
+        <li>无意图门 App 内点心锚 → 同 Hub + 当前会话头</li>
+        <li>Hub 内点关注 App /「详情」→ 推入 App Pulse（二级，可返回）</li>
+        <li>有意图门会话仍走胶囊/灵动岛，不占此快板</li>
+      </ol>
+    </aside>
+  </div>
+
+  <script>
+    document.querySelectorAll("[data-to]").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const target = document.getElementById("scene-" + el.dataset.to);
+        if (target) target.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>发现 · 目录与子模块</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --leaf-soft: rgba(61,122,74,.14);
+      --sand: #c4a35a; --line: rgba(232,237,230,.12);
+      --hold: #c4a35a; --search: #7eb8c9; --write: #a8b4c4; --browse: #c47a9a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 80px;
+    }
+    .wrap { max-width: 1140px; margin: 0 auto; display: grid; gap: 42px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px;
+    }
+    .hero h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: var(--leaf-soft); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+
+    .map {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px 18px; font-size: 12px; color: var(--fog); line-height: 1.7;
+      font-family: ui-monospace, Menlo, monospace;
+    }
+    .map b { color: var(--paper); font-weight: 600; font-family: "SF Pro Text", "PingFang SC", sans-serif; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start; }
+    .row4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: start; }
+    @media (max-width: 960px) {
+      .row2, .row3, .row4 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 280px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+    .pick, .drop {
+      display: inline-block; margin-top: 6px; font-size: 11px;
+      padding: 2px 8px; border-radius: 999px;
+    }
+    .pick { color: var(--leaf-text); border: 1px solid rgba(61,122,74,.4); }
+    .drop { color: #c47a6a; border: 1px solid rgba(196,122,106,.4); }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9/17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .phone.tall { aspect-ratio: 9/18.2; }
+    .bar {
+      height: 28px; padding: 10px 14px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex: none;
+    }
+    .body { flex: 1; padding: 2px 18px 10px; display: flex; flex-direction: column; min-height: 0; }
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500;
+    }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 8px; }
+    .sub { font-size: 12px; color: var(--fog); margin-top: 2px; line-height: 1.4; }
+    .sec-lab {
+      font-size: 10px; color: var(--mist); letter-spacing: .06em;
+      margin-top: 18px; margin-bottom: 4px;
+    }
+    .sec-lab.first { margin-top: 14px; }
+
+    .rowi {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 13px 0; border-bottom: 1px solid var(--line); gap: 10px;
+    }
+    .rowi .n { font-size: 15px; font-weight: 500; }
+    .rowi .m { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.35; }
+    .rowi .r { font-size: 12px; color: rgba(232,237,230,.4); }
+    .rowi.quiet .n { font-size: 13px; font-weight: 400; color: rgba(232,237,230,.55); }
+    .rowi.quiet .m { color: rgba(232,237,230,.28); }
+
+    .nav {
+      margin-top: auto; display: flex; justify-content: space-around;
+      padding: 10px 0 4px; border-top: 1px solid var(--line);
+      font-size: 10px; color: var(--mist);
+    }
+    .nav .on { color: var(--leaf-text); font-weight: 600; }
+
+    /* 这一周 */
+    .chips {
+      display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;
+    }
+    .chip {
+      font-size: 12px; color: rgba(232,237,230,.4); padding: 4px 0;
+      border-bottom: 1px solid transparent;
+    }
+    .chip.on {
+      color: var(--paper); font-weight: 600;
+      border-bottom-color: rgba(232,237,230,.35);
+    }
+    .big-row {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+      margin-top: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line);
+    }
+    .big-row .c { text-align: center; }
+    .big-row .n {
+      font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums;
+      letter-spacing: -.02em;
+    }
+    .big-row .l { font-size: 10px; color: var(--mist); margin-top: 3px; }
+    .bars {
+      margin-top: 14px; display: flex; align-items: flex-end; gap: 5px; height: 72px;
+    }
+    .bars i {
+      flex: 1; border-radius: 2px 2px 0 0; background: rgba(61,122,74,.45);
+      font-style: normal;
+    }
+    .bars .lbl {
+      display: flex; justify-content: space-between; margin-top: 6px;
+      font-size: 9px; color: var(--mist);
+    }
+    .split {
+      margin-top: 14px; display: flex; flex-direction: column; gap: 0;
+    }
+    .split .s {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+    }
+    .split .s .k { color: var(--fog); }
+    .split .s .v { font-variant-numeric: tabular-nums; color: var(--paper); font-weight: 500; }
+    .split .s .bar {
+      margin-top: 6px; height: 3px; border-radius: 2px;
+      background: rgba(255,255,255,.06); overflow: hidden;
+    }
+    .split .s .bar b { display: block; height: 100%; border-radius: 2px; }
+
+    .link { font-size: 12px; color: rgba(232,237,230,.45); margin-top: 14px; }
+
+    /* 日程锁简页 */
+    .lock-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 12px 0; border-bottom: 1px solid var(--line);
+    }
+    .lock-row .n { font-size: 14px; font-weight: 500; }
+    .lock-row .m { font-size: 11px; color: var(--mist); margin-top: 3px; }
+    .lock-row .tag {
+      font-size: 11px; color: var(--sand);
+    }
+    .cta { font-size: 14px; color: var(--leaf-text); margin-top: 16px; }
+
+    .bad { outline: 1px dashed rgba(196,122,106,.45); outline-offset: 6px; border-radius: 8px; }
+    .x { color: #c47a6a; font-size: 11px; margin-top: 8px; text-align: center; }
+
+    .grid-feed {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;
+    }
+    .card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 10px;
+      font-size: 12px; min-height: 72px;
+    }
+    .card .t { font-weight: 600; margin-bottom: 4px; }
+    .card .d { font-size: 10px; color: var(--mist); }
+
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.7; max-width: 760px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); }
+
+    .rules {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+      max-width: 760px; margin: 0 auto;
+    }
+    @media (max-width: 700px) { .rules { grid-template-columns: 1fr; } }
+    .rule {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.65;
+    }
+    .rule h4 { font-size: 13px; margin-bottom: 8px; }
+    .rule.keep h4 { color: var(--leaf-text); }
+    .rule.drop h4 { color: #c47a6a; }
+    .rule li { list-style: none; padding: 3px 0; }
+    .rule li::before { content: "· "; color: var(--mist); }
+
+    .cap {
+      max-width: 680px; margin: 0 auto; font-size: 12px; color: var(--mist);
+      text-align: center; line-height: 1.65;
+    }
+    .cap strong { color: var(--sand); font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">发现 · 规划草图</div>
+      <h1>低频工具抽屉 · 不是信息流</h1>
+      <p>
+        底栏第三格改为「发现」。上面是会动规则或看见结构的工具；
+        下面淡挂氛围。今日仍是每天的镜子，发现是偶尔进去的地方。
+      </p>
+      <div class="thesis">目录 · 两区 · 子页下钻一次</div>
+    </header>
+
+    <div>
+      <div class="sec" style="margin-bottom:12px"><strong>底栏与地图</strong></div>
+      <div class="map">
+        <b>底栏</b>　今日　·　方案　·　<strong style="color:var(--leaf-text)">发现</strong>　·　我<br /><br />
+        <b>发现</b><br />
+        　工具<br />
+        　　这一周　›　默认近 7 日切片（事件 / App / 日）；可扩周/月<br />
+        　　日程锁　›　既有列表与编辑（从 Tab 降为子页）<br />
+        　氛围（淡）<br />
+        　　名言　·　壁纸　›　仍是试玩；也可从「我 · 设置 · 试验」进<br /><br />
+        <b>不进发现</b>　今日收据 · 方案配置 · 权限基建
+      </div>
+    </div>
+
+    <div>
+      <div class="sec" style="margin-bottom:14px"><strong>立面取舍</strong></div>
+      <div class="rules">
+        <div class="rule keep">
+          <h4>留下</h4>
+          <ul>
+            <li>目录脊线：名 · 一句现状 · ›</li>
+            <li>工具区在上，氛围区在下、更淡</li>
+            <li>子页只下钻一拍，返回发现</li>
+            <li>这一周先做固定三刀，不做通用分析台</li>
+            <li>日程锁形态沿用，只改入口</li>
+          </ul>
+        </div>
+        <div class="rule drop">
+          <h4>拿掉</h4>
+          <ul>
+            <li>运营瀑布 / 双列卡片货架</li>
+            <li>名言壁纸与总览同权重大卡</li>
+            <li>发现页内嵌完整周图（应下钻）</li>
+            <li>第四个「探索」再套一层</li>
+            <li>成绩单 streak、排行榜语气</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ① 发现目录 -->
+    <div>
+      <div class="sec"><strong>① 发现 · 主表面</strong>　目录两区</div>
+      <div class="row3" style="margin-top:18px">
+        <div>
+          <div class="col-head">
+            <h3>取 · 脊线目录</h3>
+            <p>工具清楚 · 氛围退后</p>
+            <span class="pick">推荐</span>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">发现</div>
+
+              <div class="sec-lab first">工具</div>
+              <div class="rowi">
+                <div>
+                  <div class="n">这一周</div>
+                  <div class="m">守住 12 · 刷 28</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">日程锁</div>
+                  <div class="m">生效中 · 午休 12:30–13:30</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+
+              <div class="sec-lab">氛围</div>
+              <div class="rowi quiet">
+                <div>
+                  <div class="n">名言</div>
+                  <div class="m">推送已开</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="rowi quiet" style="border-bottom:none">
+                <div>
+                  <div class="n">壁纸</div>
+                  <div class="m">已设一张</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+
+              <div class="nav">
+                <span>今日</span><span>方案</span><span class="on">发现</span><span>我</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>空态 · 无锁无数据</h3>
+            <p>仍有目录，副文更淡</p>
+            <span class="pick">同骨架</span>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">发现</div>
+
+              <div class="sec-lab first">工具</div>
+              <div class="rowi">
+                <div>
+                  <div class="n">这一周</div>
+                  <div class="m">还没有门口</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">日程锁</div>
+                  <div class="m">还没有</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+
+              <div class="sec-lab">氛围</div>
+              <div class="rowi quiet">
+                <div>
+                  <div class="n">名言</div>
+                  <div class="m">未开推送</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="rowi quiet" style="border-bottom:none">
+                <div>
+                  <div class="n">壁纸</div>
+                  <div class="m">未设置</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+
+              <div class="nav">
+                <span>今日</span><span>方案</span><span class="on">发现</span><span>我</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>不好 · 货架</h3>
+            <p>双列卡 · 氛围抢权</p>
+            <span class="drop">不取</span>
+          </div>
+          <div class="phone bad">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">发现</div>
+              <div class="grid-feed">
+                <div class="card"><div class="t">这一周</div><div class="d">图表预览</div></div>
+                <div class="card"><div class="t">日程锁</div><div class="d">2 个生效</div></div>
+                <div class="card"><div class="t">名言</div><div class="d">今日一句</div></div>
+                <div class="card"><div class="t">壁纸</div><div class="d">换一张</div></div>
+              </div>
+              <div class="sub" style="margin-top:14px">再往下是运营位…</div>
+              <div class="nav" style="margin-top:auto">
+                <span>今日</span><span>方案</span><span class="on">发现</span><span>我</span>
+              </div>
+            </div>
+          </div>
+          <p class="x">× 发现变成应用商店</p>
+        </div>
+      </div>
+      <p class="cap" style="margin-top:16px">
+        <strong>文案：</strong>框内只写事实与现状（守住 12 · 刷 28 / 生效中 · …）。
+        设计旁白（「偶尔来看」「不抢每日」「不是门槛」）只写在框外 note，<strong>永不进 App</strong>。
+      </p>
+    </div>
+
+    <!-- ② 这一周 -->
+    <div>
+      <div class="sec"><strong>② 子模块 · 这一周</strong>　固定三刀 · 不作通用分析台</div>
+      <div class="row3" style="margin-top:18px">
+        <div>
+          <div class="col-head">
+            <h3>事件</h3>
+            <p>门口四类合计 · 默认刀</p>
+            <span class="pick">默认</span>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 发现</div>
+              <div class="brand" style="font-size:20px">这一周</div>
+              <div class="sub">10 月 2 日 – 10 月 8 日</div>
+              <div class="chips">
+                <span class="chip on">事件</span>
+                <span class="chip">App</span>
+                <span class="chip">按日</span>
+              </div>
+              <div class="big-row">
+                <div class="c"><div class="n" style="color:var(--hold)">12</div><div class="l">守住</div></div>
+                <div class="c"><div class="n" style="color:var(--search)">5</div><div class="l">搜索</div></div>
+                <div class="c"><div class="n">9</div><div class="l">写下</div></div>
+                <div class="c"><div class="n" style="color:var(--browse)">28</div><div class="l">刷一刷</div></div>
+              </div>
+              <div class="split">
+                <div class="s">
+                  <div style="flex:1">
+                    <div style="display:flex;justify-content:space-between"><span class="k">刷一刷</span><span class="v">28 · 52%</span></div>
+                    <div class="bar"><b style="width:52%;background:var(--browse)"></b></div>
+                  </div>
+                </div>
+                <div class="s">
+                  <div style="flex:1">
+                    <div style="display:flex;justify-content:space-between"><span class="k">守住</span><span class="v">12 · 22%</span></div>
+                    <div class="bar"><b style="width:22%;background:var(--hold)"></b></div>
+                  </div>
+                </div>
+                <div class="s">
+                  <div style="flex:1">
+                    <div style="display:flex;justify-content:space-between"><span class="k">写下意图</span><span class="v">9 · 17%</span></div>
+                    <div class="bar"><b style="width:17%;background:var(--write)"></b></div>
+                  </div>
+                </div>
+                <div class="s" style="border:none">
+                  <div style="flex:1">
+                    <div style="display:flex;justify-content:space-between"><span class="k">搜索</span><span class="v">5 · 9%</span></div>
+                    <div class="bar"><b style="width:9%;background:var(--search)"></b></div>
+                  </div>
+                </div>
+              </div>
+              <div class="link">看某一天 ›</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>App</h3>
+            <p>谁占门口最多</p>
+            <span class="pick">第二刀</span>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 发现</div>
+              <div class="brand" style="font-size:20px">这一周</div>
+              <div class="sub">10 月 2 日 – 10 月 8 日</div>
+              <div class="chips">
+                <span class="chip">事件</span>
+                <span class="chip on">App</span>
+                <span class="chip">按日</span>
+              </div>
+              <div class="rowi" style="margin-top:8px">
+                <div>
+                  <div class="n">小红书</div>
+                  <div class="m">守住 8 · 进入 22</div>
+                </div>
+                <div class="r">1.4 时</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">抖音</div>
+                  <div class="m">守住 3 · 进入 14</div>
+                </div>
+                <div class="r">52 分</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">哔哩哔哩</div>
+                  <div class="m">守住 1 · 进入 6</div>
+                </div>
+                <div class="r">28 分</div>
+              </div>
+              <div class="link">点行 → 该 App 的今天收据窄镜（或详情）</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>按日</h3>
+            <p>七根柱 · 点进当天收据</p>
+            <span class="pick">第三刀</span>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 发现</div>
+              <div class="brand" style="font-size:20px">这一周</div>
+              <div class="sub">10 月 2 日 – 10 月 8 日</div>
+              <div class="chips">
+                <span class="chip">事件</span>
+                <span class="chip">App</span>
+                <span class="chip on">按日</span>
+              </div>
+              <div style="margin-top:16px">
+                <div class="bars">
+                  <i style="height:40%"></i>
+                  <i style="height:55%"></i>
+                  <i style="height:35%"></i>
+                  <i style="height:70%"></i>
+                  <i style="height:48%"></i>
+                  <i style="height:85%"></i>
+                  <i style="height:60%;background:rgba(61,122,74,.75)"></i>
+                </div>
+                <div class="bars lbl">
+                  <span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span><span>一</span>
+                </div>
+              </div>
+              <div class="sub" style="margin-top:14px">选中 · 10 月 7 日</div>
+              <div class="rowi">
+                <div>
+                  <div class="n" style="font-size:14px">守住 3 · 进入 8</div>
+                  <div class="m">刷一刷偏多</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="link">打开当天收据 ›</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="cap" style="margin-top:16px">
+        <strong>范围：</strong>默认滚动近 7 日（副文写起止日期，不写「近 7 日」说教）。
+        以后可加「上一周 / 近 30 日」切换；第一版不必上任意选段。
+        硬挡挂事件刀最淡一行，不进四英雄数。
+      </p>
+    </div>
+
+    <!-- ③ 日程锁 -->
+    <div>
+      <div class="sec"><strong>③ 子模块 · 日程锁</strong>　从 Tab 降为发现子页</div>
+      <div class="row2" style="margin-top:18px; max-width:620px; margin-left:auto; margin-right:auto">
+        <div>
+          <div class="col-head">
+            <h3>有锁</h3>
+            <p>列表骨架沿用 · 返回发现</p>
+            <span class="pick">入口改 · 壳不重做</span>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 发现</div>
+              <div class="brand" style="font-size:20px">日程锁</div>
+              <div class="sub">按时段拦住已监控的 App</div>
+              <div class="lock-row" style="margin-top:10px">
+                <div>
+                  <div class="n">午休</div>
+                  <div class="m">12:30–13:30 · 全部少</div>
+                </div>
+                <div class="tag">生效中</div>
+              </div>
+              <div class="lock-row">
+                <div>
+                  <div class="n">晚饭后</div>
+                  <div class="m">19:00–21:00 · 抖音 · 小红书</div>
+                </div>
+                <div class="r" style="font-size:12px;color:var(--mist)">›</div>
+              </div>
+              <div class="cta">添加日程锁</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>与桌面球</h3>
+            <p>生效中仍可从球进编辑</p>
+          </div>
+          <div class="note" style="margin:0;max-width:none">
+            <strong>发现行副文：</strong>有生效 →「生效中 · {名} {时段}」；无 →「还没有日程锁」。<br /><br />
+            <strong>桌面球：</strong>生效中行点进日程锁编辑（捷径保留）；不依赖底栏再挂「日程锁」Tab。<br /><br />
+            <strong>编辑页：</strong>沿用现网，不为本草图重做拨盘。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ 氛围 -->
+    <div>
+      <div class="sec"><strong>④ 氛围 · 名言 / 壁纸</strong>　发现最底 · 也可只在「我」</div>
+      <div class="row2" style="margin-top:18px; max-width:620px; margin-left:auto; margin-right:auto">
+        <div>
+          <div class="col-head">
+            <h3>取 · 淡链进试玩</h3>
+            <p>不在发现内嵌工作室</p>
+            <span class="pick">推荐</span>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 发现</div>
+              <div class="brand" style="font-size:20px">名言</div>
+              <div class="sub">门上快关 · 收藏 · 推送</div>
+              <div class="rowi" style="margin-top:12px">
+                <div>
+                  <div class="n" style="font-size:14px;font-weight:400;line-height:1.45">「停一下，再决定要不要滑。」</div>
+                  <div class="m">收藏的一句</div>
+                </div>
+              </div>
+              <div class="cta" style="margin-top:auto">打开试玩 ›</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>双入口</h3>
+            <p>发现淡链 = 捷径</p>
+          </div>
+          <div class="note" style="margin:0;max-width:none">
+            <strong>主归档：</strong>我 → 设置 → 试验 → 试玩（名言 / 壁纸）。<br /><br />
+            <strong>发现：</strong>氛围区只是捷径，点进同一套试玩页，不复制第二套设置。<br /><br />
+            <strong>若发现仍嫌挤：</strong>氛围区整段可隐去，只留工具两行——名言壁纸仍只在「我」。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>与今日 / 收据：</strong>今日 peek → 当天；发现·这一周·按日 → 点进同一套收据（标题随日子）。同动词，不同时间窗。双向互通见
+      <a href="record-stats-bridge-sketch.html" style="color:var(--leaf-text)">record-stats-bridge-sketch</a>。<br />
+      <strong>落地顺序建议：</strong>① 底栏「日程锁」改为「发现」目录 ② 挂入日程锁子页 ③ 做「这一周」事件刀 ④ 再补 App / 按日 ⑤ 氛围淡链可选。<br />
+      <strong>框外才写：</strong>职责、取舍、旁白。框内零架构解说。<br />
+      <strong>本草图文件：</strong><code>.design/discover-tab-sketch.html</code>
+    </div>
+  </div>
+</body>
+</html>

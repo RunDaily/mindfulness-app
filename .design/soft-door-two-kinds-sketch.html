@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>软门 · 刷逛 vs 事务</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf-text: #9fd4a8; --sand: #c4a35a; --line: rgba(232,237,230,.12); --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 36px; }
+    header { max-width: 640px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 46em; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 860px) {
+      .row2, .row3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 300px; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: var(--ink); border: 1px solid rgba(255,255,255,.08);
+      padding: 22px 26px 20px; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+    .door-tag { font-size: 11px; color: var(--mist); }
+    .center {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+    }
+    .center.left { align-items: flex-start; text-align: left; }
+    .title {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 26px; font-weight: 500; line-height: 1.35;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #3d7a4a;
+      box-shadow: 0 0 0 7px rgba(61,122,74,.18); margin-bottom: 22px;
+    }
+    .name { font-size: 20px; color: var(--paper); }
+    .meta { margin-top: 8px; font-size: 13px; color: var(--fog); font-variant-numeric: tabular-nums; }
+    .meta.tight { margin-top: 0; }
+    .meta.after-title { margin-top: 16px; }
+    .slot { margin-top: 10px; font-size: 13px; color: var(--leaf-text); font-variant-numeric: tabular-nums; }
+    .field {
+      margin-top: 12px; width: 100%; max-width: 200px; border: none;
+      border-bottom: 1px solid rgba(232,237,230,.2); background: transparent;
+      color: var(--mist); font-size: 15px; text-align: center; padding: 4px 0 6px;
+      font-family: inherit;
+    }
+    .or { margin-top: 12px; font-size: 11px; color: var(--mist); opacity: .7; }
+    .switch { margin-top: 8px; font-size: 12px; color: var(--mist); }
+    .hint { margin-top: 28px; font-size: 13px; color: var(--fog); }
+    .mins {
+      margin-top: 14px; display: flex; gap: 22px; font-variant-numeric: tabular-nums;
+      align-items: baseline;
+    }
+    .mins span { font-size: 22px; font-weight: 300; color: var(--leaf-text); letter-spacing: -0.02em; }
+    .mins .unit { font-size: 12px; color: var(--mist); margin-left: -12px; }
+    .acts {
+      display: flex; gap: 28px; align-items: center; padding-bottom: 6px;
+    }
+    .act { font-size: 16px; color: var(--fog); }
+    .act.go { color: var(--leaf-text); }
+    .act.wait { color: var(--mist); }
+    .act.soft { color: var(--mist); font-size: 15px; }
+    .note {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Soft Door · Two Kinds</div>
+      <h1>事务门的主旋律是不必进。真有事，再点一个短时长进去。</h1>
+      <p>
+        刷逛门仍先打断惯性（呼吸 → 搜索直达 / 做什么）。<br />
+        事务门无呼吸。第一拍只问有没有必要；默认答案是离开。第二拍才给最短的时长，点一下就进。
+      </p>
+    </header>
+
+    <p class="sec">对照 · <strong>刷逛打断 · 事务劝离</strong></p>
+    <section class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>刷逛门 · EXPLORE</h3>
+          <p>小红书 / 抖音。倒计时后再入口。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">小红书</div>
+            <div class="meta">打开第 4/8 次 · 12/30 分</div>
+            <div class="slot">3s</div>
+            <div class="field">⌕ 搜索直达</div>
+            <div class="or">或</div>
+            <div class="switch">做什么</div>
+          </div>
+          <div class="acts">
+            <span class="act wait">等一下</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>事务门 · 第一拍</h3>
+          <p>主行动是离开。进入更淡，多一拍。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">微信</div>
+          <div class="center left">
+            <div class="title">这一次<br />先不必进</div>
+            <div class="meta after-title">打开第 2/8 次 · 还剩 18 分</div>
+          </div>
+          <div class="acts">
+            <span class="act go">离开</span>
+            <span class="act soft">有事，进去</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">事务门两拍 · <strong>先判必要，再点短时长进</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>① 默认</h3>
+          <p>没有必要就不进。「离开」是叶色主行动。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">微信</div>
+          <div class="center left">
+            <div class="title">这一次<br />先不必进</div>
+            <div class="meta after-title">打开第 2/8 次 · 还剩 18 分</div>
+          </div>
+          <div class="acts">
+            <span class="act go">离开</span>
+            <span class="act soft">有事，进去</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>② 有事</h3>
+          <p>点「有事，进去」后才出尺子。最短档。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">微信</div>
+          <div class="center left">
+            <div class="title">多久</div>
+            <div class="hint">点一下就进</div>
+            <div class="mins">
+              <span>1</span><span>2</span><span>3</span><span>5</span>
+              <span class="unit">分</span>
+            </div>
+          </div>
+          <div class="acts">
+            <span class="act soft">返回</span>
+            <span class="act">离开</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>③ 点 2</h3>
+          <p>芯片即进入。没有单独的「打开」。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">微信</div>
+          <div class="center left">
+            <div class="title">多久</div>
+            <div class="hint">点一下就进</div>
+            <div class="mins">
+              <span>1</span><span style="color:#e8ede6;font-size:26px">2</span><span>3</span><span>5</span>
+              <span class="unit">分</span>
+            </div>
+          </div>
+          <div class="acts">
+            <span class="act soft">返回</span>
+            <span class="act">离开</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>主旋律：</strong>事务门第一拍写「这一次先不必进」。离开在左、叶色；「有事，进去」雾色、次一级。不写问卷芯片，不叠呼吸。<br />
+      <strong>第二拍：</strong>时长尽量短：`1 · 2 · 3 · 5` 分。点芯片 = 立刻进并建带时长会话。底下只有「返回」（回第一拍）和「离开」。<br />
+      <strong>不为：</strong>再出「打开」确认；给 10 / 15 / 20（事务真有事用短档）；把「有事，进去」做成实心主按钮。<br />
+      <strong>刷逛门：</strong>见 intercept-two-entries-sketch。硬挡两边共用。
+    </div>
+  </div>
+</body>
+</html>

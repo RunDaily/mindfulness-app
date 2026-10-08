@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>日程锁</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="kicker">第 6 章</div>
+  <h1>日程锁</h1>
+  <p>日程锁用来按<strong>时间表</strong>锁定一批应用：到了设定时段，这些应用打开时会被拦住。</p>
+  <p>入口：底栏「发现」→「日程锁」。</p>
+  <p>它和「方案」里单个应用的「时段锁」不同：</p>
+  <table>
+    <tr><th>方案 · 时段锁</th><td>某一个应用 · 在该应用配置页设置 · 适合「这个 App 晚上别碰」</td></tr>
+    <tr><th>发现 · 日程锁</th><td>一批应用 · 发现 → 日程锁 · 适合「工作日上午别刷这几个」</td></tr>
+  </table>
+  <figure class="slot">
+    <div class="label">图 · 日程锁空态</div>
+    <figcaption>「还没有时段锁」+「＋ 添加时段」</figcaption>
+  </figure>
+
+  <h2>添加一条日程锁</h2>
+  <ol>
+    <li><span class="i">1</span><span>打开「发现」→「日程锁」</span></li>
+    <li><span class="i">2</span><span>点「＋ 添加时段」</span></li>
+    <li><span class="i">3</span><span>填写名称、开始 / 结束、重复、锁定范围后保存</span></li>
+  </ol>
+  <table>
+    <tr><th>名称</th><td>如「工作专注」（便于自己辨认）</td></tr>
+    <tr><th>开始 / 结束</th><td>锁定的时间段</td></tr>
+    <tr><th>重复</th><td>每天、工作日，或自定义星期</td></tr>
+    <tr><th>锁定范围</th><td>是否跟随方案里已在监控的应用；也可「另选 App」补充</td></tr>
+  </table>
+  <p>保存后，列表中会出现该时段。当前正在生效的条目，界面会标出进行中状态。到点后，范围内的应用再打开会被拦住，直到该时段结束。</p>
+  <figure class="slot">
+    <div class="label">图 · 添加时段表单</div>
+    <figcaption>名称 · 起止 · 重复 · 锁定范围</figcaption>
+  </figure>
+
+  <h2>编辑与关闭</h2>
+  <p>点列表中的某一条可编辑。若不需要，在编辑页删除或关闭（以实机选项为准）。</p>
+  <p>正在生效时若做削弱性改动，可能会多一步确认，避免误改正在执行的时段。</p>
+
+  <h2>使用注意</h2>
+  <ul>
+    <li><span>方案里还没有任何应用、又未「另选 App」时，这条日程锁没有可锁对象，页面会提示先去方案添加或另选。</span></li>
+    <li><span>日程锁与方案中的日限额、打开次数可以同时存在；到点锁定时，以「此刻不能进」为准。</span></li>
+  </ul>
+
+  <div class="chap-nav">
+    <a class="prev" href="05.html">‹ 今日</a>
+    <a class="next" href="07.html">权限与后台保活 ›</a>
+  </div>
+</body>
+</html>

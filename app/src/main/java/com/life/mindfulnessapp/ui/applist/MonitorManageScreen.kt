@@ -1,14 +1,15 @@
 package com.life.mindfulnessapp.ui.applist
 
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,20 +22,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.RemoveCircleOutline
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,9 +42,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,380 +54,396 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.life.mindfulnessapp.data.AppPreferences
 import com.life.mindfulnessapp.domain.model.AppInfo
-import com.life.mindfulnessapp.domain.model.PeriodWindowsCodec
-import com.life.mindfulnessapp.ui.theme.CapabilityPairMarks
+import com.life.mindfulnessapp.ui.theme.CapabilityForm
+import com.life.mindfulnessapp.ui.theme.CapabilityKind
+import com.life.mindfulnessapp.ui.theme.CapabilityMark
 import com.life.mindfulnessapp.ui.theme.LogoGreen
-import com.life.mindfulnessapp.ui.vip.VipUpgradeDialog
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
+import com.life.mindfulnessapp.ui.vip.AccessGateDialog
+
+private val CapabilityBlockShape = RoundedCornerShape(18.dp)
+private const val GridColumns = 4
 
 /**
- * 已监控应用管理页：只展示少数已监控 App（Room 直出，无全机扫包 loading）；
- * 拖动手柄排序（与首页坑位顺序同步）；「添加应用」再进入全机挑选器。
+ * 坑位管理：三能力各自成区；区内网格；区头「添加」进批量系锚。
+ * [embedded] = true 时作为「能力」Tab 内视图，不带顶栏。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonitorManageScreen(
     viewModel: AppListViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit,
-    onNavigateToAdd: () -> Unit,
+    onNavigateBack: () -> Unit = {},
+    onNavigateToAdd: (CapabilityKind?) -> Unit,
     onNavigateToEdit: (packageName: String) -> Unit,
-    onNavigateToVip: () -> Unit = {}
+    onNavigateToReorder: () -> Unit = {},
+    onNavigateToVip: () -> Unit = {},
+    embedded: Boolean = false,
+    /** 变化时滚回列表顶部（能力子 Tab 切换） */
+    scrollToTopToken: Any? = null,
+    modifier: Modifier = Modifier
 ) {
     val monitored by viewModel.monitoredApps.collectAsState()
     val isAtFreeLimit by viewModel.isAtFreeLimit.collectAsState()
-    val showVipUpgradeDialog by viewModel.showVipUpgradeDialog.collectAsState()
     val vipLevel by viewModel.vipLevel.collectAsState()
-    val haptic = LocalHapticFeedback.current
+    val accessGate by viewModel.accessGate.collectAsState()
 
-    var removingApp by remember { mutableStateOf<AppInfo?>(null) }
-    var list by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
-    var isDragging by remember { mutableStateOf(false) }
+    var pendingAddKind by remember { mutableStateOf<CapabilityKind?>(null) }
+    var pendingAddAfterUnlock by remember { mutableStateOf(false) }
 
-    // 拖拽期间不拿 Flow 覆盖本地顺序，避免手势被打断
-    LaunchedEffect(monitored) {
-        if (!isDragging) list = monitored
+    LaunchedEffect(isAtFreeLimit, pendingAddAfterUnlock, accessGate.visible) {
+        if (pendingAddAfterUnlock && !isAtFreeLimit && !accessGate.visible) {
+            pendingAddAfterUnlock = false
+            val kind = pendingAddKind
+            pendingAddKind = null
+            onNavigateToAdd(kind)
+        }
     }
 
-    val lazyListState = rememberLazyListState()
-    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        list = list.toMutableList().apply {
-            add(to.index, removeAt(from.index))
+    fun tryAddMonitor(kind: CapabilityKind?) {
+        // 批量页可叠加已系锚 App（不占新坑）；仅「完全满且无叠加空间」时再拦
+        if (kind != null) {
+            onNavigateToAdd(kind)
+            return
         }
-        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        if (isAtFreeLimit) {
+            pendingAddKind = kind
+            pendingAddAfterUnlock = true
+            viewModel.requestVipUpgrade()
+        } else {
+            onNavigateToAdd(kind)
+        }
     }
 
     val cs = MaterialTheme.colorScheme
-    val isDark = cs.background.red < 0.5f
+    val listState = rememberLazyListState()
+    val sections = remember(monitored) {
+        CapabilityKind.entries.map { kind ->
+            kind to monitored.filter { it.hasCapability(kind) }
+        }
+    }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            "系着的锚",
-                            fontWeight = FontWeight.SemiBold,
-                            color = cs.onSurface,
-                            fontSize = 17.sp
-                        )
-                        if (list.isNotEmpty()) {
-                            Text(
-                                text = buildString {
-                                    if (vipLevel <= 0) {
-                                        append("${list.size} / ${AppPreferences.FREE_MONITOR_LIMIT}（免费版）")
-                                    } else {
-                                        append("系着 ${list.size} 只")
-                                    }
-                                    append(" · 拖动手柄排序")
-                                },
-                                fontSize = 11.sp,
-                                color = if (isAtFreeLimit)
-                                    Color(0xFFE8941A)
-                                else
-                                    cs.onSurface.copy(alpha = 0.40f)
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "返回",
-                            tint = cs.onSurface
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.background)
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onNavigateToAdd,
-                containerColor = LogoGreen,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp),
-                icon = {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-                },
-                text = {
-                    Text("添加应用", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                }
-            )
-        },
-        containerColor = cs.background
-    ) { padding ->
-        when {
-            list.isEmpty() && monitored.isEmpty() -> {
-                EmptyMonitorManage(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    onAdd = onNavigateToAdd,
-                    cs = cs
+    LaunchedEffect(scrollToTopToken) {
+        if (scrollToTopToken != null) {
+            listState.scrollToItem(0)
+        }
+    }
+
+    val listContent = @Composable { listModifier: Modifier ->
+        LazyColumn(
+            state = listState,
+            modifier = listModifier,
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = if (embedded) 4.dp else 8.dp,
+                bottom = 28.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            items(
+                items = sections,
+                key = { (kind, _) -> kind.name }
+            ) { (kind, apps) ->
+                CapabilityBlock(
+                    kind = kind,
+                    apps = apps,
+                    cs = cs,
+                    onAppClick = { onNavigateToEdit(it.packageName) },
+                    onAddClick = { tryAddMonitor(kind) }
                 )
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    state = lazyListState,
-                    contentPadding = PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 8.dp,
-                        bottom = 96.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(list, key = { it.packageName }) { app ->
-                        ReorderableItem(reorderableState, key = app.packageName) { dragging ->
-                            val elevation by animateDpAsState(
-                                targetValue = if (dragging) 6.dp else 0.dp,
-                                label = "manage_drag_elev"
-                            )
-                            val handleInteraction = remember { MutableInteractionSource() }
-                            Surface(
-                                shadowElevation = elevation,
-                                shape = RoundedCornerShape(14.dp),
-                                color = cs.surface,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                MonitoredManageRow(
-                                    app = app,
-                                    cs = cs,
-                                    onEdit = { onNavigateToEdit(app.packageName) },
-                                    onRemove = { removingApp = app },
-                                    dragHandleModifier = Modifier.draggableHandle(
-                                        interactionSource = handleInteraction,
-                                        onDragStarted = {
-                                            isDragging = true
-                                            haptic.performHapticFeedback(
-                                                HapticFeedbackType.LongPress
-                                            )
-                                        },
-                                        onDragStopped = {
-                                            isDragging = false
-                                            viewModel.reorderMonitored(
-                                                list.map { it.packageName }
-                                            )
-                                            haptic.performHapticFeedback(
-                                                HapticFeedbackType.TextHandleMove
-                                            )
-                                        }
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
             }
         }
     }
 
-    removingApp?.let { app ->
-        AlertDialog(
-            onDismissRequest = { removingApp = null },
-            containerColor = cs.surface,
-            title = {
-                Text("停止监控「${app.appName}」？", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            },
-            text = {
-                Text(
-                    "之后打开该应用将不再拦截，历史记录仍会保留。",
-                    fontSize = 13.sp,
-                    color = cs.onSurface.copy(alpha = 0.55f)
+    if (embedded) {
+        listContent(modifier.fillMaxSize())
+    } else {
+        Scaffold(
+            modifier = modifier,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                "坑位",
+                                fontWeight = FontWeight.SemiBold,
+                                color = cs.onSurface,
+                                fontSize = 17.sp
+                            )
+                            Text(
+                                text = buildString {
+                                    if (monitored.isEmpty()) {
+                                        append("按能力把 App 放进坑位")
+                                    } else if (vipLevel <= 0) {
+                                        append("${monitored.size} / ${AppPreferences.FREE_MONITOR_LIMIT}")
+                                        append(" · 按能力查看")
+                                    } else {
+                                        append("系着 ${monitored.size} 只 · 按能力查看")
+                                    }
+                                },
+                                fontSize = 11.sp,
+                                color = when {
+                                    isAtFreeLimit -> Color(0xFFE8941A)
+                                    else -> cs.onSurface.copy(alpha = 0.40f)
+                                }
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "返回",
+                                tint = cs.onSurface
+                            )
+                        }
+                    },
+                    actions = {
+                        if (monitored.isNotEmpty()) {
+                            TextButton(onClick = onNavigateToReorder) {
+                                Text(
+                                    "排序",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = cs.onSurface.copy(alpha = 0.55f)
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.background)
                 )
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.removeFromMonitor(app.packageName)
-                        removingApp = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFE74C3C))
-                ) { Text("移除", fontWeight = FontWeight.SemiBold) }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { removingApp = null },
-                    colors = ButtonDefaults.textButtonColors(contentColor = cs.onSurface.copy(alpha = 0.45f))
-                ) { Text("取消") }
-            }
-        )
+            containerColor = cs.background
+        ) { padding ->
+            listContent(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            )
+        }
     }
 
-    if (showVipUpgradeDialog) {
-        VipUpgradeDialog(
-            isDarkTheme = isDark,
+    if (accessGate.visible || accessGate.unlockToast != null) {
+        AccessGateDialog(
+            state = accessGate,
             cardColor = cs.surface,
             textPrimary = cs.onSurface,
             textSecondary = cs.onSurfaceVariant,
             borderColor = cs.outline,
             accentGreen = LogoGreen,
-            onDismiss = { viewModel.dismissVipUpgradeDialog() },
-            onUpgrade = {
+            onDismiss = {
+                pendingAddAfterUnlock = false
+                pendingAddKind = null
+                viewModel.dismissVipUpgradeDialog()
+            },
+            onCodeChange = viewModel::onAccessCodeChange,
+            onRedeem = viewModel::redeemAccessCode,
+            onOpenClaim = viewModel::openAccessClaimStep,
+            onOpenRedeem = viewModel::openAccessRedeemStep,
+            onClaimChannelChange = viewModel::onAccessClaimChannelChange,
+            onClaimContactChange = viewModel::onAccessClaimContactChange,
+            onSubmitClaim = viewModel::submitAccessClaim,
+            onRedeemIssued = viewModel::redeemIssuedAccessCode,
+            onViewMembership = {
+                pendingAddAfterUnlock = false
+                pendingAddKind = null
                 viewModel.dismissVipUpgradeDialog()
                 onNavigateToVip()
-            }
+            },
+            onBackToGate = viewModel::backToAccessGate,
+            onConsumeUnlockToast = viewModel::consumeAccessUnlockToast
+        )
+    }
+}
+
+fun AppInfo.hasCapability(kind: CapabilityKind): Boolean {
+    // 未系锚 App 的能力字段只是占位默认值，不能当作已开启
+    if (!isMonitored) return false
+    return when (kind) {
+        CapabilityKind.IntentGate -> requireIntentOnOpen
+        CapabilityKind.TimeLock -> timeLimitEnabled
+        CapabilityKind.PeriodLock -> periodLockEnabled
+    }
+}
+
+
+@Composable
+private fun CapabilityBlock(
+    kind: CapabilityKind,
+    apps: List<AppInfo>,
+    cs: ColorScheme,
+    onAppClick: (AppInfo) -> Unit,
+    onAddClick: () -> Unit
+) {
+    val copy = CapabilityCopy.of(kind)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(CapabilityBlockShape)
+            .background(cs.surface)
+            .border(1.dp, cs.outline.copy(alpha = 0.14f), CapabilityBlockShape)
+            .padding(horizontal = 14.dp, vertical = 14.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CapabilityMark(
+                kind = kind,
+                form = CapabilityForm.Standard,
+                size = 18.dp
+            )
+            Text(
+                copy.label,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = cs.onSurface
+            )
+            Text(
+                "· ${apps.size}",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = cs.onSurface.copy(alpha = 0.35f)
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            copy.description,
+            fontSize = 12.sp,
+            color = cs.onSurface.copy(alpha = 0.40f),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+
+        CapabilityAppGrid(
+            apps = apps,
+            cs = cs,
+            onAppClick = onAppClick,
+            onAddClick = onAddClick
         )
     }
 }
 
 @Composable
-private fun EmptyMonitorManage(
-    modifier: Modifier = Modifier,
-    onAdd: () -> Unit,
-    cs: ColorScheme
+private fun CapabilityAppGrid(
+    apps: List<AppInfo>,
+    cs: ColorScheme,
+    onAppClick: (AppInfo) -> Unit,
+    onAddClick: () -> Unit
 ) {
-    Column(
-        modifier = modifier.padding(horizontal = 40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(0.dp, Alignment.CenterVertically)
-    ) {
-        Icon(
-            Icons.Default.Apps,
-            contentDescription = null,
-            tint = cs.onSurface.copy(alpha = 0.22f),
-            modifier = Modifier.size(48.dp)
-        )
-        Box(modifier = Modifier.height(16.dp))
-        Text(
-            "还没有系上锚",
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = cs.onSurface.copy(alpha = 0.70f)
-        )
-        Box(modifier = Modifier.height(8.dp))
-        Text(
-            "挑选想有意识使用的 App，打开前会先问你意图",
-            fontSize = 13.sp,
-            color = cs.onSurface.copy(alpha = 0.38f),
-            textAlign = TextAlign.Center
-        )
-        Box(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onAdd,
-            colors = ButtonDefaults.buttonColors(containerColor = LogoGreen, contentColor = Color.White),
-            shape = RoundedCornerShape(12.dp)
-        ) {
+    val cells: List<AppInfo?> = apps + null // trailing add slot
+    val rows = cells.chunked(GridColumns)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        rows.forEach { row ->
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text("系上第一只锚", fontWeight = FontWeight.SemiBold)
+                row.forEach { app ->
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (app == null) {
+                            CapabilityAddCell(cs = cs, onClick = onAddClick)
+                        } else {
+                            CapabilityAppGridCell(
+                                app = app,
+                                cs = cs,
+                                onClick = { onAppClick(app) }
+                            )
+                        }
+                    }
+                }
+                repeat(GridColumns - row.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
 }
 
+/** 占用坑位格：图标 + 名称 */
 @Composable
-private fun MonitoredManageRow(
+private fun CapabilityAppGridCell(
     app: AppInfo,
     cs: ColorScheme,
-    onEdit: () -> Unit,
-    onRemove: () -> Unit,
-    dragHandleModifier: Modifier
+    onClick: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onEdit)
-            .padding(horizontal = 6.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 2.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 手柄：按下即可拖，不与整行点击抢手势
-        IconButton(
-            onClick = {},
-            modifier = Modifier
-                .size(40.dp)
-                .then(dragHandleModifier)
+        AppIcon(
+            drawable = app.icon,
+            modifier = Modifier.size(46.dp)
+        )
+        Text(
+            text = app.appName,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (app.isUninstalled)
+                cs.onSurface.copy(alpha = 0.36f)
+            else
+                cs.onSurface.copy(alpha = 0.78f),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            lineHeight = 14.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+/** 区内添加：虚线槽，语义对齐首页「+」坑 */
+@Composable
+private fun CapabilityAddCell(
+    cs: ColorScheme,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 2.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier.size(46.dp),
+            contentAlignment = Alignment.Center
         ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val stroke = Stroke(
+                    width = 1.4.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(
+                        floatArrayOf(5.dp.toPx(), 4.dp.toPx()),
+                        0f
+                    )
+                )
+                drawRoundRect(
+                    color = LogoGreen.copy(alpha = 0.45f),
+                    cornerRadius = CornerRadius(12.dp.toPx()),
+                    style = stroke
+                )
+            }
             Icon(
-                Icons.Default.DragHandle,
-                contentDescription = "拖动排序",
-                tint = cs.onSurface.copy(alpha = 0.36f),
+                Icons.Default.Add,
+                contentDescription = "添加应用",
+                tint = LogoGreen.copy(alpha = 0.85f),
                 modifier = Modifier.size(22.dp)
             )
         }
-
-        AppIcon(drawable = app.icon, modifier = Modifier.size(40.dp))
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(start = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
-        ) {
-            Text(
-                text = app.appName,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (app.isUninstalled) cs.onSurface.copy(alpha = 0.40f) else cs.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = when {
-                    app.isUninstalled -> "已卸载"
-                    else -> buildString {
-                        val parts = mutableListOf<String>()
-                        if (app.periodLockEnabled) {
-                            parts.add(
-                                PeriodWindowsCodec.summaryLabel(
-                                    PeriodWindowsCodec.decode(app.periodWindowsJson)
-                                )
-                            )
-                        }
-                        if (app.timeLimitEnabled) {
-                            parts.add("每日 ${app.dailyLimitMinutes} 分钟")
-                        }
-                        if (app.requireIntentOnOpen) {
-                            val intentParts = buildList {
-                                add("意图门")
-                                if (app.intentQualityCheckEnabled) {
-                                    val n = com.life.mindfulnessapp.domain.model.IntentBlockKeywords
-                                        .decode(app.intentBlockKeywordsJson).size
-                                    add(if (n > 0) "限制词$n" else "限制词")
-                                }
-                                if (app.sessionLimitEnabled) add("单次")
-                            }
-                            parts.add(intentParts.joinToString(" · "))
-                        }
-                        if (parts.isEmpty()) append("点击设置")
-                        else append(parts.joinToString(" · "))
-                    }
-                },
-                fontSize = 12.sp,
-                color = when {
-                    app.isUninstalled -> cs.onSurface.copy(alpha = 0.30f)
-                    else -> LogoGreen.copy(alpha = 0.80f)
-                },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        if (!app.isUninstalled) {
-            CapabilityPairMarks(
-                intentOn = app.requireIntentOnOpen,
-                timeOn = app.timeLimitEnabled,
-                periodOn = app.periodLockEnabled
-            )
-        }
-
-        IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
-            Icon(
-                Icons.Default.RemoveCircleOutline,
-                contentDescription = "移除监控",
-                tint = cs.onSurface.copy(alpha = 0.28f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
+        Text(
+            text = "添加",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = LogoGreen.copy(alpha = 0.80f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

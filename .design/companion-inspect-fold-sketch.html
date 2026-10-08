@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>陪伴条 · 点开面板旁路折叠</title>
+  <style>
+    :root {
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --accent: #34c759;
+      --end: #c47a6a;
+      --line: rgba(255,255,255,.1);
+      --field: rgba(255,255,255,.06);
+      --surface: #16181c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--ink);
+      background:
+        radial-gradient(ellipse at 18% 0%, rgba(52,199,89,.07), transparent 42%),
+        linear-gradient(180deg, #0c0c0e, #050506 70%);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 80px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto 22px; }
+    .eyebrow {
+      font-size: 11px; font-weight: 650; letter-spacing: .16em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+    }
+    h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; line-height: 1.3; }
+    .hero p { margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.65; }
+    .thesis {
+      margin-top: 16px; display: inline-block; padding: 10px 16px; border-radius: 999px;
+      background: rgba(52,199,89,.12); border: 1px solid rgba(52,199,89,.28);
+      color: #c6f5d2; font-size: 13px; line-height: 1.5;
+    }
+
+    .spine-flow {
+      display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+      margin: 0 auto 26px; max-width: 760px;
+    }
+    .spine-flow i {
+      font-style: normal; font-size: 12px; font-weight: 650;
+      padding: 7px 11px; border-radius: 999px; border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .spine-flow i.now {
+      color: #d4efe0; border-color: rgba(52,199,89,.35);
+      background: rgba(52,199,89,.1);
+    }
+    .spine-flow i.soft {
+      color: var(--dim);
+    }
+
+    .stage-row {
+      display: flex; flex-wrap: wrap; gap: 22px; justify-content: center;
+      align-items: flex-start; margin-bottom: 28px;
+    }
+    .phone-wrap { width: min(300px, 100%); }
+    .phone-label {
+      text-align: center; font-size: 12px; color: var(--muted);
+      font-weight: 650; margin-bottom: 10px;
+    }
+    .phone-label.bad { color: rgba(196,122,106,.9); }
+    .phone-cap {
+      margin-top: 12px; font-size: 12px; color: var(--dim);
+      text-align: center; line-height: 1.55;
+    }
+    .phone {
+      background: #000; border: 1px solid #2a2a2c; border-radius: 36px;
+      padding: 12px 10px 16px;
+    }
+    .bar {
+      height: 20px; display: flex; justify-content: space-between;
+      padding: 0 14px; font-size: 11px; color: #aeaeb2; font-weight: 600;
+    }
+    .wall {
+      margin-top: 6px; height: 560px; border-radius: 22px; border: 1px solid #1e2024;
+      position: relative; overflow: hidden;
+      background:
+        radial-gradient(ellipse at 70% 18%, rgba(255,77,106,.16), transparent 42%),
+        linear-gradient(165deg, #1a2030 0%, #101418 50%, #0b0c0e 100%);
+    }
+    .feed-name {
+      position: absolute; top: 14px; left: 18px;
+      font-size: 12px; font-weight: 650; color: rgba(255,255,255,.35);
+    }
+    .feed-fake {
+      position: absolute; inset: 36px 18px auto 18px;
+      display: grid; gap: 12px; opacity: .4;
+    }
+    .feed-fake .card {
+      height: 72px; border-radius: 14px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .feed-fake .card.tall { height: 110px; }
+    .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.26); }
+
+    .capsule {
+      position: absolute; left: 50%; top: 72px; transform: translateX(-50%);
+      z-index: 3; width: calc(100% - 48px);
+      border-radius: 999px; padding: 10px 14px;
+      background: rgba(22,24,28,.88);
+      border: .6px solid rgba(255,255,255,.16);
+      box-shadow: 0 12px 32px rgba(0,0,0,.4);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .capsule.pick {
+      border-color: rgba(52,199,89,.4);
+      box-shadow: 0 0 0 1px rgba(52,199,89,.1), 0 12px 32px rgba(0,0,0,.4);
+    }
+    .capsule .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); flex: none;
+      box-shadow: 0 0 10px rgba(52,199,89,.55);
+    }
+    .capsule .meta { flex: 1; min-width: 0; }
+    .capsule .n {
+      font-size: 12px; font-weight: 650;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .capsule .s { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .capsule .now {
+      flex: none; text-align: right;
+      font-size: 14px; font-weight: 650; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .inspect {
+      position: absolute; left: 18px; right: 18px; top: 128px;
+      z-index: 4; border-radius: 22px; padding: 16px 18px;
+      background: var(--surface);
+      border: .6px solid rgba(255,255,255,.14);
+      box-shadow: 0 18px 40px rgba(0,0,0,.45);
+    }
+    .inspect.pick {
+      border-color: rgba(52,199,89,.35);
+      box-shadow: 0 0 0 1px rgba(52,199,89,.12), 0 18px 40px rgba(0,0,0,.45);
+    }
+    .inspect.bad-outline {
+      outline: 1px dashed rgba(196,122,106,.45);
+      outline-offset: 5px;
+    }
+
+    .head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 10px;
+    }
+    .head .k {
+      font-size: 11px; color: var(--muted); font-weight: 500;
+      letter-spacing: .04em;
+    }
+    .head .time {
+      margin-top: 4px; font-size: 28px; font-weight: 300;
+      font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+    }
+    .head .end {
+      font-size: 12px; color: var(--end); font-weight: 500;
+      padding: 4px 6px; flex: none;
+    }
+
+    .today-line {
+      margin-top: 8px; font-size: 13px; color: var(--muted);
+    }
+    .today-line b {
+      font-weight: 650; color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hair {
+      margin: 14px 0; height: .6px; background: var(--line);
+    }
+
+    .ask { font-size: 14px; font-weight: 650; line-height: 1.4; }
+    .ask-acts {
+      margin-top: 12px; display: flex; gap: 18px; align-items: center;
+    }
+    .ask-acts .soft { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .ask-acts .hard { font-size: 14px; color: var(--ink); font-weight: 650; }
+
+    /* —— 现：摊开控件 —— */
+    .ctrl-row {
+      display: flex; align-items: center; gap: 12px; margin-top: 10px;
+    }
+    .ctrl-row .lab {
+      font-size: 10.5px; color: var(--dim); font-weight: 500;
+      letter-spacing: .12em; width: 32px; flex: none;
+    }
+    .chips { display: flex; gap: 14px; }
+    .chips span {
+      font-size: 13px; color: var(--dim); font-weight: 500;
+    }
+    .chips span.on { color: var(--ink); font-weight: 650; }
+    .slider {
+      flex: 1; height: 3px; border-radius: 999px;
+      background: linear-gradient(90deg, var(--ink) 62%, var(--line) 62%);
+      position: relative;
+    }
+    .slider::after {
+      content: ""; position: absolute; left: 62%; top: 50%;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--ink); transform: translate(-50%, -50%);
+    }
+    .pct {
+      font-size: 12px; color: var(--muted);
+      font-variant-numeric: tabular-nums; width: 28px; text-align: right;
+    }
+
+    /* —— 取：旁路折叠 —— */
+    .rail {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; padding: 2px 0; cursor: pointer;
+    }
+    .rail .left { min-width: 0; }
+    .rail .k {
+      font-size: 11px; color: var(--muted); font-weight: 500;
+    }
+    .rail .v {
+      margin-top: 3px; font-size: 12px; color: var(--ink); font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .rail .v b {
+      font-weight: 650; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .rail .go {
+      flex: none; font-size: 12px; color: var(--accent); font-weight: 650;
+    }
+    .rail.look .v b { color: var(--ink); }
+
+    .fold-body {
+      margin-top: 12px; padding-top: 2px;
+    }
+    .fold-body .ctrl-row:first-child { margin-top: 0; }
+
+    .notes {
+      max-width: 680px; margin: 8px auto 0;
+      border-top: 1px solid var(--line); padding-top: 22px;
+    }
+    .notes h2 { font-size: 14px; font-weight: 650; text-align: center; margin-bottom: 12px; }
+    .notes li {
+      list-style: none; font-size: 13px; color: var(--ink); line-height: 1.5;
+      padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .notes li span { display: block; color: var(--dim); font-size: 12px; margin-top: 3px; }
+    .quiet-note {
+      margin: 24px auto 0; max-width: 560px; text-align: center;
+      font-size: 13px; color: var(--dim); line-height: 1.65;
+    }
+    .map {
+      margin: 18px auto 0; max-width: 560px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11px; color: var(--muted); line-height: 1.7;
+      white-space: pre; text-align: left;
+      padding: 14px 16px; border-radius: 12px;
+      background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Companion inspect · fold rails</div>
+      <h1>点开陪伴条：本次是主语，今日与外观都是旁路</h1>
+      <p>
+        与桌面球 Pulse「今日旁路」同一口气——默认不摊控件。
+        先看见这次还剩多久、轻问要不要停；今日合计、大小透明度收成一行，点开才展开。
+      </p>
+      <div class="thesis">本次 · 轻问 · 结束 → 今日旁路 → 外观折叠</div>
+    </header>
+
+    <div class="spine-flow">
+      <i>点条</i>
+      <i class="now">本次</i>
+      <i class="now">轻问</i>
+      <i class="now">今日 ›</i>
+      <i class="soft">外观 ›</i>
+      <i class="soft">结束</i>
+    </div>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label bad">现 · 外观摊开</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="capsule">
+              <div class="dot"></div>
+              <div class="meta">
+                <div class="n">看穿搭 · 小红书</div>
+                <div class="s">今日 1时4分 · 6次</div>
+              </div>
+              <div class="now">8:29</div>
+            </div>
+            <div class="inspect bad-outline">
+              <div class="head">
+                <div>
+                  <div class="k">意图 · 看穿搭</div>
+                  <div class="time">8:29</div>
+                </div>
+                <div class="end">结束本次</div>
+              </div>
+              <div class="today-line">今日  1时4分</div>
+              <div class="hair"></div>
+              <div class="ask">还在穿搭上吗？</div>
+              <div class="ask-acts">
+                <span class="soft">还在</span>
+                <span class="hard">偏了</span>
+              </div>
+              <div class="hair"></div>
+              <div class="ctrl-row">
+                <span class="lab">大小</span>
+                <div class="chips">
+                  <span>标准</span>
+                  <span class="on">紧凑</span>
+                </div>
+              </div>
+              <div class="ctrl-row">
+                <span class="lab">透明</span>
+                <div class="slider"></div>
+                <span class="pct">78</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">轻问下面直接是滑条。偏好控件和决策同级，卡片又高又吵。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label">取 · 两行旁路都收</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="capsule pick">
+              <div class="dot"></div>
+              <div class="meta">
+                <div class="n">看穿搭 · 小红书</div>
+                <div class="s">今日 1时4分 · 6次</div>
+              </div>
+              <div class="now">8:29</div>
+            </div>
+            <div class="inspect pick">
+              <div class="head">
+                <div>
+                  <div class="k">意图 · 看穿搭</div>
+                  <div class="time">8:29</div>
+                </div>
+                <div class="end">结束本次</div>
+              </div>
+              <div class="hair"></div>
+              <div class="ask">还在穿搭上吗？</div>
+              <div class="ask-acts">
+                <span class="soft">还在</span>
+                <span class="hard">偏了</span>
+              </div>
+              <div class="hair"></div>
+              <div class="rail">
+                <div class="left">
+                  <div class="k">今日 · 监控中</div>
+                  <div class="v">共 <b>2时18分</b> · 守住 <b>2</b> · 进入 <b>11</b></div>
+                </div>
+                <span class="go">›</span>
+              </div>
+              <div class="hair" style="margin:12px 0"></div>
+              <div class="rail look">
+                <div class="left">
+                  <div class="k">外观</div>
+                  <div class="v">紧凑 · <b>78</b></div>
+                </div>
+                <span class="go">∨</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">默认只留摘要。今日与外观同级旁路，都不抢轻问。外观用上下箭头。</p>
+      </div>
+    </div>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label">取 · 展开外观</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="capsule pick" style="opacity:.92">
+              <div class="dot"></div>
+              <div class="meta">
+                <div class="n">看穿搭 · 小红书</div>
+                <div class="s">今日 1时4分 · 6次</div>
+              </div>
+              <div class="now">8:29</div>
+            </div>
+            <div class="inspect pick">
+              <div class="head">
+                <div>
+                  <div class="k">意图 · 看穿搭</div>
+                  <div class="time">8:29</div>
+                </div>
+                <div class="end">结束本次</div>
+              </div>
+              <div class="hair"></div>
+              <div class="ask">还在穿搭上吗？</div>
+              <div class="ask-acts">
+                <span class="soft">还在</span>
+                <span class="hard">偏了</span>
+              </div>
+              <div class="hair"></div>
+              <div class="rail">
+                <div class="left">
+                  <div class="k">今日 · 监控中</div>
+                  <div class="v">共 <b>2时18分</b> · 守住 <b>2</b> · 进入 <b>11</b></div>
+                </div>
+                <span class="go">›</span>
+              </div>
+              <div class="hair" style="margin:12px 0"></div>
+              <div class="rail look">
+                <div class="left">
+                  <div class="k">外观</div>
+                  <div class="v">紧凑 · <b>78</b></div>
+                </div>
+                <span class="go">∧</span>
+              </div>
+              <div class="fold-body">
+                <div class="ctrl-row">
+                  <span class="lab">大小</span>
+                  <div class="chips">
+                    <span>标准</span>
+                    <span class="on">紧凑</span>
+                  </div>
+                </div>
+                <div class="ctrl-row">
+                  <span class="lab">透明</span>
+                  <div class="slider"></div>
+                  <span class="pct">78</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">点「外观」就地展开。条还在上头，改完立刻对照。再点一行收起。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label">取 · 点开今日旁路</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="inspect pick" style="top:88px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                <span style="font-size:12px;color:var(--muted);font-weight:600">← 本次</span>
+                <span style="font-size:14px;font-weight:650">今日</span>
+                <span style="width:48px"></span>
+              </div>
+              <div style="display:flex;gap:22px;margin-bottom:8px">
+                <div>
+                  <div style="font-size:20px;font-weight:400;color:var(--accent);font-variant-numeric:tabular-nums">2时18分</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:3px">监控合计</div>
+                </div>
+                <div>
+                  <div style="font-size:20px;font-weight:300;font-variant-numeric:tabular-nums">11次</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:3px">进入</div>
+                </div>
+                <div>
+                  <div style="font-size:20px;font-weight:300;font-variant-numeric:tabular-nums">2次</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:3px">守住</div>
+                </div>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:14px">
+                小红书占 <b style="color:var(--ink);font-weight:650">1时4分</b> · 其余 <b style="color:var(--ink);font-weight:650">1时14分</b>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:8px">今天用过</div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:.6px solid rgba(255,255,255,.06)">
+                <div>
+                  <div style="font-size:13px;font-weight:650">小红书 <span style="color:var(--accent);font-size:10px">进行中</span></div>
+                  <div style="font-size:11px;color:var(--dim);margin-top:2px">进入 6 · 本次 8分</div>
+                </div>
+                <div style="font-size:13px;font-weight:650;color:var(--accent);font-variant-numeric:tabular-nums">1时4分</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:8px 0">
+                <div>
+                  <div style="font-size:13px;font-weight:650">抖音</div>
+                  <div style="font-size:11px;color:var(--dim);margin-top:2px">进入 3</div>
+                </div>
+                <div style="font-size:13px;font-weight:650;font-variant-numeric:tabular-nums">48分</div>
+              </div>
+              <div class="hair"></div>
+              <div style="display:flex;justify-content:space-between">
+                <span style="font-size:12px;color:var(--muted);font-weight:650">打开心锚</span>
+                <span style="font-size:12px;color:var(--accent);font-weight:650">今日小票 →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">与 Pulse 今日轻览同壳同数。从陪伴面板进，返回仍是本次卡片。</p>
+      </div>
+    </div>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label">取 · 无轻问时</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>微信</span></div>
+          <div class="wall" style="background:linear-gradient(165deg,#1a2420 0%,#101418 45%,#0b0c0e 100%)">
+            <div class="feed-name">微信</div>
+            <div class="scrim"></div>
+            <div class="capsule pick">
+              <div class="dot"></div>
+              <div class="meta">
+                <div class="n">回消息 · 微信</div>
+                <div class="s">今日 26分 · 2次</div>
+              </div>
+              <div class="now">4:12</div>
+            </div>
+            <div class="inspect pick">
+              <div class="head">
+                <div>
+                  <div class="k">意图 · 回消息</div>
+                  <div class="time">4:12</div>
+                </div>
+                <div class="end">结束本次</div>
+              </div>
+              <div class="hair"></div>
+              <div class="rail">
+                <div class="left">
+                  <div class="k">今日 · 监控中</div>
+                  <div class="v">共 <b>2时18分</b> · 守住 <b>2</b> · 进入 <b>11</b></div>
+                </div>
+                <span class="go">›</span>
+              </div>
+              <div class="hair" style="margin:12px 0"></div>
+              <div class="rail look">
+                <div class="left">
+                  <div class="k">外观</div>
+                  <div class="v">标准 · <b>82</b></div>
+                </div>
+                <span class="go">∨</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">没有觉察问时，旁路直接接在本次下面。卡片更短。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label bad">不取 · 外观进设置</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="inspect bad-outline" style="top:160px">
+              <div class="head">
+                <div>
+                  <div class="k">意图 · 看穿搭</div>
+                  <div class="time">8:29</div>
+                </div>
+                <div class="end">结束本次</div>
+              </div>
+              <div class="hair"></div>
+              <div class="ask">还在穿搭上吗？</div>
+              <div class="ask-acts">
+                <span class="soft">还在</span>
+                <span class="hard">偏了</span>
+              </div>
+              <div class="hair"></div>
+              <div style="font-size:12px;color:var(--accent);font-weight:650;text-align:right">去设置调外观 →</div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">改透明却要跳出本次——对照不到真条，多一跳。</p>
+      </div>
+    </div>
+
+    <section class="notes">
+      <h2>框外 · 取舍</h2>
+      <ul>
+        <li>主语：意图 / 本次时长 / 轻问 / 结束<span>删掉默认「今日 本 App 一行」——改由「今日 · 监控中」旁路承担；本 App 今日仍在条上与轻览里</span></li>
+        <li>今日旁路：与 Pulse 草图同文案、同轻览、同口径<span>陪伴面板内点开；返回本次卡片。不另造一套数字</span></li>
+        <li>外观折叠：默认「外观 · 紧凑 · 78」一行，箭头上下（∨ / ∧）<span>点开就地出大小 + 透明；再点收起。今日旁路仍用 › 表示进轻览</span></li>
+        <li>两行旁路可同时存在，但同时只展开一层<span>展开外观时今日仍是摘要；点今日则整页换成轻览（外观收起）</span></li>
+        <li>无轻问：旁路上移贴本次，卡片变矮<span>有轻问时旁路在问句之下，决策不被滑条打断</span></li>
+      </ul>
+    </section>
+
+    <pre class="map">点陪伴条
+  └─ 本次卡片
+       ├─ 意图 · 时长 · 结束
+       ├─ 轻问（有才有）
+       ├─ 今日旁路一行  →  轻览（同 Pulse）
+       └─ 外观一行      →  大小 · 透明（就地）
+
+对照不取：大小/透明默认摊开；或丢进设置</pre>
+
+    <p class="quiet-note">
+      桌面球 Pulse 与陪伴条点开共用「旁路」语法：摘要一行，点开再给控件或轻览。
+    </p>
+  </div>
+</body>
+</html>

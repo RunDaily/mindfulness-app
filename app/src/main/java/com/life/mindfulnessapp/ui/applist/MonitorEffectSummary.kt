@@ -54,9 +54,13 @@ fun buildMonitorEffectSummary(
 
     val headline = when {
         activeWindow != null ->
-            "此刻不可进入 · 锁定至 ${PeriodWindow.formatHm(activeWindow.endMinute)}"
+            if (activeWindow.isAllDay) {
+                "此刻不可进入 · 今日全天锁定"
+            } else {
+                "此刻不可进入 · 锁定至 ${PeriodWindow.formatHm(activeWindow.endMinute)}"
+            }
         periodOn && intentOn && timeOn ->
-            "非锁定时段：先写意图再进 · 每日最多 ${formatLimitMinutes(dailyLimitMinutes)}"
+            "非锁定时段：先写意图再定时长 · 每日最多 ${formatLimitMinutes(dailyLimitMinutes)}"
         periodOn && intentOn ->
             "非锁定时段：打开前写下意图"
         periodOn && timeOn ->
@@ -97,7 +101,8 @@ fun buildMonitorEffectSummary(
             add(periodSummary)
         }
         if (periodOn && commitment.isNotBlank()) {
-            add("守护「${commitment.trim()}」")
+            val note = commitment.trim()
+            add(if (note.length <= 20) note else note.take(20) + "…")
         }
         if (intentOn && keywordGateReady) {
             add("限制词 ${intentBlockKeywordCount} 个")

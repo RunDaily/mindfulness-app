@@ -1,0 +1,31 @@
+---
+description: 心锚后台服务端改动后自动部署到生产环境
+alwaysApply: true
+---
+
+# 心锚后台自动部署
+
+当本次对话中修改了心锚相关**后台服务端**代码时，在任务结束前**必须**执行部署（无需用户再次提醒）。
+
+## 适用路径
+
+- `/Users/boxiansheng/Documents/happyvillage-main/server/**`（主要是 `server.js`）
+- 心锚相关 nginx 配置：`happyvillage-main/nginx.conf`
+
+## 部署命令
+
+```bash
+cd /Users/boxiansheng/Documents/happyvillage-main && bash deploy-heart-anchor.sh
+```
+
+## 流程
+
+1. 完成服务端代码修改
+2. 运行上述部署脚本（rsync 上传 + nginx 重载 + pm2 重启 `price-server`）
+3. 在回复中简要说明部署结果（成功/失败及关键输出）
+
+## 注意
+
+- 使用 `deploy-heart-anchor.sh`（轻量），不要用完整 `deploy.sh`（会构建种草机等无关项目）
+- 仅 Android 客户端或 `anchor-admin` 改动时**不需要**部署服务端
+- 部署失败时报告错误，不要静默跳过

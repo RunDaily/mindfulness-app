@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>桌面球 · Pulse 安静脊线</title>
+  <style>
+    :root {
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --accent: #34c759;
+      --line: rgba(255,255,255,.1);
+      --paper: rgba(18,20,24,.92);
+      --field: rgba(255,255,255,.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--ink);
+      background:
+        radial-gradient(ellipse at 18% 0%, rgba(52,199,89,.07), transparent 42%),
+        linear-gradient(180deg, #0c0c0e, #050506 70%);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 80px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .hero { text-align: center; max-width: 620px; margin: 0 auto 28px; }
+    .eyebrow {
+      font-size: 11px; font-weight: 650; letter-spacing: .16em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+    }
+    h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+    .hero p { margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.65; }
+    .thesis {
+      margin-top: 16px; display: inline-block; padding: 10px 16px; border-radius: 999px;
+      background: rgba(52,199,89,.12); border: 1px solid rgba(52,199,89,.28);
+      color: #c6f5d2; font-size: 13px; line-height: 1.5;
+    }
+
+    .stage-row {
+      display: flex; flex-wrap: wrap; gap: 22px; justify-content: center;
+      align-items: flex-start; margin-bottom: 28px;
+    }
+    .phone-wrap { width: min(300px, 100%); }
+    .phone-label {
+      text-align: center; font-size: 12px; color: var(--muted);
+      font-weight: 650; margin-bottom: 10px;
+    }
+    .phone-cap {
+      margin-top: 12px; font-size: 12px; color: var(--dim);
+      text-align: center; line-height: 1.55;
+    }
+    .phone {
+      background: #000; border: 1px solid #2a2a2c; border-radius: 36px;
+      padding: 12px 10px 16px;
+    }
+    .bar {
+      height: 20px; display: flex; justify-content: space-between;
+      padding: 0 14px; font-size: 11px; color: #aeaeb2; font-weight: 600;
+    }
+    .wall {
+      margin-top: 6px; height: 540px; border-radius: 22px; border: 1px solid #1e2024;
+      position: relative; overflow: hidden;
+      background: linear-gradient(165deg, #1a2420 0%, #101418 45%, #0b0c0e 100%);
+    }
+    .icons {
+      position: absolute; inset: 28px 18px auto 18px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 10px;
+      opacity: .4;
+    }
+    .app {
+      width: 42px; height: 42px; margin: 0 auto; border-radius: 12px;
+      background: rgba(255,255,255,.08);
+    }
+    .app-n { margin-top: 6px; text-align: center; font-size: 10px; color: #636366; }
+    .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.22); }
+    .panel {
+      position: absolute; right: 14px; bottom: 72px; left: 14px;
+      border-radius: 22px; padding: 16px 16px 14px;
+      background: #16181c;
+      border: .6px solid rgba(255,255,255,.14);
+      z-index: 2;
+    }
+    .panel.pick {
+      border-color: rgba(52,199,89,.35);
+      box-shadow: 0 0 0 1px rgba(52,199,89,.12), 0 18px 40px rgba(0,0,0,.45);
+    }
+
+    .head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .head .back { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .head .name { font-size: 14px; font-weight: 650; }
+    .head .go { font-size: 12px; color: var(--accent); font-weight: 650; }
+
+    .chips { display: flex; gap: 6px; margin-bottom: 12px; }
+    .chip {
+      flex: 1; text-align: center; padding: 10px 6px;
+      border-radius: 12px; background: var(--field);
+      border: 1px solid var(--line);
+    }
+    .chip b {
+      display: block; font-size: 14px; font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .chip b.acc { color: var(--accent); }
+    .chip span { display: block; margin-top: 3px; font-size: 10px; color: var(--muted); }
+
+    .sec-label {
+      font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 8px;
+    }
+    .row-card {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px; border-radius: 12px; background: var(--field);
+      margin-bottom: 6px; font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+    .row-card .d { color: var(--muted); font-weight: 600; }
+    .foot {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 10px;
+    }
+    .badge {
+      font-size: 11px; color: var(--dim); padding: 5px 10px;
+      border-radius: 999px; background: var(--field); border: 1px solid var(--line);
+    }
+    .link { font-size: 12px; color: var(--accent); font-weight: 650; }
+
+    /* —— quiet pulse —— */
+    .live {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 14px; padding-bottom: 12px;
+      border-bottom: .6px solid var(--line);
+    }
+    .live .t { font-size: 13px; font-weight: 600; }
+    .live .s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .live .now {
+      font-size: 16px; font-weight: 650; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .live .now span { display: block; font-size: 10px; color: var(--muted); font-weight: 500; margin-top: 2px; text-align: right; }
+
+    .stats {
+      display: flex; gap: 28px; margin-bottom: 16px;
+    }
+    .stats div {
+      font-size: 22px; font-weight: 300;
+      font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+    }
+    .stats div.acc { color: var(--accent); font-weight: 400; }
+    .stats span {
+      display: block; font-size: 10px; color: var(--muted);
+      margin-top: 4px; font-weight: 500;
+    }
+
+    .spine { font-size: 12px; line-height: 1.75; color: var(--muted); }
+    .spine .line {
+      display: flex; justify-content: space-between; gap: 10px;
+      padding: 3px 0;
+    }
+    .spine .line .left { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .spine .line b { font-weight: 500; color: var(--ink); }
+    .spine .line .dur {
+      flex: none; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink);
+    }
+    .spine .line.on .dur { color: var(--accent); }
+    .spine .fold { color: var(--dim); margin-top: 4px; }
+    .spine .held { color: var(--dim); margin-top: 8px; font-size: 11px; }
+
+    .quiet-foot {
+      margin-top: 14px; display: flex; justify-content: flex-end;
+    }
+
+    .empty {
+      padding: 28px 0 20px; text-align: center;
+      font-size: 13px; color: var(--muted);
+    }
+
+    .notes {
+      max-width: 640px; margin: 0 auto;
+      border-top: 1px solid var(--line); padding-top: 22px;
+    }
+    .notes h2 { font-size: 14px; font-weight: 650; text-align: center; margin-bottom: 12px; }
+    .notes li {
+      list-style: none; font-size: 13px; color: var(--ink); line-height: 1.5;
+      padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .notes li span { display: block; color: var(--dim); font-size: 12px; margin-top: 3px; }
+    .quiet-note {
+      margin: 24px auto 0; max-width: 560px; text-align: center;
+      font-size: 13px; color: var(--dim); line-height: 1.65;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Desktop orb · Pulse</div>
+      <h1>二级页只说：今天从心锚进去了几次</h1>
+      <p>同一块玻璃壳下钻一次。数字轻排，会话成脊线。数据用心锚记录，不用系统前台抖动。</p>
+      <div class="thesis">今日 · 进入 → 意图脊线 → 完整记录（字）</div>
+    </header>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label">现 · 不取</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="wall">
+            <div class="icons">
+              <div><div class="app"></div><div class="app-n">信息</div></div>
+              <div><div class="app"></div><div class="app-n">日历</div></div>
+              <div><div class="app"></div><div class="app-n">照片</div></div>
+              <div><div class="app"></div><div class="app-n">相机</div></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="panel">
+              <div class="head">
+                <span class="back">← 返回</span>
+                <span class="name">小红书</span>
+                <span class="go">打开心锚</span>
+              </div>
+              <div class="chips">
+                <div class="chip"><b class="acc">1时4分</b><span>今日累计</span></div>
+                <div class="chip"><b>200次</b><span>打开</span></div>
+                <div class="chip"><b>0分</b><span>本次</span></div>
+              </div>
+              <div class="sec-label">今日使用记录</div>
+              <div class="row-card"><span>19:06 – 19:06</span><span class="d">28秒</span></div>
+              <div class="row-card"><span>18:52 – 19:00</span><span class="d">8分29秒</span></div>
+              <div class="row-card"><span>18:40 – 18:41</span><span class="d">1分23秒</span></div>
+              <div class="foot">
+                <span class="badge">系统用量</span>
+                <span class="link">完整报告 →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">三格芯片 + 系统流水。200 次是前台抖动，不是进门。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label">取 · 安静脊线</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="wall">
+            <div class="icons">
+              <div><div class="app"></div><div class="app-n">信息</div></div>
+              <div><div class="app"></div><div class="app-n">日历</div></div>
+              <div><div class="app"></div><div class="app-n">照片</div></div>
+              <div><div class="app"></div><div class="app-n">相机</div></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="panel pick">
+              <div class="head">
+                <span class="back">← 返回</span>
+                <span class="name">小红书</span>
+                <span style="width:36px"></span>
+              </div>
+              <div class="live">
+                <div>
+                  <div class="t">意图 · 看穿搭</div>
+                  <div class="s">进行中</div>
+                </div>
+                <div class="now">8:29<span>本次</span></div>
+              </div>
+              <div class="stats">
+                <div class="acc">1时4分<span>今日</span></div>
+                <div>6次<span>进入</span></div>
+              </div>
+              <div class="spine">
+                <div class="line"><span class="left">14:02 – 14:19 · <b>看穿搭参考</b></span><span class="dur">17分</span></div>
+                <div class="line"><span class="left">15:40 – 15:51 · <b>刷一下</b></span><span class="dur">11分</span></div>
+                <div class="line on"><span class="left">16:08 – 现在 · <b>看穿搭</b></span><span class="dur">8分</span></div>
+                <div class="fold">其余 3 次很短</div>
+                <div class="held">守住 2 次</div>
+              </div>
+              <div class="quiet-foot"><span class="link">完整记录 →</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">字承担层级。短会话收成一句。离开只留一个字链。</p>
+      </div>
+    </div>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label">空态</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="wall">
+            <div class="scrim"></div>
+            <div class="panel pick" style="bottom: 180px;">
+              <div class="head">
+                <span class="back">← 返回</span>
+                <span class="name">抖音</span>
+                <span style="width:36px"></span>
+              </div>
+              <div class="stats">
+                <div>0分<span>今日</span></div>
+                <div>0次<span>进入</span></div>
+              </div>
+              <div class="empty">今天还没有记录</div>
+              <div class="quiet-foot"><span class="link">完整记录 →</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">不回退系统用量。诚实空态。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label">非进行中</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="wall">
+            <div class="scrim"></div>
+            <div class="panel pick" style="bottom: 140px;">
+              <div class="head">
+                <span class="back">← 返回</span>
+                <span class="name">微信</span>
+                <span style="width:36px"></span>
+              </div>
+              <div class="stats">
+                <div class="acc">48分<span>今日</span></div>
+                <div>6次<span>进入</span></div>
+              </div>
+              <div class="spine">
+                <div class="line"><span class="left">14:02 – 14:19 · <b>回消息</b></span><span class="dur">17分</span></div>
+                <div class="line"><span class="left">15:40 – 15:51 · <b>进群</b></span><span class="dur">11分</span></div>
+                <div class="line"><span class="left">16:08 – 16:21 · <b>进入</b></span><span class="dur">13分</span></div>
+                <div class="fold">其余 3 次很短</div>
+              </div>
+              <div class="quiet-foot"><span class="link">完整记录 →</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">无 live 头、无「本次」。只留今日与进入。</p>
+      </div>
+    </div>
+
+    <section class="notes">
+      <h2>框外 · 取舍</h2>
+      <ul>
+        <li>数据：usage_records，口径同 UsageRecordCounts.enterCount<span>系统前台次数不进这张卡片</span></li>
+        <li>统计无底板；进行中才多「本次」数字<span>间距与字重分层，不加第三格芯片</span></li>
+        <li>时长 &lt; 60 秒收成「其余 N 次很短」；门外离开汇总「守住 N 次」<span>不逐条抢戏</span></li>
+        <li>去掉 Pulse 顶「打开心锚」、底「系统用量 / 关注 App」徽章<span>离开动作在 Hub 脚；二级只下钻</span></li>
+      </ul>
+    </section>
+    <p class="quiet-note">Hub 总时长与 Top 与 Pulse 同源心锚记录，避免一张卡片两套数字。</p>
+  </div>
+</body>
+</html>

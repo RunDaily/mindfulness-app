@@ -3,6 +3,7 @@ package com.life.mindfulnessapp.ui.theme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,7 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * 监控三能力的产品方言：
+ * 监控能力的产品方言：
  * - **意图门**：门槛 / 停一下再进
  * - **时长锁**：边界 / 用完即止
  * - **时段锁**：时间主权 / 指定时段硬挡
@@ -39,6 +40,12 @@ enum class CapabilityKind {
     IntentGate,
     TimeLock,
     PeriodLock
+}
+
+/** 解析路由 / Intent 中的能力名；未知或已下线能力名 → 意图门 */
+fun parseCapabilityKind(name: String?): CapabilityKind {
+    if (name.isNullOrBlank()) return CapabilityKind.IntentGate
+    return runCatching { CapabilityKind.valueOf(name) }.getOrDefault(CapabilityKind.IntentGate)
 }
 
 /**
@@ -62,6 +69,22 @@ object MonitorCapability {
     val Reminder: ImageVector = Icons.Outlined.NotificationsNone
     val Ritual: ImageVector = Icons.Outlined.AutoAwesome
 
+    /**
+     * 能力主题色（同家族微差，便于一眼区分）：
+     * - 意图门：品牌绿
+     * - 时长锁：暖橄榄（额度 / 消耗）
+     * - 时段锁：冷青绿（时段 / 边界）
+     */
+    val IntentGateAccent = LogoGreen
+    val TimeLockAccent = Color(0xFFB0892E)
+    val PeriodLockAccent = Color(0xFF2F9B9B)
+
+    fun accent(kind: CapabilityKind): Color = when (kind) {
+        CapabilityKind.IntentGate -> IntentGateAccent
+        CapabilityKind.TimeLock -> TimeLockAccent
+        CapabilityKind.PeriodLock -> PeriodLockAccent
+    }
+
     /** 标准形态（默认对外引用） */
     val IntentGate: ImageVector
         get() = IntentGateStandard
@@ -77,14 +100,8 @@ object MonitorCapability {
     }
 
     fun glyph(kind: CapabilityKind, form: CapabilityForm): ImageVector = when (kind) {
-        CapabilityKind.IntentGate -> when (form) {
-            CapabilityForm.Compact -> IntentGateCompact
-            CapabilityForm.Standard, CapabilityForm.Emphasis -> IntentGateStandard
-        }
-        CapabilityKind.TimeLock -> when (form) {
-            CapabilityForm.Compact -> TimeLockCompact
-            CapabilityForm.Standard, CapabilityForm.Emphasis -> TimeLockStandard
-        }
+        CapabilityKind.IntentGate -> IntentGateStandard
+        CapabilityKind.TimeLock -> TimeLockStandard
         CapabilityKind.PeriodLock -> when (form) {
             CapabilityForm.Compact -> PeriodLockCompact
             CapabilityForm.Standard, CapabilityForm.Emphasis -> PeriodLockStandard
@@ -100,9 +117,7 @@ object MonitorCapability {
 
 // ── 能力字形 ─────────────────────────────────────────────────────────────────
 
-private var _intentGateCompact: ImageVector? = null
 private var _intentGateStandard: ImageVector? = null
-private var _timeLockCompact: ImageVector? = null
 private var _timeLockStandard: ImageVector? = null
 private var _periodLockCompact: ImageVector? = null
 private var _periodLockStandard: ImageVector? = null
@@ -116,51 +131,9 @@ private fun ImageVector.Builder.addSvgFillPath(pathData: String) {
 }
 
 /**
- * 小形态门：粗门框 + 内门线 + 把手，12dp 仍可辨。
- * （完整双线门框素材在小尺寸易糊）
+ * 意图门：用户资源「房屋大门.svg」
+ * （相对「大门口」双扇透视门，单扇+门框在小尺寸更清晰）
  */
-private val IntentGateCompact: ImageVector
-    get() = _intentGateCompact ?: ImageVector.Builder(
-        name = "capability.intent_gate.compact",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f
-    ).apply {
-        path(
-            fill = SolidColor(Color.Transparent),
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2.4f,
-            strokeLineJoin = StrokeJoin.Round
-        ) {
-            moveTo(6f, 3.5f)
-            lineTo(18f, 3.5f)
-            lineTo(18f, 20.5f)
-            lineTo(6f, 20.5f)
-            close()
-        }
-        path(
-            fill = SolidColor(Color.Transparent),
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 1.6f
-        ) {
-            moveTo(7.6f, 5.2f)
-            lineTo(16.4f, 5.2f)
-            lineTo(16.4f, 18.8f)
-            lineTo(7.6f, 18.8f)
-            close()
-        }
-        path(fill = SolidColor(Color.Black)) {
-            moveTo(14.6f, 11.3f)
-            curveTo(15.26f, 11.3f, 15.8f, 11.84f, 15.8f, 12.5f)
-            curveTo(15.8f, 13.16f, 15.26f, 13.7f, 14.6f, 13.7f)
-            curveTo(13.94f, 13.7f, 13.4f, 13.16f, 13.4f, 12.5f)
-            curveTo(13.4f, 11.84f, 13.94f, 11.3f, 14.6f, 11.3f)
-            close()
-        }
-    }.build().also { _intentGateCompact = it }
-
-/** 标准/强调：完整门素材（与 drawable/ic_capability_intent_gate 同源） */
 private val IntentGateStandard: ImageVector
     get() = _intentGateStandard ?: ImageVector.Builder(
         name = "capability.intent_gate.standard",
@@ -170,73 +143,16 @@ private val IntentGateStandard: ImageVector
         viewportHeight = 1024f
     ).apply {
         addSvgFillPath(
-            "M761.344 119.296H226.816c-18.944 0-39.424 11.776-39.424 30.72V921.6h614.4V148.48c0.512-18.944-22.016-29.184-40.448-29.184z m-537.6 768c-2.048 0-2.048 0 0 0L221.696 163.84c0-5.12 5.12-10.24 10.24-10.24h522.24c8.704 0 13.824 5.12 13.824 13.824v720.384s0 1.536-1.536 1.536h-15.36V194.56c0-16.896-8.704-24.064-29.184-24.064H266.24c-18.944 0-27.136 8.704-27.136 24.064v692.736h-15.36z m49.152 0V204.8H716.8v682.496H272.896z"
+            "M516.608 998.4c-2.816 0-5.376-0.256-8.192-1.024l-407.808-89.6c-17.664-3.84-30.208-19.456-30.208-37.376V153.6c0-17.92 12.544-33.536 30.208-37.376l407.808-89.6c11.52-2.56 23.296 0.256 32.256 7.68 8.96 7.168 14.336 18.176 14.336 29.952v896c0 11.52-5.376 22.528-14.336 29.952-6.912 5.12-15.616 8.192-24.064 8.192zM147.2 839.424l331.008 72.704V111.872L147.2 184.576v654.848z"
         )
         addSvgFillPath(
-            "M648.704 508.416c-16.896 0-32.256 13.824-32.256 32.256 0 16.896 13.824 32.256 32.256 32.256s32.256-13.824 32.256-32.256c0-16.896-13.824-32.256-32.256-32.256z"
+            "M915.2 908.8H516.608c-21.248 0-38.4-17.152-38.4-38.4s17.152-38.4 38.4-38.4h360.192v-640H516.608c-21.248 0-38.4-17.152-38.4-38.4s17.152-38.4 38.4-38.4h398.592c21.248 0 38.4 17.152 38.4 38.4v716.8c0 21.248-17.152 38.4-38.4 38.4zM377.6 595.2c-21.248 0-38.4-17.152-38.4-38.4v-89.6c0-21.248 17.152-38.4 38.4-38.4s38.4 17.152 38.4 38.4v89.6c0 21.248-17.152 38.4-38.4 38.4z"
         )
     }.build().also { _intentGateStandard = it }
 
 /**
- * 小形态：粗钟圈 + 指针 + 角上小锁，12dp 仍可读「时间锁」。
+ * 时长锁：用户资源「waiting.svg」沙漏。
  */
-private val TimeLockCompact: ImageVector
-    get() = _timeLockCompact ?: ImageVector.Builder(
-        name = "capability.time_lock.compact",
-        defaultWidth = 24.dp,
-        defaultHeight = 24.dp,
-        viewportWidth = 24f,
-        viewportHeight = 24f
-    ).apply {
-        path(
-            fill = SolidColor(Color.Transparent),
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2.4f
-        ) {
-            moveTo(12f, 3.2f)
-            curveTo(7.14f, 3.2f, 3.2f, 7.14f, 3.2f, 12f)
-            curveTo(3.2f, 16.86f, 7.14f, 20.8f, 12f, 20.8f)
-            curveTo(16.86f, 20.8f, 20.8f, 16.86f, 20.8f, 12f)
-            curveTo(20.8f, 7.14f, 16.86f, 3.2f, 12f, 3.2f)
-            close()
-        }
-        path(
-            fill = SolidColor(Color.Transparent),
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2f,
-            strokeLineCap = StrokeCap.Round
-        ) {
-            moveTo(12f, 7.2f)
-            lineTo(12f, 12.2f)
-            lineTo(15.6f, 14.4f)
-        }
-        path(fill = SolidColor(Color.Black)) {
-            moveTo(16.6f, 15.6f)
-            lineTo(21.2f, 15.6f)
-            curveTo(21.64f, 15.6f, 22f, 15.96f, 22f, 16.4f)
-            lineTo(22f, 20.6f)
-            curveTo(22f, 21.04f, 21.64f, 21.4f, 21.2f, 21.4f)
-            lineTo(16.6f, 21.4f)
-            curveTo(16.16f, 21.4f, 15.8f, 21.04f, 15.8f, 20.6f)
-            lineTo(15.8f, 16.4f)
-            curveTo(15.8f, 15.96f, 16.16f, 15.6f, 16.6f, 15.6f)
-            close()
-        }
-        path(
-            fill = SolidColor(Color.Transparent),
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 1.6f,
-            strokeLineCap = StrokeCap.Round
-        ) {
-            moveTo(17.4f, 15.6f)
-            lineTo(17.4f, 14.2f)
-            curveTo(17.4f, 13.2f, 18.2f, 12.5f, 19f, 12.5f)
-            curveTo(19.8f, 12.5f, 20.6f, 13.2f, 20.6f, 14.2f)
-            lineTo(20.6f, 15.6f)
-        }
-    }.build().also { _timeLockCompact = it }
-
-/** 标准/强调：完整时间锁定素材（与 drawable/ic_capability_time_lock 同源） */
 private val TimeLockStandard: ImageVector
     get() = _timeLockStandard ?: ImageVector.Builder(
         name = "capability.time_lock.standard",
@@ -246,11 +162,13 @@ private val TimeLockStandard: ImageVector
         viewportHeight = 1024f
     ).apply {
         addSvgFillPath(
-            "M512 128a384 384 0 0 1 383.616 366.677333c-20.48-10.368-42.666667-17.877333-66.005333-21.888a320 320 0 1 0-242.474667 350.336c11.861333 20.138667 26.709333 38.4 43.861333 54.058667A384 384 0 1 1 512 128z m280.874667 384a96 96 0 0 1 96 96v10.666667H896a42.666667 42.666667 0 0 1 42.666667 42.666666V810.666667a42.666667 42.666667 0 0 1-42.666667 42.666666h-213.333333a42.666667 42.666667 0 0 1-42.666667-42.666666v-149.333334a42.666667 42.666667 0 0 1 42.666667-42.666666h14.208v-10.666667a96 96 0 0 1 96-96z m-3.541334 170.666667a21.333333 21.333333 0 0 0-20.992 17.493333L768 704v42.666667a21.333333 21.333333 0 0 0 42.325333 3.84L810.666667 746.666667v-42.666667a21.333333 21.333333 0 0 0-21.333334-21.333333z m3.541334-128c-29.44 0-53.333333 23.893333-53.333334 53.333333v10.666667h106.666667v-10.666667c0-29.44-23.893333-53.333333-53.333333-53.333333zM512 245.333333a32 32 0 0 1 32 32v202.666667h109.866667c15.914667 0 28.8 14.336 28.8 32s-12.885333 32-28.8 32h-134.4l-3.498667-0.256A32 32 0 0 1 480 512V277.333333a32 32 0 0 1 32-32z"
+            "M763.178667 106.666667c16.938667 0 30.72 13.44 31.317333 30.293333V309.290667a31.36 31.36 0 0 1-5.888 18.346666l-0.853333 1.109334-147.029334 185.472 146.986667 184.746666a31.36 31.36 0 0 1 6.698667 17.109334l0.085333 1.322666v1.365334l-1.194667 167.466666a31.36 31.36 0 0 1-30.293333 31.104h-1.109333l-495.914667-0.682666a31.36 31.36 0 0 1-31.317333-30.293334v-1.109333l0.256-166.784c0-6.186667 1.877333-12.288 5.290666-17.408l0.768-1.109333 136.661334-186.026667-136.661334-186.069333a31.36 31.36 0 0 1-5.973333-15.786667l-0.085333-1.450667V138.026667c0-16.981333 13.44-30.762667 30.293333-31.36H763.136z m-31.36 62.72H297.6v129.621333l144.213333 196.352c7.594667 10.325333 8.106667 24.192 1.408 34.986667l-0.682666 1.066666-0.725334 1.066667-144.213333 196.352-0.170667 125.141333 433.408 0.597334 0.896-125.184-155.562666-195.626667a31.36 31.36 0 0 1-1.536-36.949333l0.725333-1.024 0.768-1.024 155.690667-196.394667V169.386667z m-96.128 584.746666c7.424 0 13.44 5.973333 13.44 13.44v35.84a13.44 13.44 0 0 1-13.44 13.397334H375.168a13.44 13.44 0 0 1-13.44-13.397334v-35.84c0-7.424 6.016-13.44 13.44-13.44h260.522667z"
         )
     }.build().also { _timeLockStandard = it }
 
-/** 小形态时段锁：钟圈 + 扇形时段 + 角锁 */
+/**
+ * 小形态时段锁：空心钟圈 + **实心时段扇形** + 角锁。
+ */
 private val PeriodLockCompact: ImageVector
     get() = _periodLockCompact ?: ImageVector.Builder(
         name = "capability.period_lock.compact",
@@ -262,7 +180,7 @@ private val PeriodLockCompact: ImageVector
         path(
             fill = SolidColor(Color.Transparent),
             stroke = SolidColor(Color.Black),
-            strokeLineWidth = 2.4f
+            strokeLineWidth = 2.2f
         ) {
             moveTo(12f, 3.2f)
             curveTo(7.14f, 3.2f, 3.2f, 7.14f, 3.2f, 12f)
@@ -271,10 +189,10 @@ private val PeriodLockCompact: ImageVector
             curveTo(20.8f, 7.14f, 16.86f, 3.2f, 12f, 3.2f)
             close()
         }
-        path(fill = SolidColor(Color.Black.copy(alpha = 0.28f))) {
-            moveTo(12f, 3.2f)
+        path(fill = SolidColor(Color.Black.copy(alpha = 0.52f))) {
+            moveTo(12f, 12f)
+            lineTo(12f, 3.2f)
             curveTo(16.86f, 3.2f, 20.8f, 7.14f, 20.8f, 12f)
-            lineTo(12f, 12f)
             close()
         }
         path(
@@ -283,9 +201,9 @@ private val PeriodLockCompact: ImageVector
             strokeLineWidth = 2f,
             strokeLineCap = StrokeCap.Round
         ) {
-            moveTo(12f, 7.2f)
+            moveTo(12f, 7.0f)
             lineTo(12f, 12f)
-            lineTo(15f, 13.8f)
+            lineTo(15.6f, 14.0f)
         }
         path(fill = SolidColor(Color.Black)) {
             moveTo(16.5f, 15.5f)
@@ -313,7 +231,10 @@ private val PeriodLockCompact: ImageVector
         }
     }.build().also { _periodLockCompact = it }
 
-/** 标准/强调时段锁：与 Compact 同构图，略加细节 */
+/**
+ * 标准/强调 · 时段锁：日环上的「硬挡扇区」为主，角锁极简。
+ * 与时长锁拉开：一眼是「某一段」，不是「一整日额度」。
+ */
 private val PeriodLockStandard: ImageVector
     get() = _periodLockStandard ?: ImageVector.Builder(
         name = "capability.period_lock.standard",
@@ -325,67 +246,69 @@ private val PeriodLockStandard: ImageVector
         path(
             fill = SolidColor(Color.Transparent),
             stroke = SolidColor(Color.Black),
-            strokeLineWidth = 1.8f
+            strokeLineWidth = 1.85f
         ) {
-            moveTo(12f, 2.8f)
-            curveTo(6.92f, 2.8f, 2.8f, 6.92f, 2.8f, 12f)
-            curveTo(2.8f, 17.08f, 6.92f, 21.2f, 12f, 21.2f)
-            curveTo(17.08f, 21.2f, 21.2f, 17.08f, 21.2f, 12f)
-            curveTo(21.2f, 6.92f, 17.08f, 2.8f, 12f, 2.8f)
+            moveTo(11.2f, 2.9f)
+            curveTo(6.6f, 2.9f, 2.9f, 6.6f, 2.9f, 11.2f)
+            curveTo(2.9f, 15.8f, 6.6f, 19.5f, 11.2f, 19.5f)
+            curveTo(15.8f, 19.5f, 19.5f, 15.8f, 19.5f, 11.2f)
+            curveTo(19.5f, 6.6f, 15.8f, 2.9f, 11.2f, 2.9f)
             close()
         }
-        path(fill = SolidColor(Color.Black.copy(alpha = 0.22f))) {
-            moveTo(12f, 2.8f)
-            curveTo(17.08f, 2.8f, 21.2f, 6.92f, 21.2f, 12f)
-            lineTo(12f, 12f)
+        // 右上扇区：被守护的时段
+        path(fill = SolidColor(Color.Black.copy(alpha = 0.42f))) {
+            moveTo(11.2f, 11.2f)
+            lineTo(11.2f, 2.9f)
+            curveTo(15.8f, 2.9f, 19.5f, 6.6f, 19.5f, 11.2f)
             close()
         }
-        path(
-            fill = SolidColor(Color.Transparent),
-            stroke = SolidColor(Color.Black),
-            strokeLineWidth = 1.7f,
-            strokeLineCap = StrokeCap.Round
-        ) {
-            moveTo(12f, 6.8f)
-            lineTo(12f, 12f)
-            lineTo(15.5f, 14.1f)
-        }
+        // 中心点，稳住构图
         path(fill = SolidColor(Color.Black)) {
-            moveTo(15.8f, 14.8f)
-            lineTo(21.4f, 14.8f)
-            curveTo(21.9f, 14.8f, 22.3f, 15.2f, 22.3f, 15.7f)
-            lineTo(22.3f, 20.8f)
-            curveTo(22.3f, 21.3f, 21.9f, 21.7f, 21.4f, 21.7f)
-            lineTo(15.8f, 21.7f)
-            curveTo(15.3f, 21.7f, 14.9f, 21.3f, 14.9f, 20.8f)
-            lineTo(14.9f, 15.7f)
-            curveTo(14.9f, 15.2f, 15.3f, 14.8f, 15.8f, 14.8f)
+            moveTo(11.2f, 10.35f)
+            curveTo(11.67f, 10.35f, 12.05f, 10.73f, 12.05f, 11.2f)
+            curveTo(12.05f, 11.67f, 11.67f, 12.05f, 11.2f, 12.05f)
+            curveTo(10.73f, 12.05f, 10.35f, 11.67f, 10.35f, 11.2f)
+            curveTo(10.35f, 10.73f, 10.73f, 10.35f, 11.2f, 10.35f)
             close()
         }
+        // 锁梁
         path(
             fill = SolidColor(Color.Transparent),
             stroke = SolidColor(Color.Black),
-            strokeLineWidth = 1.4f,
+            strokeLineWidth = 1.45f,
             strokeLineCap = StrokeCap.Round
         ) {
-            moveTo(16.7f, 14.8f)
-            lineTo(16.7f, 13.2f)
-            curveTo(16.7f, 12.1f, 17.55f, 11.35f, 18.6f, 11.35f)
-            curveTo(19.65f, 11.35f, 20.5f, 12.1f, 20.5f, 13.2f)
-            lineTo(20.5f, 14.8f)
+            moveTo(16.55f, 15.35f)
+            lineTo(16.55f, 14.05f)
+            curveTo(16.55f, 13.0f, 17.4f, 12.25f, 18.45f, 12.25f)
+            curveTo(19.5f, 12.25f, 20.35f, 13.0f, 20.35f, 14.05f)
+            lineTo(20.35f, 15.35f)
+        }
+        // 锁身
+        path(
+            fill = SolidColor(Color.Transparent),
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.45f,
+            strokeLineJoin = StrokeJoin.Round
+        ) {
+            moveTo(15.55f, 15.35f)
+            lineTo(21.35f, 15.35f)
+            lineTo(21.35f, 20.85f)
+            lineTo(15.55f, 20.85f)
+            close()
         }
     }.build().also { _periodLockStandard = it }
 
 /**
  * 能力徽标：按 [CapabilityForm] 选用字形与光学尺寸。
- * [active] = false 时灰显（能力关闭）。
+ * 默认 tint 为能力主题色；[active] = false 时灰显。
  */
 @Composable
 fun CapabilityMark(
     kind: CapabilityKind,
     form: CapabilityForm = CapabilityForm.Standard,
     active: Boolean = true,
-    tint: Color = LogoGreen,
+    tint: Color = MonitorCapability.accent(kind),
     size: Dp = MonitorCapability.opticalSize(form),
     contentDescription: String? = MonitorCapability.label(kind),
     modifier: Modifier = Modifier
@@ -397,6 +320,42 @@ fun CapabilityMark(
         modifier = modifier.size(size),
         tint = if (active) tint else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.28f)
     )
+}
+
+/**
+ * 能力徽标托盘：浅底 + 圆角容器，用于卡片等需要「有设计感」的入口。
+ */
+@Composable
+fun CapabilityMarkPlate(
+    kind: CapabilityKind,
+    modifier: Modifier = Modifier,
+    form: CapabilityForm = CapabilityForm.Emphasis,
+    tint: Color = MonitorCapability.accent(kind),
+    plateSize: Dp = 44.dp,
+    corner: Dp = 13.dp,
+    contentDescription: String? = MonitorCapability.label(kind)
+) {
+    val shape = RoundedCornerShape(corner)
+    val markSize = when (form) {
+        CapabilityForm.Compact -> 16.dp
+        CapabilityForm.Standard -> 22.dp
+        CapabilityForm.Emphasis -> 24.dp
+    }
+    Box(
+        modifier = modifier
+            .size(plateSize)
+            .clip(shape)
+            .background(tint.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center
+    ) {
+        CapabilityMark(
+            kind = kind,
+            form = form,
+            tint = tint,
+            size = markSize,
+            contentDescription = contentDescription
+        )
+    }
 }
 
 /**
@@ -421,7 +380,7 @@ fun CapabilityIcon(
 }
 
 /**
- * 成对/三能力徽标：开亮关灰。默认 [CapabilityForm.Compact]。
+ * 成对/三能力徽标：开亮关灰。默认各用主题色；[activeTint] 非空时三枚同色。
  */
 @Composable
 fun CapabilityPairMarks(
@@ -430,7 +389,7 @@ fun CapabilityPairMarks(
     modifier: Modifier = Modifier,
     periodOn: Boolean = false,
     form: CapabilityForm = CapabilityForm.Compact,
-    activeTint: Color = LogoGreen,
+    activeTint: Color? = null,
     chip: Boolean = true
 ) {
     val cs = MaterialTheme.colorScheme
@@ -455,21 +414,21 @@ fun CapabilityPairMarks(
             kind = CapabilityKind.IntentGate,
             form = form,
             active = intentOn,
-            tint = activeTint,
+            tint = activeTint ?: MonitorCapability.accent(CapabilityKind.IntentGate),
             size = markSize
         )
         CapabilityMark(
             kind = CapabilityKind.TimeLock,
             form = form,
             active = timeOn,
-            tint = activeTint,
+            tint = activeTint ?: MonitorCapability.accent(CapabilityKind.TimeLock),
             size = markSize
         )
         CapabilityMark(
             kind = CapabilityKind.PeriodLock,
             form = form,
             active = periodOn,
-            tint = activeTint,
+            tint = activeTint ?: MonitorCapability.accent(CapabilityKind.PeriodLock),
             size = markSize
         )
     }

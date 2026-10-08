@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>软门 · 等待</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --line: rgba(232,237,230,.12); --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 36px; }
+    header { max-width: 560px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.3;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 40em; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: #c4a35a; letter-spacing: 0; font-size: 13px; }
+    .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 860px) { .row { grid-template-columns: 1fr; justify-items: center; } }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .live { justify-items: center; }
+    .col-head { text-align: center; max-width: 250px; }
+    .col-head h3 { font-size: 13px; font-weight: 500; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: #000; border: 1px solid rgba(255,255,255,.08);
+      padding: 22px 26px 18px; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+    .door-tag { font-size: 11px; color: var(--mist); }
+    .center {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--leaf);
+      box-shadow: 0 0 0 7px rgba(61,122,74,.18);
+      margin-bottom: 22px; flex: none;
+    }
+    .dot.faint { box-shadow: 0 0 0 7px rgba(61,122,74,.14); }
+    .dot.full { box-shadow: 0 0 0 7px rgba(159,212,168,.5); }
+    .dot.live {
+      animation: breath 3.2s cubic-bezier(.4, 0, .2, 1) infinite alternate;
+    }
+    .phone.landed .dot.live {
+      animation: none;
+      box-shadow: 0 0 0 7px rgba(61,122,74,.18);
+      transition: box-shadow .28s cubic-bezier(.4, 0, .2, 1);
+    }
+    @keyframes breath {
+      from { box-shadow: 0 0 0 7px rgba(61,122,74,.14); }
+      to { box-shadow: 0 0 0 7px rgba(159,212,168,.5); }
+    }
+    .name { font-size: 20px; color: var(--paper); }
+    .meta { margin-top: 8px; font-size: 13px; color: var(--fog); font-variant-numeric: tabular-nums; }
+    .swap {
+      margin-top: 10px; min-height: 28px; width: 100%; max-width: 200px;
+      display: grid; align-items: center; justify-items: center;
+    }
+    .swap > * { grid-area: 1 / 1; }
+    .slot {
+      font-size: 13px; color: var(--leaf-text); font-variant-numeric: tabular-nums;
+      transition: opacity .14s linear;
+    }
+    .slot.dim { opacity: .35; }
+    .field {
+      width: 100%; border: none; border-bottom: 1px solid rgba(232,237,230,.2);
+      background: transparent; color: rgba(139,147,140,.55);
+      font-size: 16px; text-align: center; padding: 4px 0 6px; font-family: inherit;
+      opacity: 0;
+      transition: opacity .28s cubic-bezier(.4, 0, .2, 1);
+    }
+    .phone.landed .slot { opacity: 0; }
+    .phone.landed .field { opacity: 1; }
+    .acts { display: flex; gap: 28px; align-items: center; padding-bottom: 8px; }
+    .act { font-size: 16px; color: var(--fog); }
+    .act.wait { color: var(--mist); }
+    .note {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Door · Wait</div>
+      <h1>等的时候，这一点轻轻呼吸。</h1>
+      <p>
+        秒数仍是唯一在走的东西。动的只有已经在的那一圈：直径不动，深浅按大约 3.2 秒起伏，和专注圆球同一拍。它表示这一页还在。数完之后，圈停回平时，入口才出现。
+      </p>
+    </header>
+
+    <p class="sec">看着走 · <strong>呼吸和秒数各走各的</strong></p>
+    <section class="live">
+      <div class="col-head">
+        <h3>五秒这一拍</h3>
+        <p>圈大约三秒一呼一吸。走完落到搜索，左边仍是淡的「去搜」</p>
+      </div>
+      <div class="phone" id="live">
+        <div class="door-tag">门</div>
+        <div class="center">
+          <div class="dot live"></div>
+          <div class="name">小红书</div>
+          <div class="meta">今日第 4/8 次</div>
+          <div class="swap">
+            <div class="slot" id="secs">5s</div>
+            <div class="field">搜什么</div>
+          </div>
+        </div>
+        <div class="acts">
+          <span class="act wait" id="left">等一下</span>
+          <span class="act">不进去了</span>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">同一页上的三个样子 · <strong>淡、实、停</strong></p>
+    <section class="row">
+      <div class="col">
+        <div class="col-head"><h3>外圈淡</h3><p>呼出去的一头。秒数可以是任意一秒</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot faint"></div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <div class="swap"><div class="slot">5s</div></div>
+          </div>
+          <div class="acts">
+            <span class="act wait">等一下</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>外圈实</h3><p>吸进来的一头。不跟剩余秒数对齐</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot full"></div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <div class="swap"><div class="slot">3s</div></div>
+          </div>
+          <div class="acts">
+            <span class="act wait">等一下</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>停回平时</h3><p>和后面每一页的点相同。入口这时才出现</p></div>
+        <div class="phone landed">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <div class="swap">
+              <div class="slot">1s</div>
+              <div class="field">搜什么</div>
+            </div>
+          </div>
+          <div class="acts">
+            <span class="act wait">去搜</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>这一拍：</strong>核 8px 不动。外圈 spread 保持 7px，从平时的暗绿淡到字用的浅绿（约 0.5），3.2 秒往返，缓入缓出。等待几秒就呼吸几秒，速度不跟秒数变，圈的大小也不跟剩余时间变。<br />
+      <strong>秒数：</strong>位置、字号不变。换字时淡一下，大约 140ms。数到 1 之后直接换入口，不亮「0s」。<br />
+      <strong>落定：</strong>约 280ms 内停到平时的 0.18。有深链换成「搜什么」，「去搜」仍淡，直到词够。无深链换成可点的「打开」。左边「等一下」在等待期间不闪。<br />
+      <strong>离开：</strong>等待期间「不进去了」一直可点。动效不盖住它。
+    </div>
+  </div>
+  <script>
+    (function () {
+      var TOTAL = 5;
+      var phone = document.getElementById("live");
+      var secs = document.getElementById("secs");
+      var left = document.getElementById("left");
+      var timer = 0;
+
+      function arm(n) {
+        phone.classList.remove("landed");
+        left.textContent = "等一下";
+        secs.textContent = n + "s";
+        secs.classList.remove("dim");
+      }
+
+      function run() {
+        var n = TOTAL;
+        arm(n);
+        clearInterval(timer);
+        timer = setInterval(function () {
+          secs.classList.add("dim");
+          setTimeout(function () {
+            n -= 1;
+            if (n <= 0) {
+              clearInterval(timer);
+              phone.classList.add("landed");
+              left.textContent = "去搜";
+              setTimeout(run, 1800);
+            } else {
+              secs.textContent = n + "s";
+              secs.classList.remove("dim");
+            }
+          }, 140);
+        }, 1000);
+      }
+
+      run();
+    })();
+  </script>
+</body>
+</html>

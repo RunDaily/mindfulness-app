@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>桌面快板 · 图标用量 + Tab</title>
+  <style>
+    :root { --ink:#f2f2f7; --muted:#8e8e93; --accent:#34c759; --line:rgba(255,255,255,.1); }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      min-height:100vh; color:var(--ink);
+      background:linear-gradient(180deg,#0c0c0e,#050506 70%);
+      font-family:"SF Pro Display","PingFang SC",sans-serif;
+      padding:28px 16px 64px; display:flex; flex-direction:column; align-items:center; gap:18px;
+    }
+    h1 { font-size:15px; color:var(--muted); }
+    .sub { font-size:13px; color:#636366; max-width:480px; text-align:center; line-height:1.55; }
+    .phone {
+      width:min(300px,100%); background:#000; border:1px solid #2a2a2c; border-radius:32px;
+      min-height:540px; padding:12px 10px 18px; position:relative; overflow:hidden;
+    }
+    .stage {
+      margin-top:10px; height:460px; border-radius:18px; border:1px solid #222; position:relative;
+      background:linear-gradient(165deg,#1a2a22 0%,#101418 45%,#0b0c0e 100%);
+    }
+    .panel {
+      position:absolute; right:14px; bottom:70px; width:78%;
+      border-radius:20px; padding:12px 12px 10px;
+      background:linear-gradient(180deg,rgba(20,22,26,.8),rgba(16,18,22,.7));
+      border:1px solid var(--line); backdrop-filter:blur(18px);
+      box-shadow:0 16px 40px rgba(0,0,0,.4);
+    }
+    .head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .head h3 { font-size:14px; font-weight:600; }
+    .head a { font-size:12px; color:var(--accent); font-weight:600; }
+    .icons { display:flex; justify-content:space-between; gap:4px; }
+    .cell { flex:1; text-align:center; }
+    .ico {
+      width:40px; height:40px; margin:0 auto; border-radius:11px;
+      background:rgba(255,255,255,.08); display:grid; place-items:center; font-size:11px; color:var(--muted);
+    }
+    .bar {
+      width:36px; height:3px; margin:6px auto 4px; border-radius:2px; background:rgba(52,199,89,.16); overflow:hidden;
+    }
+    .bar i { display:block; height:100%; background:var(--accent); border-radius:2px; }
+    .min { font-size:10px; color:var(--muted); }
+    .tabs {
+      margin-top:14px; display:flex; gap:2px; padding:3px; border-radius:12px; background:rgba(255,255,255,.07);
+    }
+    .tabs span {
+      flex:1; text-align:center; padding:7px 0; border-radius:10px; font-size:12px; color:var(--muted); font-weight:600;
+    }
+    .tabs span.on { background:rgba(255,255,255,.12); color:var(--accent); }
+    .field {
+      margin-top:10px; height:40px; border-radius:12px; background:rgba(255,255,255,.07);
+      border:1px solid var(--line); display:flex; align-items:center; padding:0 12px;
+      font-size:13px; color:#636366;
+    }
+    .orb {
+      position:absolute; right:22px; bottom:22px; width:36px; height:36px; border-radius:50%;
+      background:rgba(10,12,14,.65); border:1px solid rgba(52,199,89,.35);
+      display:grid; place-items:center; color:var(--accent);
+    }
+    .cap { margin-top:12px; font-size:12px; color:#636366; text-align:center; line-height:1.45; max-width:280px; }
+  </style>
+</head>
+<body>
+  <h1>桌面快板 · 就地展开</h1>
+  <p class="sub">半透明卡片自微粒处弹出；图标矩阵看今日用量；笔记/待办用 Tab。无灵动岛钉顶、无系统内存/CPU。</p>
+  <div class="phone">
+    <div class="stage">
+      <div class="panel">
+        <div class="head"><h3>今日使用</h3><a>打开心锚</a></div>
+        <div class="icons">
+          <div class="cell"><div class="ico">微</div><div class="bar"><i style="width:100%"></i></div><div class="min">38分</div></div>
+          <div class="cell"><div class="ico">抖</div><div class="bar"><i style="width:58%"></i></div><div class="min">22分</div></div>
+          <div class="cell"><div class="ico">红</div><div class="bar"><i style="width:40%"></i></div><div class="min">15分</div></div>
+          <div class="cell"><div class="ico">B</div><div class="bar"><i style="width:26%"></i></div><div class="min">10分</div></div>
+          <div class="cell"><div class="ico">淘</div><div class="bar"><i style="width:16%"></i></div><div class="min">6分</div></div>
+        </div>
+        <div class="tabs"><span class="on">笔记</span><span>待办</span></div>
+        <div class="field">记一句…</div>
+      </div>
+      <div class="orb">⚓</div>
+    </div>
+  </div>
+  <p class="cap">打开方式：点微粒 → 卡片自右下角缩放淡入；再点微粒收起。</p>
+</body>
+</html>

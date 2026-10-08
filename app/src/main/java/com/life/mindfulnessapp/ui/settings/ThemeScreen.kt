@@ -3,15 +3,31 @@ package com.life.mindfulnessapp.ui.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,26 +36,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.life.mindfulnessapp.ui.theme.*
-
-// ════════════════════════════════════════════════════════════════════════════
-//  ThemeScreen  ·  独立主题设置页（MVP：仅日间 / 夜间）
-// ════════════════════════════════════════════════════════════════════════════
+import com.life.mindfulnessapp.domain.model.ThemePack
+import com.life.mindfulnessapp.ui.theme.DayBg
+import com.life.mindfulnessapp.ui.theme.DayBorder
+import com.life.mindfulnessapp.ui.theme.DayCardBg
+import com.life.mindfulnessapp.ui.theme.LogoGreen
+import com.life.mindfulnessapp.ui.theme.MistAccent
+import com.life.mindfulnessapp.ui.theme.MistBg
+import com.life.mindfulnessapp.ui.theme.MistBorder
+import com.life.mindfulnessapp.ui.theme.MistCardBg
+import com.life.mindfulnessapp.ui.theme.NightBg
+import com.life.mindfulnessapp.ui.theme.NightBorder
+import com.life.mindfulnessapp.ui.theme.NightCardBg
+import com.life.mindfulnessapp.ui.theme.themeChrome
 
 @Composable
 fun ThemeScreen(
     viewModel: SettingsViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {}
 ) {
-    val isDarkTheme by viewModel.isDarkTheme.collectAsState()
-
-    val bgColor       = if (isDarkTheme) NightBg           else DayBg
-    val cardColor     = if (isDarkTheme) NightCardBg        else DayCardBg
-    val textPrimary   = if (isDarkTheme) NightTextPrimary   else DayTextPrimary
-    val textSecondary = if (isDarkTheme) NightTextSecondary else DayTextSecondary
-    val borderColor   = if (isDarkTheme) NightBorder        else DayBorder
-    val dividerColor  = if (isDarkTheme) NightDivider       else DayDivider
-    val accentGreen   = if (isDarkTheme) LogoGreen          else Color(0xFF27AE60)
+    val preferredPack by viewModel.themePack.collectAsState()
+    val followSystem by viewModel.themeFollowSystem.collectAsState()
+    val chrome = themeChrome()
+    val bgColor = chrome.bg
+    val cardColor = chrome.card
+    val textPrimary = chrome.textPrimary
+    val textSecondary = chrome.textSecondary
+    val borderColor = chrome.border
+    val accentGreen = chrome.accent
 
     Scaffold(
         containerColor = bgColor
@@ -59,205 +83,293 @@ fun ThemeScreen(
             ) {
                 IconButton(onClick = onNavigateBack) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBackIosNew,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回",
-                        tint = textPrimary,
-                        modifier = Modifier.size(20.dp)
+                        tint = textPrimary
                     )
                 }
                 Text(
-                    text = "主题与外观",
+                    text = "外观",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = textPrimary,
                     modifier = Modifier.padding(start = 4.dp)
                 )
             }
 
-            HorizontalDivider(
-                color = dividerColor,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            ThemeSectionLabel(text = "外观模式", textColor = textSecondary)
-
-            AppearanceSelectorCard(
-                isDark = isDarkTheme,
-                onToggle = { viewModel.setDarkTheme(it) },
-                cardColor = cardColor,
-                borderColor = borderColor,
-                dividerColor = dividerColor,
-                textPrimary = textPrimary,
-                accentGreen = accentGreen
-            )
-
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "拦截页、胶囊与主界面会跟随外观模式切换日间 / 夜间配色。",
-                fontSize = 12.sp,
+                text = "气质",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
                 color = textSecondary.copy(alpha = 0.55f),
-                modifier = Modifier.padding(horizontal = 20.dp)
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
 
-            Spacer(Modifier.height(32.dp))
+            ThemePackGrid(
+                preferred = preferredPack,
+                textPrimary = textPrimary,
+                textSecondary = textSecondary,
+                accentGreen = accentGreen,
+                onSelect = viewModel::setThemePack
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            Text(
+                text = "明暗",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = textSecondary.copy(alpha = 0.55f),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(cardColor)
+                    .border(1.dp, borderColor.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "跟随系统",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = textPrimary
+                        )
+                        Text(
+                            text = if (preferredPack == ThemePack.Mist) {
+                                "雾青为刻意锁定，不跟系统"
+                            } else {
+                                "在日间与夜锚之间切换"
+                            },
+                            fontSize = 12.sp,
+                            color = textSecondary.copy(alpha = 0.5f),
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    SettingsThemeFollowSwitch(
+                        checked = followSystem,
+                        enabled = preferredPack.allowsFollowSystem,
+                        accentGreen = accentGreen,
+                        trackOff = textPrimary.copy(alpha = 0.16f),
+                        onCheckedChange = viewModel::setThemeFollowSystem
+                    )
+                }
+            }
+
+            Text(
+                text = "气质定色与胶囊壳透明度。跟随只绑日间与夜锚。",
+                fontSize = 12.sp,
+                color = textSecondary.copy(alpha = 0.55f),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+            )
+
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
 
 @Composable
-private fun AppearanceSelectorCard(
-    isDark: Boolean,
-    onToggle: (Boolean) -> Unit,
-    cardColor: Color,
-    borderColor: Color,
-    dividerColor: Color,
+private fun ThemePackGrid(
+    preferred: ThemePack,
     textPrimary: Color,
-    accentGreen: Color
+    textSecondary: Color,
+    accentGreen: Color,
+    onSelect: (ThemePack) -> Unit
 ) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(cardColor)
-            .border(1.dp, borderColor.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ThemePackCard(
+                pack = ThemePack.Night,
+                selected = preferred == ThemePack.Night,
+                modifier = Modifier.weight(1f),
+                accentGreen = accentGreen,
+                labelColor = textPrimary,
+                hintColor = textSecondary,
+                onClick = { onSelect(ThemePack.Night) }
+            )
+            ThemePackCard(
+                pack = ThemePack.Day,
+                selected = preferred == ThemePack.Day,
+                modifier = Modifier.weight(1f),
+                accentGreen = accentGreen,
+                labelColor = textPrimary,
+                hintColor = textSecondary,
+                onClick = { onSelect(ThemePack.Day) }
+            )
+        }
+        ThemePackCard(
+            pack = ThemePack.Mist,
+            selected = preferred == ThemePack.Mist,
+            modifier = Modifier.fillMaxWidth(),
+            accentGreen = accentGreen,
+            labelColor = textPrimary,
+            hintColor = textSecondary,
+            wide = true,
+            onClick = { onSelect(ThemePack.Mist) }
+        )
+    }
+}
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+@Composable
+private fun ThemePackCard(
+    pack: ThemePack,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    accentGreen: Color,
+    labelColor: Color,
+    hintColor: Color,
+    wide: Boolean = false,
+    onClick: () -> Unit
+) {
+    val preview = packPreview(pack)
+    val shape = RoundedCornerShape(14.dp)
+    Column(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (wide) 64.dp else 88.dp)
+                .clip(shape)
+                .border(
+                    width = if (selected) 1.5.dp else 1.dp,
+                    color = if (selected) accentGreen.copy(alpha = 0.65f) else preview.outline.copy(alpha = 0.7f),
+                    shape = shape
+                )
+                .clickable(onClick = onClick)
+                .background(preview.canvas)
+                .padding(10.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(preview.surface)
+                    .padding(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(accentGreen.copy(alpha = 0.15f)),
+                        .width(36.dp)
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(preview.bar)
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.72f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(preview.bar.copy(alpha = 0.22f))
+                )
+                if (!wide) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.48f)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(preview.bar.copy(alpha = 0.12f))
+                    )
+                }
+            }
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(18.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(accentGreen),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = if (isDark) Icons.Default.NightlightRound else Icons.Default.LightMode,
-                        contentDescription = null,
-                        tint = accentGreen,
-                        modifier = Modifier.size(24.dp)
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "已选中",
+                        tint = Color.White,
+                        modifier = Modifier.size(12.dp)
                     )
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (isDark) "夜间模式" else "日间模式",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = textPrimary
-                    )
-                    Text(
-                        text = if (isDark) "深蓝黑底，护眼沉浸" else "明亮清爽，清晰易读",
-                        fontSize = 12.sp,
-                        color = accentGreen
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider(color = dividerColor)
-            Spacer(Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                AppearanceOptionButton(
-                    modifier = Modifier.weight(1f),
-                    label = "☀️ 日间",
-                    description = "明亮清爽",
-                    isSelected = !isDark,
-                    bgColor = Color(0xFFF5F7F5),
-                    highlightColor = Color(0xFF34C26A),
-                    textColor = Color(0xFF1A1D1A),
-                    onClick = { onToggle(false) }
-                )
-                AppearanceOptionButton(
-                    modifier = Modifier.weight(1f),
-                    label = "🌙 夜间",
-                    description = "护眼沉浸",
-                    isSelected = isDark,
-                    bgColor = Color(0xFF0D1117),
-                    highlightColor = Color(0xFF4CD980),
-                    textColor = Color(0xFFE6EDF3),
-                    onClick = { onToggle(true) }
-                )
             }
         }
-    }
-}
-
-@Composable
-private fun AppearanceOptionButton(
-    modifier: Modifier = Modifier,
-    label: String,
-    description: String,
-    isSelected: Boolean,
-    bgColor: Color,
-    highlightColor: Color,
-    textColor: Color,
-    onClick: () -> Unit
-) {
-    val borderW = if (isSelected) 2.dp else 1.dp
-    val borderC = if (isSelected) highlightColor else highlightColor.copy(alpha = 0.18f)
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(bgColor)
-            .border(borderW, borderC, RoundedCornerShape(14.dp))
-            .clickable { onClick() }
-            .padding(vertical = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, start = 2.dp, end = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .width(52.dp)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(highlightColor.copy(alpha = if (isSelected) 0.95f else 0.28f))
+            Text(
+                text = pack.title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = labelColor
             )
             Text(
-                text = label,
-                fontSize = 14.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) highlightColor else textColor.copy(alpha = 0.5f)
-            )
-            Text(
-                text = description,
+                text = if (wide) "${pack.subtitle} · 壳更透" else pack.subtitle,
                 fontSize = 11.sp,
-                color = if (isSelected) highlightColor.copy(alpha = 0.65f) else textColor.copy(alpha = 0.3f)
+                color = hintColor.copy(alpha = 0.5f)
             )
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .clip(CircleShape)
-                        .background(highlightColor)
-                )
-            }
         }
     }
 }
 
 @Composable
-private fun ThemeSectionLabel(text: String, textColor: Color) {
-    Text(
-        text = text,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Medium,
-        color = textColor.copy(alpha = 0.55f),
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
-    )
+private fun SettingsThemeFollowSwitch(
+    checked: Boolean,
+    enabled: Boolean,
+    accentGreen: Color,
+    trackOff: Color,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val track = when {
+        !enabled -> trackOff.copy(alpha = 0.08f)
+        checked -> accentGreen.copy(alpha = 0.9f)
+        else -> trackOff
+    }
+    Box(
+        modifier = Modifier
+            .width(42.dp)
+            .height(26.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(track)
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(3.dp),
+        contentAlignment = if (checked && enabled) Alignment.CenterEnd else Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .size(20.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = if (enabled) 1f else 0.5f))
+        )
+    }
+}
+
+private data class PackPreview(
+    val canvas: Color,
+    val surface: Color,
+    val bar: Color,
+    val outline: Color,
+)
+
+private fun packPreview(pack: ThemePack): PackPreview = when (pack) {
+    ThemePack.Night -> PackPreview(NightBg, NightCardBg, LogoGreen, NightBorder)
+    ThemePack.Day -> PackPreview(DayBg, DayCardBg, Color(0xFF1B9E55), DayBorder)
+    ThemePack.Mist -> PackPreview(MistBg, MistCardBg, MistAccent, MistBorder)
 }

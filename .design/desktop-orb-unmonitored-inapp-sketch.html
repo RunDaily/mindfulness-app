@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>桌面球 · 使用中看当前 App</title>
+  <style>
+    :root {
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --accent: #34c759;
+      --line: rgba(255,255,255,.1);
+      --paper: rgba(18,20,24,.92);
+      --field: rgba(255,255,255,.06);
+      --warn: #c47a6a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--ink);
+      background:
+        radial-gradient(ellipse at 18% 0%, rgba(52,199,89,.07), transparent 42%),
+        linear-gradient(180deg, #0c0c0e, #050506 70%);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 80px;
+    }
+    .wrap { max-width: 1040px; margin: 0 auto; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto 28px; }
+    .eyebrow {
+      font-size: 11px; font-weight: 650; letter-spacing: .16em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+    }
+    h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; line-height: 1.3; }
+    .hero p { margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.65; }
+    .thesis {
+      margin-top: 16px; display: inline-block; padding: 10px 16px; border-radius: 999px;
+      background: rgba(52,199,89,.12); border: 1px solid rgba(52,199,89,.28);
+      color: #c6f5d2; font-size: 13px; line-height: 1.5;
+    }
+
+    .stage-row {
+      display: flex; flex-wrap: wrap; gap: 22px; justify-content: center;
+      align-items: flex-start; margin-bottom: 28px;
+    }
+    .phone-wrap { width: min(300px, 100%); }
+    .phone-label {
+      text-align: center; font-size: 12px; color: var(--muted);
+      font-weight: 650; margin-bottom: 10px;
+    }
+    .phone-label.bad { color: rgba(196,122,106,.9); }
+    .phone-cap {
+      margin-top: 12px; font-size: 12px; color: var(--dim);
+      text-align: center; line-height: 1.55;
+    }
+    .phone {
+      background: #000; border: 1px solid #2a2a2c; border-radius: 36px;
+      padding: 12px 10px 16px;
+    }
+    .bar {
+      height: 20px; display: flex; justify-content: space-between;
+      padding: 0 14px; font-size: 11px; color: #aeaeb2; font-weight: 600;
+    }
+    .wall {
+      margin-top: 6px; height: 560px; border-radius: 22px; border: 1px solid #1e2024;
+      position: relative; overflow: hidden;
+      background: linear-gradient(165deg, #1a2030 0%, #12161c 45%, #0b0c0e 100%);
+    }
+    .wall.feed {
+      background:
+        radial-gradient(ellipse at 70% 20%, rgba(80,120,200,.18), transparent 40%),
+        linear-gradient(165deg, #1a2030 0%, #101418 50%, #0b0c0e 100%);
+    }
+    .feed-fake {
+      position: absolute; inset: 36px 18px auto 18px;
+      display: grid; gap: 12px; opacity: .45;
+    }
+    .feed-fake .card {
+      height: 72px; border-radius: 14px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .feed-fake .card.tall { height: 110px; }
+    .feed-name {
+      position: absolute; top: 14px; left: 18px;
+      font-size: 12px; font-weight: 650; color: rgba(255,255,255,.35);
+    }
+    .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.28); }
+    .orb {
+      position: absolute; right: 18px; bottom: 88px; z-index: 3;
+      width: 44px; height: 44px; border-radius: 50%;
+      background:
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,.22), transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(52,199,89,.35), rgba(20,24,28,.9) 70%);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 8px 24px rgba(0,0,0,.4);
+      display: grid; place-items: center;
+    }
+    .orb::after {
+      content: "";
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid rgba(52,199,89,.85);
+      border-top-color: transparent;
+      animation: spin 1.4s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .orb.idle::after {
+      animation: none;
+      border: none;
+      width: 14px; height: 14px;
+      background: rgba(242,242,247,.85);
+      clip-path: polygon(50% 8%, 62% 38%, 95% 42%, 70% 62%, 78% 92%, 50% 76%, 22% 92%, 30% 62%, 5% 42%, 38% 38%);
+    }
+
+    .panel {
+      position: absolute; right: 14px; bottom: 72px; left: 14px;
+      border-radius: 22px; padding: 16px 16px 14px;
+      background: #16181c;
+      border: .6px solid rgba(255,255,255,.14);
+      z-index: 2;
+    }
+    .panel.pick {
+      border-color: rgba(52,199,89,.35);
+      box-shadow: 0 0 0 1px rgba(52,199,89,.12), 0 18px 40px rgba(0,0,0,.45);
+    }
+    .panel.bad-outline {
+      outline: 1px dashed rgba(196,122,106,.45);
+      outline-offset: 5px;
+    }
+
+    .live {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 14px; padding: 10px 11px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(52,199,89,.14), var(--field));
+      border: 1px solid rgba(52,199,89,.28);
+    }
+    .live .ico {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: linear-gradient(145deg, #4a6fa5, #2a3d5c);
+      display: grid; place-items: center;
+      font-size: 11px; font-weight: 700; color: #fff;
+      flex: none;
+    }
+    .live .ico.wb { background: linear-gradient(145deg, #e8a838, #c45a2a); }
+    .live .ico.xh { background: linear-gradient(145deg, #ff4d6a, #c9184a); }
+    .live .meta { flex: 1; min-width: 0; }
+    .live .meta .n {
+      font-size: 13px; font-weight: 650; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .live .meta .s { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .live .now {
+      text-align: right; flex: none;
+      font-size: 17px; font-weight: 700; color: var(--accent);
+      font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace;
+    }
+    .live .now span {
+      display: block; font-size: 10px; color: var(--muted);
+      font-weight: 500; margin-top: 2px;
+    }
+
+    .stats {
+      display: flex; gap: 28px; margin-bottom: 12px;
+    }
+    .stats div {
+      font-size: 22px; font-weight: 300;
+      font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+      font-family: ui-monospace, monospace;
+    }
+    .stats div.acc { color: var(--accent); font-weight: 400; }
+    .stats span {
+      display: block; font-size: 10px; color: var(--muted);
+      margin-top: 4px; font-weight: 500; font-family: inherit;
+    }
+
+    .heat-wrap { margin-bottom: 14px; }
+    .heat-lab {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: var(--dim); margin-bottom: 6px;
+    }
+    .heat {
+      display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; height: 18px;
+    }
+    .heat i {
+      border-radius: 2px; background: rgba(255,255,255,.05);
+    }
+    .heat i[data-l="1"] { background: rgba(52,199,89,.18); }
+    .heat i[data-l="2"] { background: rgba(52,199,89,.38); }
+    .heat i[data-l="3"] { background: rgba(52,199,89,.62); }
+    .heat i[data-l="4"] { background: rgba(52,199,89,.88); }
+    .heat i.now { box-shadow: inset 0 0 0 1px rgba(242,242,247,.55); }
+
+    .spine { font-size: 12px; line-height: 1.75; color: var(--muted); }
+    .spine .line {
+      display: flex; justify-content: space-between; gap: 10px;
+      padding: 3px 0;
+    }
+    .spine .line .left {
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .spine .line b { font-weight: 500; color: var(--ink); }
+    .spine .line .dur {
+      flex: none; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink);
+    }
+    .spine .line.on .dur { color: var(--accent); }
+    .spine .fold { color: var(--dim); margin-top: 4px; font-size: 11px; }
+
+    .caliber {
+      margin-top: 10px; font-size: 10px; color: var(--dim); line-height: 1.4;
+    }
+
+    .quiet-foot {
+      margin-top: 14px; display: flex; justify-content: space-between;
+      align-items: center; gap: 10px;
+    }
+    .link { font-size: 12px; color: var(--accent); font-weight: 650; }
+    .link.dim { color: var(--muted); font-weight: 600; }
+    .cta {
+      font-size: 12px; font-weight: 650; color: #0b1a10;
+      background: var(--accent); border-radius: 999px;
+      padding: 7px 12px;
+    }
+
+    /* hub-ish bad */
+    .hub-title {
+      font-size: 13px; font-weight: 650; margin-bottom: 8px;
+    }
+    .hub-total {
+      font-size: 28px; font-weight: 300; font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, monospace; margin-bottom: 10px;
+    }
+    .hub-total span {
+      display: block; font-size: 10px; color: var(--muted); margin-top: 4px;
+      font-family: inherit; font-weight: 500;
+    }
+    .chips {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px;
+    }
+    .chip {
+      text-align: center; padding: 8px 4px; border-radius: 12px;
+      background: var(--field); border: 1px solid var(--line);
+      font-size: 10px; color: var(--muted);
+    }
+    .chip b {
+      display: block; font-size: 11px; color: var(--ink);
+      font-weight: 650; margin-bottom: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .notes {
+      max-width: 680px; margin: 36px auto 0;
+      border-top: 1px solid var(--line); padding-top: 22px;
+    }
+    .notes h2 { font-size: 14px; font-weight: 650; text-align: center; margin-bottom: 12px; }
+    .notes li {
+      list-style: none; font-size: 13px; color: var(--ink); line-height: 1.5;
+      padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .notes li span { display: block; color: var(--dim); font-size: 12px; margin-top: 3px; }
+    .quiet-note {
+      margin: 24px auto 0; max-width: 560px; text-align: center;
+      font-size: 13px; color: var(--dim); line-height: 1.65;
+    }
+    .map {
+      margin: 18px auto 0; max-width: 520px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11px; color: var(--muted); line-height: 1.7;
+      white-space: pre; text-align: left;
+      padding: 14px 16px; border-radius: 12px;
+      background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Desktop orb · in-app glance</div>
+      <h1>还没加进规则的 App，使用中点球也该看见它自己</h1>
+      <p>
+        人正在刷微博，点球不是回「今天总览」，而是这台手机上
+        <em style="font-style:normal;color:var(--ink)">此刻这个 App</em>
+        今天用了多久、开了几次、什么时候在碰。想管再去方案里加。
+      </p>
+      <div class="thesis">进行中 → 今日 · 打开 · 节奏 → 去方案添加</div>
+    </header>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label">取 · 使用中点球</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>微博</span></div>
+          <div class="wall feed">
+            <div class="feed-name">微博</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="orb" aria-hidden="true"></div>
+            <div class="panel pick">
+              <div class="live">
+                <div class="ico wb">微</div>
+                <div class="meta">
+                  <div class="n">微博</div>
+                  <div class="s">进行中 · 还没加进规则</div>
+                </div>
+                <div class="now">12:40<span>本次</span></div>
+              </div>
+              <div class="stats">
+                <div class="acc">1时18分<span>今日</span></div>
+                <div>9次<span>打开</span></div>
+              </div>
+              <div class="heat-wrap">
+                <div class="heat-lab"><span>0</span><span>今天什么时候在用</span><span>24</span></div>
+                <div class="heat" aria-hidden="true">
+                  <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i data-l="1"></i>
+                  <i data-l="2"></i><i data-l="1"></i><i></i><i data-l="3"></i>
+                  <i data-l="4"></i><i data-l="2"></i><i data-l="1"></i><i></i>
+                  <i data-l="3" class="now"></i><i data-l="2"></i><i></i><i></i>
+                  <i></i><i></i><i></i><i></i>
+                </div>
+              </div>
+              <div class="spine">
+                <div class="line"><span class="left">09:12 – 09:28</span><span class="dur">16分</span></div>
+                <div class="line"><span class="left">11:40 – 12:05</span><span class="dur">25分</span></div>
+                <div class="line"><span class="left">14:02 – 14:19</span><span class="dur">17分</span></div>
+                <div class="line on"><span class="left">16:08 – <b>现在</b></span><span class="dur">12分</span></div>
+                <div class="fold">其余 5 次很短</div>
+              </div>
+              <div class="caliber">按系统用量 · 与加规则后的心锚记录不同</div>
+              <div class="quiet-foot">
+                <span class="link dim">完整看看 →</span>
+                <span class="cta">去方案添加</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">主语是当前 App。热力一眼节奏，脊线是今天几次，脚上才「去方案添加」。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label bad">不取 · 仍开今日总览</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>微博</span></div>
+          <div class="wall feed">
+            <div class="feed-name">微博</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="orb" aria-hidden="true"></div>
+            <div class="panel bad-outline">
+              <div class="hub-title">今日</div>
+              <div class="hub-total">3时42分<span>这台手机</span></div>
+              <div class="heat-wrap">
+                <div class="heat" aria-hidden="true">
+                  <i></i><i></i><i data-l="1"></i><i data-l="2"></i><i data-l="1"></i><i></i><i data-l="3"></i><i data-l="4"></i>
+                  <i data-l="2"></i><i data-l="3"></i><i data-l="4"></i><i data-l="2"></i>
+                  <i data-l="1"></i><i data-l="3"></i><i data-l="2"></i><i data-l="1"></i>
+                  <i data-l="4" class="now"></i><i data-l="2"></i><i></i><i></i>
+                  <i></i><i></i><i></i><i></i>
+                </div>
+              </div>
+              <div class="chips">
+                <div class="chip"><b>抖音</b>52分</div>
+                <div class="chip"><b>微博</b>1时</div>
+                <div class="chip"><b>哔哩</b>41分</div>
+                <div class="chip"><b>相册</b>12分</div>
+              </div>
+              <div class="quiet-foot" style="justify-content:flex-end;margin-top:16px">
+                <span class="link dim">使用日志 →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">人在微博里，面板却讲整机。多点一层才到微博，觉察晚半拍。</p>
+      </div>
+    </div>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label">同壳 · 已在规则里</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall" style="background:linear-gradient(165deg,#2a1820,#101418 50%,#0b0c0e)">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake" style="opacity:.35">
+              <div class="card"></div>
+              <div class="card tall"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="orb" aria-hidden="true"></div>
+            <div class="panel pick">
+              <div class="live">
+                <div class="ico xh">书</div>
+                <div class="meta">
+                  <div class="n">小红书</div>
+                  <div class="s">进行中</div>
+                </div>
+                <div class="now">8:29<span>本次</span></div>
+              </div>
+              <div class="stats">
+                <div class="acc">1时4分<span>今日</span></div>
+                <div>6次<span>进入</span></div>
+              </div>
+              <div class="spine">
+                <div class="line"><span class="left">14:02 – 14:19 · <b>看穿搭</b></span><span class="dur">17分</span></div>
+                <div class="line"><span class="left">15:40 – 15:51 · <b>刷一下</b></span><span class="dur">11分</span></div>
+                <div class="line on"><span class="left">16:08 – 现在 · <b>看穿搭</b></span><span class="dur">8分</span></div>
+                <div class="fold">其余 3 次很短</div>
+              </div>
+              <div class="quiet-foot" style="justify-content:flex-end">
+                <span class="link">完整记录 →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">壳一样。数字走心锚进门记录；无「去方案添加」，脚上只留完整记录。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label">边界 · 桌面 / 系统页</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span></span></div>
+          <div class="wall">
+            <div style="position:absolute;inset:40px 22px auto;display:grid;grid-template-columns:repeat(4,1fr);gap:16px 10px;opacity:.4">
+              <div><div style="width:42px;height:42px;margin:0 auto;border-radius:12px;background:rgba(255,255,255,.08)"></div><div style="margin-top:6px;text-align:center;font-size:10px;color:#636366">信息</div></div>
+              <div><div style="width:42px;height:42px;margin:0 auto;border-radius:12px;background:rgba(255,255,255,.08)"></div><div style="margin-top:6px;text-align:center;font-size:10px;color:#636366">日历</div></div>
+              <div><div style="width:42px;height:42px;margin:0 auto;border-radius:12px;background:rgba(255,255,255,.08)"></div><div style="margin-top:6px;text-align:center;font-size:10px;color:#636366">照片</div></div>
+              <div><div style="width:42px;height:42px;margin:0 auto;border-radius:12px;background:rgba(255,255,255,.08)"></div><div style="margin-top:6px;text-align:center;font-size:10px;color:#636366">相机</div></div>
+            </div>
+            <div class="orb idle" style="bottom:120px" aria-hidden="true"></div>
+            <div class="panel pick" style="bottom:100px">
+              <div class="hub-title">今日</div>
+              <div class="hub-total">3时42分<span>这台手机</span></div>
+              <div class="heat-wrap">
+                <div class="heat-lab"><span>0</span><span>一天的节奏</span><span>24</span></div>
+                <div class="heat" aria-hidden="true">
+                  <i></i><i></i><i data-l="1"></i><i data-l="2"></i><i data-l="1"></i><i></i><i data-l="3"></i><i data-l="4"></i>
+                  <i data-l="2"></i><i data-l="3"></i><i data-l="4"></i><i data-l="2"></i>
+                  <i data-l="1"></i><i data-l="3"></i><i data-l="2"></i><i data-l="1"></i>
+                  <i data-l="2"></i><i data-l="1"></i><i></i><i></i>
+                  <i></i><i></i><i></i><i></i>
+                </div>
+              </div>
+              <div class="chips">
+                <div class="chip"><b>抖音</b>52分</div>
+                <div class="chip"><b>微博</b>1时</div>
+                <div class="chip"><b>哔哩</b>41分</div>
+                <div class="chip"><b>相册</b>12分</div>
+              </div>
+              <div class="quiet-foot" style="justify-content:flex-end;margin-top:16px">
+                <span class="link dim">使用日志 →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">在桌面才开今日总览。没有「当前 App」可指时，不硬造一幕。</p>
+      </div>
+    </div>
+
+    <section class="notes">
+      <h2>框外约定</h2>
+      <ul>
+        <li>触发：监测开着 · 前台是普通第三方 App · 且它还没进方案规则<span>桌面 / 系统界面 / 心锚自己 → 仍开今日 Hub</span></li>
+        <li>壳：与已在规则里的使用中 Pulse 同构<span>头（进行中）· 今日/打开 · 热力 · 脊线 · 脚。不加第三套卡片</span></li>
+        <li>数据：系统今日用量与前台段<span>一行淡字交代口径；不和加规则后的心锚账混算</span></li>
+        <li>节奏：热力带答「何时」；脊线答「几次、多久」<span>短段收成「其余 N 次很短」，不刷流水</span></li>
+        <li>脚：主动作「去方案添加」；次要「完整看看」进轻详情<span>微信等不宜监控的，藏添加，只留看看</span></li>
+        <li>文案不进手机框：不写「旁观」「未监控席」这类内部词<span>人只看见事实与动作</span></li>
+      </ul>
+      <div class="map">使用中点球
+ ├ 前台在规则里     → Pulse（心锚账 · 完整记录）
+ ├ 前台未进规则     → 本草图（系统账 · 去方案添加）
+ └ 桌面 / 无当前 App → 今日 Hub（整机）</div>
+      <p class="quiet-note">文件：.design/desktop-orb-unmonitored-inapp-sketch.html</p>
+    </section>
+  </div>
+</body>
+</html>

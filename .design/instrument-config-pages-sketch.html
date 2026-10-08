@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>配置 · 一行一件 · 进页再改</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --line: rgba(232,237,230,.12);
+      --sand: #c4a35a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 80px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 36px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .eyebrow { font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px; }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 980px) { .row, .row3 { grid-template-columns: 1fr; justify-items: center; } }
+    .col-head { text-align: center; margin-bottom: 8px; max-width: 290px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; }
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9/19.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .bar {
+      height: 34px; padding: 12px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex: none;
+    }
+    .scroll { flex: 1; padding: 2px 16px 14px; display: flex; flex-direction: column; }
+    .brand { font-family: "Iowan Old Style", "Songti SC", Georgia, serif; font-size: 20px; font-weight: 500; }
+    .sub { font-size: 11px; color: var(--fog); line-height: 1.45; margin-top: 4px; }
+    .sub.quiet { color: var(--mist); }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 8px; }
+    .title { font-size: 17px; font-weight: 500; margin-top: 2px; }
+    .hint { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+
+    /* hub rows */
+    .rowi {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 14px 0; border-bottom: 1px solid var(--line);
+    }
+    .rowi.off .n, .rowi.off .m, .rowi.off .r { color: var(--mist); }
+    .rowi .n { font-size: 14px; }
+    .rowi .m { font-size: 11px; color: var(--fog); margin-top: 3px; font-variant-numeric: tabular-nums; }
+    .rowi .m.temp { color: var(--sand); }
+    .rowi .r {
+      display: flex; align-items: center; gap: 8px; flex: none;
+    }
+    .chev { font-size: 13px; color: var(--mist); }
+    .sw {
+      width: 34px; height: 19px; border-radius: 999px; position: relative; flex: none;
+      background: rgba(232,237,230,.16);
+    }
+    .sw.on { background: rgba(61,122,74,.85); }
+    .sw i {
+      position: absolute; top: 2px; left: 2px; width: 15px; height: 15px;
+      border-radius: 50%; background: var(--paper);
+    }
+    .sw.on i { left: 17px; }
+    .gone {
+      padding: 12px 0; border-bottom: 1px dashed rgba(196,122,114,.35);
+      font-size: 11px; color: #c47a72; line-height: 1.5;
+      text-decoration: line-through; opacity: .7;
+    }
+
+    /* scope-first gate */
+    .scope { margin-top: 20px; display: grid; gap: 0; }
+    .opt {
+      padding: 16px 0; border-bottom: 1px solid var(--line);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    }
+    .opt .lab { font-size: 15px; }
+    .opt .desc { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+    .chev-r { font-size: 14px; color: var(--mist); margin-top: 2px; flex: none; }
+    .fact {
+      margin-top: 14px; font-size: 11px; color: var(--mist);
+      font-variant-numeric: tabular-nums; line-height: 1.5;
+    }
+
+    /* direct input */
+    .input-wrap {
+      margin-top: 36px; display: flex; align-items: baseline; justify-content: center;
+      gap: 6px; font-variant-numeric: tabular-nums;
+    }
+    .input-box {
+      min-width: 96px; text-align: center;
+      font-size: 48px; font-weight: 500; letter-spacing: -.04em;
+      border-bottom: 1.5px solid rgba(159,212,168,.55);
+      padding: 0 4px 4px; color: var(--paper);
+      caret-color: var(--leaf-text);
+    }
+    .input-box.empty { color: var(--mist); }
+    .input-unit { font-size: 15px; color: var(--fog); }
+    .cursor {
+      display: inline-block; width: 1.5px; height: 36px;
+      background: var(--leaf-text); margin-left: 2px;
+      vertical-align: middle; animation: blink 1.1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .used { text-align: center; margin-top: 12px; font-size: 11px; color: var(--mist); }
+    .scope-tag {
+      text-align: center; margin-top: 6px; font-size: 11px; color: var(--sand);
+    }
+
+    /* confirm sheet */
+    .scrim {
+      position: relative; flex: 1; display: flex; flex-direction: column;
+    }
+    .scrim::after {
+      content: ""; position: absolute; inset: 0;
+      background: rgba(0,0,0,.55); pointer-events: none;
+    }
+    .sheet {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+      padding: 18px 16px 22px;
+      background: #0c100e;
+      border-top: 1px solid rgba(232,237,230,.12);
+    }
+    .sheet .ask {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 17px; line-height: 1.4; font-weight: 500;
+    }
+    .sheet .detail {
+      margin-top: 8px; font-size: 12px; color: var(--fog); line-height: 1.55;
+    }
+    .sheet .acts {
+      margin-top: 18px; display: flex; justify-content: space-between; align-items: baseline;
+    }
+
+    .foot {
+      margin-top: auto; padding-top: 14px; display: flex;
+      justify-content: space-between; align-items: baseline;
+      border-top: 1px solid var(--line);
+    }
+    .cta { font-size: 15px; color: var(--leaf-text); }
+    .dim { font-size: 12px; color: var(--mist); }
+    .danger { font-size: 12px; color: #c47a72; }
+
+    /* period / intent nested */
+    .block { margin-top: 18px; }
+    .block .h { font-size: 11px; color: var(--mist); letter-spacing: .04em; }
+    .chip-col { margin-top: 10px; display: grid; gap: 8px; }
+    .chip-line {
+      font-size: 15px; color: var(--fog); padding: 6px 0;
+      border-bottom: 1px solid transparent;
+    }
+    .chip-line.on { color: var(--paper); border-bottom-color: rgba(159,212,168,.35); }
+    .win {
+      margin-top: 12px; padding: 10px 0; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .win .t { font-size: 15px; font-variant-numeric: tabular-nums; }
+    .win .s { font-size: 11px; color: var(--mist); }
+    .add { margin-top: 14px; font-size: 13px; color: var(--leaf-text); }
+
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.75; max-width: 760px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+    .map {
+      max-width: 760px; margin: 0 auto; font-size: 12px; color: var(--fog);
+      line-height: 1.7; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .arrow {
+      text-align: center; font-size: 11px; color: var(--mist); letter-spacing: .08em;
+      margin: -8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Configure · Pages</div>
+      <h1>总览只扫一眼，日限三步写清</h1>
+      <p>呼吸秒数先拿掉。日限：进页后直接键入分钟，确认弹窗后才写入。不做仅今日临时。</p>
+      <div class="thesis">无呼吸配置 · 一行一件 · 键入数字 · 弹窗确认</div>
+    </header>
+
+    <pre class="map">日限 · 两步（不做仅今日）
+  ① 键入分钟　键盘数字，不是加减
+  ② 确认弹窗　「日限改为 60 分？」→ 确认才写
+
+总览
+  日限 / 次数 / 时段　各一行：开关 + 摘要 + ›
+  （呼吸秒数：去掉）</pre>
+
+    <!-- ══════ 总览 ══════ -->
+    <p class="sec">① 总览 · <strong>一行一件，不在此拨数</strong></p>
+    <section class="row3">
+      <div>
+        <div class="col-head"><h3>平时</h3><p>摘要跟在名下</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="scroll">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub quiet">开着的，门口会执行</p>
+
+            <div class="rowi">
+              <div>
+                <div class="n">日限</div>
+                <div class="m">45 分</div>
+              </div>
+              <div class="r">
+                <div class="sw on"><i></i></div>
+                <span class="chev">›</span>
+              </div>
+            </div>
+
+            <div class="rowi">
+              <div>
+                <div class="n">意图门</div>
+                <div class="m">先写意图 · ≤10 次</div>
+              </div>
+              <div class="r">
+                <div class="sw on"><i></i></div>
+                <span class="chev">›</span>
+              </div>
+            </div>
+
+            <div class="rowi">
+              <div>
+                <div class="n">时段</div>
+                <div class="m">23:00–07:00</div>
+              </div>
+              <div class="r">
+                <div class="sw on"><i></i></div>
+                <span class="chev">›</span>
+              </div>
+            </div>
+
+            <div class="gone">呼吸 · 8 秒　← 去掉</div>
+
+            <div class="foot">
+              <span class="danger">移出方案</span>
+              <span class="dim">改完即生效</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>今日有临时</h3><p>摘要标出与长期不同</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="scroll">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub quiet">开着的，门口会执行</p>
+
+            <div class="rowi">
+              <div>
+                <div class="n">日限</div>
+                <div class="m temp">今日 60 · 长期 45</div>
+              </div>
+              <div class="r">
+                <div class="sw on"><i></i></div>
+                <span class="chev">›</span>
+              </div>
+            </div>
+
+            <div class="rowi">
+              <div>
+                <div class="n">意图门</div>
+                <div class="m">先写意图 · ≤10 次</div>
+              </div>
+              <div class="r">
+                <div class="sw on"><i></i></div>
+                <span class="chev">›</span>
+              </div>
+            </div>
+
+            <div class="rowi off">
+              <div>
+                <div class="n">时段</div>
+                <div class="m">未开</div>
+              </div>
+              <div class="r">
+                <div class="sw"><i></i></div>
+                <span class="chev">›</span>
+              </div>
+            </div>
+
+            <div class="foot">
+              <span class="danger">移出方案</span>
+              <span class="dim">明日日限回 45</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>关一项</h3><p>开关在行上，数在页里</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="scroll">
+            <div class="back">‹ 方案</div>
+            <div class="brand">抖音</div>
+            <p class="sub quiet">开着的，门口会执行</p>
+
+            <div class="rowi">
+              <div>
+                <div class="n">日限</div>
+                <div class="m">30 分</div>
+              </div>
+              <div class="r">
+                <div class="sw on"><i></i></div>
+                <span class="chev">›</span>
+              </div>
+            </div>
+
+            <div class="rowi off">
+              <div>
+                <div class="n">意图门</div>
+                <div class="m">未开</div>
+              </div>
+              <div class="r">
+                <div class="sw"><i></i></div>
+                <span class="chev">›</span>
+              </div>
+            </div>
+
+            <div class="rowi">
+              <div>
+                <div class="n">时段</div>
+                <div class="m">两段</div>
+              </div>
+              <div class="r">
+                <div class="sw on"><i></i></div>
+                <span class="chev">›</span>
+              </div>
+            </div>
+
+            <div class="foot">
+              <span class="danger">移出方案</span>
+              <span class="dim">改完即生效</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="arrow">点「日限 ›」</p>
+
+    <!-- ══════ 日限三步 ══════ -->
+    <p class="sec">② 日限 · <strong>先定范围 → 键入 → 确认</strong></p>
+    <section class="row3">
+      <div>
+        <div class="col-head"><h3>① 先选范围</h3><p>还没改数，必须先选</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>日限</span></div>
+          <div class="scroll">
+            <div class="back">‹ 小红书</div>
+            <div class="title">调整日限</div>
+            <p class="hint">先决定这次改动管多久</p>
+
+            <div class="fact">长期 45 分 · 今日已用 38</div>
+
+            <div class="scope">
+              <div class="opt">
+                <div>
+                  <div class="lab">仅今日</div>
+                  <div class="desc">只改今天的上限，明天回到长期 45</div>
+                </div>
+                <span class="chev-r">›</span>
+              </div>
+              <div class="opt">
+                <div>
+                  <div class="lab">之后一直</div>
+                  <div class="desc">改长期规则，今天起按新数执行</div>
+                </div>
+                <span class="chev-r">›</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>② 键入分钟</h3><p>直接输入，不是加减</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>日限</span></div>
+          <div class="scroll">
+            <div class="back">‹ 范围</div>
+            <div class="title">仅今日</div>
+            <p class="hint">今天最多用多少分钟</p>
+
+            <div class="input-wrap">
+              <span class="input-box">60<span class="cursor"></span></span>
+              <span class="input-unit">分</span>
+            </div>
+            <div class="used">已用 38 · 长期 45</div>
+
+            <div class="foot">
+              <span class="dim">取消</span>
+              <span class="cta">下一步</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>③ 确认弹窗</h3><p>复述后果，确认才写</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>日限</span></div>
+          <div class="scroll scrim" style="position:relative;padding:0">
+            <div style="padding:2px 16px 14px;flex:1;display:flex;flex-direction:column;opacity:.35">
+              <div class="back">‹ 范围</div>
+              <div class="title">仅今日</div>
+              <div class="input-wrap">
+                <span class="input-box">60</span>
+                <span class="input-unit">分</span>
+              </div>
+            </div>
+            <div class="sheet">
+              <div class="ask">今日上限改为 60 分？</div>
+              <div class="detail">明天回到长期 45 分。已用 38，改完还可再用约 22 分。</div>
+              <div class="acts">
+                <span class="dim">再改改</span>
+                <span class="cta">确认</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">②′ 变体 · <strong>长期 / 门口</strong></p>
+    <section class="row3">
+      <div>
+        <div class="col-head"><h3>长期 · 键入</h3><p>标题标出作用范围</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>日限</span></div>
+          <div class="scroll">
+            <div class="back">‹ 范围</div>
+            <div class="title">之后一直</div>
+            <p class="hint">以后每天最多用多少分钟</p>
+
+            <div class="input-wrap">
+              <span class="input-box">60<span class="cursor"></span></span>
+              <span class="input-unit">分</span>
+            </div>
+            <div class="used">当前长期 45 · 已用 38</div>
+
+            <div class="foot">
+              <span class="dim">取消</span>
+              <span class="cta">下一步</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>长期 · 确认</h3><p>文案更重一点</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>日限</span></div>
+          <div class="scroll scrim" style="position:relative;padding:0">
+            <div style="padding:2px 16px 14px;flex:1;opacity:.35">
+              <div class="back">‹ 范围</div>
+              <div class="title">之后一直</div>
+              <div class="input-wrap">
+                <span class="input-box">60</span>
+                <span class="input-unit">分</span>
+              </div>
+            </div>
+            <div class="sheet">
+              <div class="ask">长期日限改为 60 分？</div>
+              <div class="detail">今天起按 60 执行，之后每天也是。原长期 45 分将被替换。</div>
+              <div class="acts">
+                <span class="dim">再改改</span>
+                <span class="cta">确认</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>门口触顶</h3><p>同一流程，范围步默认可读</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>日限</span></div>
+          <div class="scroll">
+            <div class="back">‹ 离开</div>
+            <div class="title">调整日限</div>
+            <p class="hint">已触顶 · 已用 45</p>
+
+            <div class="fact">长期 45 分</div>
+
+            <div class="scope">
+              <div class="opt">
+                <div>
+                  <div class="lab">仅今日</div>
+                  <div class="desc">放宽今天，明天回到 45</div>
+                </div>
+                <span class="chev-r">›</span>
+              </div>
+              <div class="opt">
+                <div>
+                  <div class="lab">之后一直</div>
+                  <div class="desc">把长期也一起改掉</div>
+                </div>
+                <span class="chev-r">›</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════ 其他子页 ══════ -->
+    <p class="sec">③ 其余 · <strong>同样各进一页</strong></p>
+    <section class="row3">
+      <div>
+        <div class="col-head"><h3>意图门</h3><p>写意图 · 可选次数</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>意图门</span></div>
+          <div class="scroll">
+            <div class="back">‹ 小红书</div>
+            <div class="title">意图门</div>
+            <p class="hint">打开前先写下要做什么</p>
+
+            <div class="block">
+              <div class="h">单次上限</div>
+              <div class="chip-col">
+                <div class="chip-line">不限</div>
+                <div class="chip-line on">10 次</div>
+                <div class="chip-line">15 次</div>
+                <div class="chip-line">20 次</div>
+              </div>
+            </div>
+
+            <div class="foot">
+              <span class="dim">取消</span>
+              <span class="cta">完成</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>时段</h3><p>列表即内容</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>时段</span></div>
+          <div class="scroll">
+            <div class="back">‹ 小红书</div>
+            <div class="title">时段</div>
+            <p class="hint">锁定时段内不可进入</p>
+
+            <div class="win">
+              <div>
+                <div class="t">23:00–07:00</div>
+                <div class="s">睡眠</div>
+              </div>
+              <span class="chev">›</span>
+            </div>
+            <div class="win">
+              <div>
+                <div class="t">09:00–12:00</div>
+                <div class="s">上午专注</div>
+              </div>
+              <span class="chev">›</span>
+            </div>
+            <div class="add">添加时段</div>
+
+            <div class="foot">
+              <span class="dim">取消</span>
+              <span class="cta">完成</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>对照 · 旧形态</h3><p>一页堆拨盘，拿掉</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="scroll">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub quiet" style="text-decoration:line-through;opacity:.55">一页拨完所有数</p>
+
+            <div style="opacity:.4;margin-top:12px">
+              <div class="rowi" style="padding:10px 0">
+                <div><div class="n">日限</div></div>
+                <div class="r"><div class="sw on"><i></i></div></div>
+              </div>
+              <div class="input-wrap" style="margin-top:4px;gap:12px;opacity:.9">
+                <span style="font-size:14px;color:var(--fog)">−</span>
+                <span style="font-size:28px">45</span>
+                <span style="font-size:14px;color:var(--fog)">+</span>
+                <span class="input-unit">分</span>
+              </div>
+              <div class="rowi" style="padding:10px 0">
+                <div><div class="n">次数</div></div>
+                <div class="r"><div class="sw on"><i></i></div></div>
+              </div>
+              <div class="rowi" style="padding:10px 0">
+                <div><div class="n">呼吸</div></div>
+                <div class="r"><div class="sw on"><i></i></div></div>
+              </div>
+            </div>
+
+            <div class="gone" style="margin-top:auto;text-decoration:none;opacity:1">← 加减堆一页，拿掉</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>取舍</strong><br />
+      · <strong>呼吸秒数</strong>：配置面去掉；后续另设无意识手段。<br />
+      · <strong>日限三步</strong>：① 先选「仅今日 / 之后一直」→ ② 键入分钟 → ③ 弹窗复述后果再确认。范围在改数之前，避免改完才想起来动了长期。<br />
+      · <strong>键入优于加减</strong>：日限跨度大（5–480），加减要按很久；键盘直达意图更准。<br />
+      · <strong>确认文案分叉</strong>：仅今日说「明天回到长期 N」；之后一直说「原长期将被替换」。<br />
+      · <strong>总览</strong>：开关在行上；有临时时写「今日 60 · 长期 45」。<br />
+      · 意图门 / 时段各进一页；次数挂在意图门里。
+    </div>
+  </div>
+</body>
+</html>

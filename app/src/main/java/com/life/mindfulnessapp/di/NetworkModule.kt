@@ -1,8 +1,6 @@
 package com.life.mindfulnessapp.di
 
 import com.life.mindfulnessapp.data.network.ApiService
-import com.life.mindfulnessapp.data.network.DeepSeekApi
-import com.life.mindfulnessapp.data.network.DeepSeekClient
 import com.life.mindfulnessapp.data.network.RetrofitClient
 import dagger.Module
 import dagger.Provides
@@ -17,8 +15,4 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideApiService(): ApiService = RetrofitClient.apiService
-
-    @Provides
-    @Singleton
-    fun provideDeepSeekApi(): DeepSeekApi = DeepSeekClient.api
 }

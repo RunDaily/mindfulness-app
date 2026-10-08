@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心锚 · 日程 Tab</title>
+  <style>
+    :root {
+      --ink: #070908;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --leaf: #3d7a4a;
+      --leaf-text: #9fd4a8;
+      --line: rgba(232,237,230,.12);
+      --sand: #c4a35a;
+      --now: #c4a35a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background:
+        radial-gradient(ellipse at 36% -6%, #1a2420 0%, transparent 46%),
+        var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 80px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 36px; }
+    .hero { text-align: center; max-width: 620px; margin: 0 auto; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf);
+      font-weight: 600; margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .phones {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start;
+    }
+    @media (max-width: 980px) {
+      .phones { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 280px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.45; }
+
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9/17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .bar {
+      height: 34px; padding: 12px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex-shrink: 0;
+    }
+    .body {
+      flex: 1; padding: 2px 16px 0; display: flex; flex-direction: column;
+      gap: 0; overflow: hidden; min-height: 0;
+    }
+    .scroll { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 0; }
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 20px; font-weight: 500; letter-spacing: .02em;
+    }
+    .day-row {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin: 2px 0 10px;
+    }
+    .day-label { font-size: 12px; color: var(--fog); }
+    .day-nav { font-size: 11px; color: var(--mist); letter-spacing: .04em; }
+
+    .slot {
+      padding: 10px 0 4px;
+      border-top: 1px solid var(--line);
+    }
+    .slot:first-of-type { border-top: none; padding-top: 2px; }
+    .slot-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .slot-name {
+      font-size: 11px; font-weight: 650; letter-spacing: .12em;
+      color: var(--mist);
+    }
+    .slot.now .slot-name { color: var(--now); }
+    .slot-range { font-size: 10px; color: rgba(139,147,140,.7); font-variant-numeric: tabular-nums; }
+    .slot-add { font-size: 11px; color: var(--leaf-text); opacity: .85; }
+
+    .item {
+      display: grid; grid-template-columns: 52px 1fr auto; gap: 8px;
+      padding: 7px 0; align-items: start;
+    }
+    .item .t {
+      font-size: 11px; color: var(--fog); font-variant-numeric: tabular-nums;
+      line-height: 1.35; padding-top: 1px;
+    }
+    .item .t .end { color: rgba(139,147,140,.55); display: block; }
+    .item .n { font-size: 13.5px; line-height: 1.3; color: var(--paper); }
+    .item .m { font-size: 11px; color: var(--mist); margin-top: 2px; line-height: 1.35; }
+    .item.empty .n { color: var(--mist); font-size: 12px; }
+    .item.done .n { color: rgba(232,237,230,.38); text-decoration: line-through; text-decoration-color: rgba(232,237,230,.22); }
+    .item .check { font-size: 12px; color: rgba(139,147,140,.45); padding-top: 2px; }
+    .item.done .check { color: var(--leaf-text); }
+
+    .tabs {
+      flex-shrink: 0; height: 52px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+      border-top: 1px solid var(--line); padding: 6px 4px 10px;
+    }
+    .tab {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; font-size: 9px; color: var(--mist);
+    }
+    .tab.on { color: var(--leaf-text); }
+    .tab .ico { font-size: 13px; opacity: .7; }
+
+    .sheet {
+      margin-top: auto; background: #0c0f0d;
+      border: 1px solid rgba(255,255,255,.08); border-radius: 16px 16px 0 0;
+      padding: 14px 14px 18px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .sheet .grip {
+      width: 32px; height: 3px; border-radius: 2px;
+      background: rgba(232,237,230,.18); margin: 0 auto 4px;
+    }
+    .sheet .title { font-size: 15px; font-weight: 550; }
+    .field {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+    }
+    .field .k { color: var(--mist); font-size: 12px; width: 48px; }
+    .field .v { color: var(--paper); font-variant-numeric: tabular-nums; flex: 1; text-align: left; }
+    .field .v.placeholder { color: rgba(139,147,140,.55); }
+    .sheet .acts {
+      display: flex; gap: 18px; margin-top: 4px; font-size: 13px;
+    }
+    .sheet .acts .go { color: var(--leaf-text); }
+    .sheet .acts .dim { color: var(--mist); }
+    .dim-page { opacity: .35; pointer-events: none; }
+
+    .menu-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+    }
+    .menu-row .r { font-size: 11px; color: var(--mist); }
+    .warn { font-size: 12px; color: #c47a6a; margin: 6px 0 4px; }
+
+    .notes {
+      max-width: 720px; margin: 0 auto; display: grid; gap: 10px;
+      padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px;
+      background: rgba(255,255,255,.02);
+    }
+    .notes h2 {
+      font-size: 12px; letter-spacing: .1em; color: var(--sand); font-weight: 600;
+    }
+    .notes ul { padding-left: 16px; font-size: 12.5px; color: var(--fog); line-height: 1.7; }
+    .notes li + li { margin-top: 4px; }
+    .notes strong { color: #c5d0c6; font-weight: 550; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">四 TAB</div>
+      <h1>日程：独立第三 Tab</h1>
+      <p>
+        今日 / 方案 / <strong style="color:#c5d0c6;font-weight:550">日程</strong> / 我。
+        日程按时段排事项；「我」仍是权限与设置，不改名。
+      </p>
+      <div class="thesis">今日看结果 · 方案配器械 · 日程排这一天 · 我管基建</div>
+    </header>
+
+    <section class="phones">
+      <div>
+        <div class="col-head">
+          <h3>日程 · 今天</h3>
+          <p>五个时段；当前时段略加重；空时段只留添加</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>●●●</span></div>
+          <div class="body">
+            <div class="brand">日程</div>
+            <div class="day-row">
+              <span class="day-nav">‹</span>
+              <span class="day-label">今天 · 周二</span>
+              <span class="day-nav">›</span>
+            </div>
+            <div class="scroll">
+              <div class="slot">
+                <div class="slot-head">
+                  <span class="slot-name">早晨</span>
+                  <span class="slot-range">05:00–08:00</span>
+                </div>
+                <div class="item done">
+                  <div class="t">06:30<span class="end">07:15</span></div>
+                  <div><div class="n">起床拉伸</div></div>
+                  <div class="check">✓</div>
+                </div>
+              </div>
+              <div class="slot now">
+                <div class="slot-head">
+                  <span class="slot-name">上午</span>
+                  <span class="slot-range">08:00–12:00</span>
+                </div>
+                <div class="item">
+                  <div class="t">09:00<span class="end">11:30</span></div>
+                  <div>
+                    <div class="n">深度工作</div>
+                    <div class="m">写方案文档</div>
+                  </div>
+                  <div class="check">○</div>
+                </div>
+                <div class="item empty">
+                  <div class="t"></div>
+                  <div class="n slot-add">＋ 添加</div>
+                  <div></div>
+                </div>
+              </div>
+              <div class="slot">
+                <div class="slot-head">
+                  <span class="slot-name">中午</span>
+                  <span class="slot-range">12:00–14:00</span>
+                </div>
+                <div class="item">
+                  <div class="t">12:10<span class="end">13:00</span></div>
+                  <div><div class="n">用餐</div></div>
+                  <div class="check">○</div>
+                </div>
+              </div>
+              <div class="slot">
+                <div class="slot-head">
+                  <span class="slot-name">下午</span>
+                  <span class="slot-range">14:00–18:00</span>
+                </div>
+                <div class="item empty">
+                  <div class="t"></div>
+                  <div class="n slot-add">＋ 添加</div>
+                  <div></div>
+                </div>
+              </div>
+              <div class="slot">
+                <div class="slot-head">
+                  <span class="slot-name">晚上</span>
+                  <span class="slot-range">18:00–24:00</span>
+                </div>
+                <div class="item">
+                  <div class="t">20:00<span class="end">21:00</span></div>
+                  <div><div class="n">练习吉他</div></div>
+                  <div class="check">○</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="tabs">
+            <div class="tab"><span class="ico">◎</span>今日</div>
+            <div class="tab"><span class="ico">◇</span>方案</div>
+            <div class="tab on"><span class="ico">▦</span>日程表</div>
+            <div class="tab"><span class="ico">○</span>我</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>添加 / 编辑</h3>
+          <p>标题必填；起止可选；归入由开始时间自动决定</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>●●●</span></div>
+          <div class="body dim-page">
+            <div class="brand">日程</div>
+            <div class="day-row">
+              <span class="day-nav">‹</span>
+              <span class="day-label">今天 · 周二</span>
+              <span class="day-nav">›</span>
+            </div>
+          </div>
+          <div class="sheet">
+            <div class="grip"></div>
+            <div class="title">新事项</div>
+            <div class="field">
+              <span class="k">做什么</span>
+              <span class="v placeholder">下午散步…</span>
+            </div>
+            <div class="field">
+              <span class="k">开始</span>
+              <span class="v">14:30</span>
+            </div>
+            <div class="field">
+              <span class="k">结束</span>
+              <span class="v">15:15</span>
+            </div>
+            <div class="field">
+              <span class="k">归入</span>
+              <span class="v">下午</span>
+            </div>
+            <div class="acts">
+              <span class="go">保存</span>
+              <span class="dim">取消</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>我 · 仍旧基建</h3>
+          <p>权限 / 设置 / 反馈；不改名</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>●●●</span></div>
+          <div class="body">
+            <div class="brand">我</div>
+            <div class="warn">有 2 项权限需处理</div>
+            <div class="menu-row"><span>用量访问</span><span class="r">未开 ›</span></div>
+            <div class="menu-row"><span>悬浮窗</span><span class="r">已开</span></div>
+            <div class="menu-row"><span>设置</span><span class="r">›</span></div>
+            <div class="menu-row"><span>和小锚聊</span><span class="r">›</span></div>
+            <div class="menu-row"><span>关于</span><span class="r">›</span></div>
+          </div>
+          <div class="tabs">
+            <div class="tab"><span class="ico">◎</span>今日</div>
+            <div class="tab"><span class="ico">◇</span>方案</div>
+            <div class="tab"><span class="ico">▦</span>日程</div>
+            <div class="tab on"><span class="ico">○</span>我</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="notes">
+      <h2>框外 · 约定</h2>
+      <ul>
+        <li><strong>底栏</strong>：今日 · 方案 · 日程 · 我</li>
+        <li><strong>时段</strong>：早晨 05–08 · 上午 08–12 · 中午 12–14 · 下午 14–18 · 晚上 18–24；按开始时间归入</li>
+        <li><strong>首版</strong>：只排事项，不拦 App；与守计划分开</li>
+        <li><strong>切日</strong>：左右箭头；点日期标签可回今天</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>

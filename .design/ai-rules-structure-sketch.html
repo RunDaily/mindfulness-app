@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>绿场 · AI 配参 + 干预 · 结构草图</title>
+  <style>
+    :root {
+      --ink: #070908;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --leaf: #3d7a4a;
+      --leaf-soft: rgba(61, 122, 74, 0.14);
+      --sand: #c4a35a;
+      --sand-soft: rgba(196, 163, 90, 0.14);
+      --line: rgba(232, 237, 230, 0.12);
+      --blue: #7eb8c9;
+      --blue-soft: rgba(126, 184, 201, 0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 30% -5%, #152018 0%, transparent 45%),
+        radial-gradient(ellipse at 90% 10%, #12181c 0%, transparent 40%),
+        var(--ink);
+      color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 32px 16px 80px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 36px; }
+
+    .hero { text-align: center; max-width: 560px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: .16em;
+      color: var(--leaf); margin-bottom: 12px;
+    }
+    .hero h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(24px, 3.5vw, 30px); font-weight: 500;
+      letter-spacing: -.02em; line-height: 1.3;
+    }
+    .hero p {
+      margin-top: 12px; font-size: 14px; color: var(--fog); line-height: 1.65;
+    }
+    .hero .thesis {
+      margin-top: 18px; display: inline-block;
+      padding: 10px 18px; border-radius: 999px;
+      background: var(--leaf-soft); border: 1px solid rgba(61,122,74,.35);
+      color: #b7d4be; font-size: 13px; line-height: 1.45;
+    }
+
+    /* 双环 */
+    .loops {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: stretch;
+    }
+    @media (max-width: 780px) {
+      .loops { grid-template-columns: 1fr; }
+      .loops .arrow { transform: rotate(90deg); justify-self: center; }
+    }
+    .loop {
+      border: 1px solid var(--line); border-radius: 16px;
+      padding: 18px 16px; background: rgba(255,255,255,.02);
+    }
+    .loop .tag {
+      display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .1em;
+      padding: 3px 8px; border-radius: 999px; margin-bottom: 10px;
+    }
+    .loop.os .tag { color: var(--leaf); background: var(--leaf-soft); }
+    .loop.app .tag { color: var(--blue); background: var(--blue-soft); }
+    .loop h2 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 18px; font-weight: 500; margin-bottom: 6px;
+    }
+    .loop .role { font-size: 12px; color: var(--fog); line-height: 1.5; margin-bottom: 14px; }
+    .loop ol { list-style: none; display: grid; gap: 6px; }
+    .loop ol li {
+      display: flex; gap: 8px; align-items: baseline;
+      font-size: 12px; color: #d5dbd4;
+      padding: 8px 10px; border-radius: 10px;
+      background: rgba(0,0,0,.35); border: 1px solid var(--line);
+    }
+    .loop ol li i {
+      font-style: normal; color: var(--mist); font-size: 11px;
+      font-variant-numeric: tabular-nums; min-width: 12px;
+    }
+    .arrow {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 4px; color: var(--mist); font-size: 11px; min-width: 52px;
+    }
+    .arrow .sym { color: var(--sand); font-size: 18px; }
+
+    /* 四件器械 */
+    .section-head {
+      text-align: center; max-width: 480px; margin: 0 auto 4px;
+    }
+    .section-head h3 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 18px; font-weight: 500;
+    }
+    .section-head p { margin-top: 6px; font-size: 12px; color: var(--fog); line-height: 1.5; }
+
+    .tools {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    }
+    @media (max-width: 800px) { .tools { grid-template-columns: 1fr 1fr; } }
+    .tool {
+      border: 1px solid var(--line); border-radius: 14px; padding: 14px 12px;
+      background: rgba(255,255,255,.015);
+    }
+    .tool .k {
+      font-size: 10px; letter-spacing: .12em; color: var(--leaf); font-weight: 600; margin-bottom: 6px;
+    }
+    .tool h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .tool p { font-size: 11px; color: var(--fog); line-height: 1.5; }
+    .tool .prio {
+      margin-top: 10px; font-size: 10px; color: var(--sand); letter-spacing: .04em;
+    }
+
+    .prio-line {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px;
+      font-size: 12px; color: var(--fog); text-align: center; line-height: 1.55;
+    }
+    .prio-line strong { color: var(--paper); font-weight: 600; }
+
+    /* IA 两机 */
+    .phones {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    }
+    @media (max-width: 820px) { .phones { grid-template-columns: 1fr; } }
+    .col-head { text-align: center; margin-bottom: 12px; }
+    .col-head h3 { font-size: 14px; font-weight: 650; }
+    .col-head p { font-size: 12px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+
+    .phone {
+      width: 100%; max-width: 360px; margin: 0 auto;
+      aspect-ratio: 9 / 17;
+      border-radius: 36px; border: 1px solid rgba(255,255,255,.1);
+      background: #050706; overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 24px 70px rgba(0,0,0,.45);
+    }
+    .status {
+      height: 42px; padding: 14px 22px 0;
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: rgba(232,237,230,.4); font-weight: 600;
+    }
+    .screen { flex: 1; padding: 8px 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+
+    .region-tag {
+      font-size: 9px; letter-spacing: .14em; font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .tag-green { color: var(--leaf); }
+    .tag-blue { color: var(--blue); }
+    .tag-sand { color: var(--sand); }
+
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500; letter-spacing: -.02em;
+    }
+    .sub { font-size: 12px; color: var(--fog); line-height: 1.45; }
+
+    .row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 10px 0; border-bottom: 1px solid var(--line);
+    }
+    .row:last-child { border-bottom: none; }
+    .row .name { font-size: 14px; font-weight: 500; }
+    .row .meta { font-size: 11px; color: var(--mist); }
+    .row .right { text-align: right; font-size: 12px; color: #c5d0c6; font-variant-numeric: tabular-nums; }
+    .row .right span { display: block; font-size: 10px; color: var(--mist); margin-top: 2px; }
+
+    .ai-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-radius: 12px;
+      background: var(--blue-soft); border: 1px solid rgba(126,184,201,.25);
+      font-size: 12px; color: #c5dde4;
+    }
+    .ai-chip .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--blue); flex-shrink: 0;
+    }
+
+    .nav {
+      margin-top: auto; display: flex; justify-content: space-around;
+      padding-top: 12px; border-top: 1px solid var(--line);
+      font-size: 10px; color: var(--mist); letter-spacing: .04em;
+    }
+    .nav .on { color: var(--paper); }
+
+    /* OS phone */
+    .breath-center {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center; gap: 18px;
+    }
+    .pulse {
+      width: 10px; height: 10px; border-radius: 50%; background: var(--leaf);
+      box-shadow: 0 0 0 0 rgba(61,122,74,.4);
+      animation: pulse 2s ease-out infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(61,122,74,.4); }
+      70% { box-shadow: 0 0 0 18px rgba(61,122,74,0); }
+      100% { box-shadow: 0 0 0 0 rgba(61,122,74,0); }
+    }
+    .app-whisper { font-size: 13px; color: var(--fog); }
+    .app-whisper strong { color: var(--paper); font-weight: 500; }
+    .actions {
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      padding-bottom: 8px;
+    }
+    .act-primary { font-size: 15px; color: var(--paper); font-weight: 500; }
+    .act-leave { font-size: 13px; color: var(--mist); }
+    .quota {
+      font-size: 11px; color: var(--sand); letter-spacing: .02em;
+    }
+
+    .note {
+      border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;
+      font-size: 12px; color: var(--fog); line-height: 1.65;
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Greenfield · Structure · v0</div>
+      <h1>器械在门口 · AI 在配参</h1>
+      <p>
+        从零构想：干预只用市场验过的四件套；
+        AI 负责把系统用量与用户目标收成可一键落地的规则包。
+      </p>
+      <div class="thesis">主轴：读用量 → 出方案 → 人确认 → 打开时执行</div>
+    </header>
+
+    <section class="loops" aria-label="双环">
+      <div class="loop os">
+        <div class="tag">OS 环 · 执行舞台</div>
+        <h2>打开瞬间</h2>
+        <p class="role">价值发生处。用户几乎不「打开心锚」，而是被规则托住。</p>
+        <ol>
+          <li><i>1</i>打开被监控 App</li>
+          <li><i>2</i>呼吸延迟 · 可离开</li>
+          <li><i>3</i>未触界则进入</li>
+          <li><i>4</i>触次数 / 日限 / 时段 → 硬挡</li>
+        </ol>
+      </div>
+      <div class="arrow">
+        <div class="sym">⇄</div>
+        <div>规则 / 效果</div>
+      </div>
+      <div class="loop app">
+        <div class="tag">App 环 · 配参工坊</div>
+        <h2>心锚本体</h2>
+        <p class="role">轻打开。AI 出方案、对话改目标；不做长陪聊。</p>
+        <ol>
+          <li><i>1</i>今日：剩余与守住一眼</li>
+          <li><i>2</i>方案：规则包 · 依据</li>
+          <li><i>3</i>对话：按目标改数字</li>
+          <li><i>4</i>我：权限 · 隐私</li>
+        </ol>
+      </div>
+    </section>
+
+    <div class="section-head">
+      <h3>四件器械</h3>
+      <p>可叠加。命中时优先级固定，避免拦截页语义打架。</p>
+    </div>
+    <div class="tools">
+      <div class="tool">
+        <div class="k">底噪</div>
+        <h4>呼吸延迟</h4>
+        <p>打开前停 N 秒。继续或离开。对无意识点开最有效。</p>
+        <div class="prio">默认开 · 强度可调</div>
+      </div>
+      <div class="tool">
+        <div class="k">边界</div>
+        <h4>次数限制</h4>
+        <p>管「太勤」。用尽后硬挡或升为更长延迟。</p>
+        <div class="prio">适高频短刷</div>
+      </div>
+      <div class="tool">
+        <div class="k">边界</div>
+        <h4>时长限制</h4>
+        <p>管「今日一共」。用尽即拦；进行中可轻提醒。</p>
+        <div class="prio">适沉浸长刷</div>
+      </div>
+      <div class="tool">
+        <div class="k">主权</div>
+        <h4>时段限制</h4>
+        <p>关键窗内硬挡。睡眠 / 专注块。v1 建议不可破。</p>
+        <div class="prio">命中时最高优先</div>
+      </div>
+    </div>
+    <p class="prio-line">
+      同时命中：<strong>时段硬挡</strong> → <strong>次数 / 日限用尽</strong> → <strong>呼吸延迟</strong>
+    </p>
+
+    <section class="phones" aria-label="信息架构草图">
+      <div>
+        <div class="col-head">
+          <h3>App 环 · 今日</h3>
+          <p>一眼剩余；AI 退到「有建议」一条，不作英雄对话</p>
+        </div>
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>今日</span></div>
+          <div class="screen">
+            <div>
+              <div class="region-tag tag-blue">顶 · 状态</div>
+              <div class="brand">今日</div>
+              <p class="sub">3 个 App 在规则里 · 已守住 5 次</p>
+            </div>
+            <div>
+              <div class="region-tag tag-green">中 · 列表</div>
+              <div class="row">
+                <div>
+                  <div class="name">小红书</div>
+                  <div class="meta">呼吸 8s · 日限 · 夜间</div>
+                </div>
+                <div class="right">28 / 40 分<span>打开 5 / 8</span></div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="name">抖音</div>
+                  <div class="meta">呼吸 10s · 次数</div>
+                </div>
+                <div class="right">12 / 30 分<span>打开 6 / 6 · 已尽</span></div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="name">微博</div>
+                  <div class="meta">呼吸 5s</div>
+                </div>
+                <div class="right">9 / — 分<span>打开 3 / —</span></div>
+              </div>
+            </div>
+            <div class="ai-chip">
+              <span class="dot"></span>
+              有一条新建议 · 抖音可降档
+            </div>
+            <div class="nav">
+              <span class="on">今日</span>
+              <span>方案</span>
+              <span>我</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>OS 环 · 呼吸瞬间</h3>
+          <p>信息预算极紧：是谁 · 第几次 · 继续 / 离开</p>
+        </div>
+        <div class="phone">
+          <div class="status"><span>9:41</span><span>门</span></div>
+          <div class="screen">
+            <div class="breath-center">
+              <div class="region-tag tag-green">执行 · 未触界</div>
+              <div class="pulse"></div>
+              <div class="app-whisper"><strong>小红书</strong> · 今日第 5 次</div>
+              <div class="quota">还可打开 3 次 · 剩 12 分</div>
+            </div>
+            <div class="actions">
+              <div class="act-primary">继续</div>
+              <div class="act-leave">不进去了</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="note">
+      <strong>结构裁决：</strong>意图命名、对照叙事、正向出口不进 v1 主轴。
+      AI 永不出现在拦截页中央。完整流程见
+      <code style="color:#b7d4be">ai-rules-setup-flow-sketch.html</code>；
+      原则见 <code style="color:#b7d4be">ai-rules-greenfield-plan.md</code>。
+    </p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>软门 · 等的时候就能想</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --line: rgba(232,237,230,.12); --page: #0c0d0c;
+      --sand: #c4a35a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 36px; }
+    header { max-width: 580px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.3;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 44em; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+    .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; justify-items: center; }
+    @media (max-width: 900px) {
+      .row, .row2 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 260px; }
+    .col-head h3 { font-size: 13px; font-weight: 500; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+    .live-wrap { display: grid; justify-items: center; gap: 10px; }
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: #050605; border: 1px solid rgba(255,255,255,.08);
+      padding: 22px 26px 18px; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+      position: relative; overflow: hidden;
+    }
+    /* 场：大而慢的雾，不靠绿点撑氛围 */
+    .phone .aura {
+      position: absolute; left: 50%; top: 38%; width: 220px; height: 220px;
+      margin: -110px 0 0 -110px; border-radius: 50%; pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 50%,
+          rgba(232,237,230,.09) 0%,
+          rgba(61,122,74,.06) 38%,
+          transparent 68%);
+      filter: blur(2px);
+      opacity: .35; transform: scale(.92);
+      transition: opacity .5s ease, transform .5s ease;
+    }
+    .phone.breathing .aura {
+      animation: aura 4.8s cubic-bezier(.45, 0, .55, 1) infinite alternate;
+    }
+    @keyframes aura {
+      from { opacity: .22; transform: scale(.9); }
+      to   { opacity: .72; transform: scale(1.06); }
+    }
+    .door-tag { font-size: 11px; color: var(--mist); position: relative; z-index: 1; }
+    .center {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; position: relative; z-index: 1;
+      min-height: 0;
+    }
+    .prompt {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 28px; font-weight: 500; letter-spacing: .12em;
+      color: var(--paper); line-height: 1.2;
+    }
+    .phone.breathing .prompt {
+      animation: prompt-breath 4.8s cubic-bezier(.45, 0, .55, 1) infinite alternate;
+    }
+    @keyframes prompt-breath {
+      from { opacity: .42; }
+      to   { opacity: 1; }
+    }
+    .name { margin-top: 18px; font-size: 13px; color: var(--fog); }
+    .meta { margin-top: 4px; font-size: 12px; color: var(--mist); font-variant-numeric: tabular-nums; }
+    .field-wrap {
+      margin-top: 22px; width: 100%; max-width: 210px;
+    }
+    .field {
+      width: 100%; border: none; border-bottom: 1px solid rgba(232,237,230,.22);
+      background: transparent; color: var(--paper);
+      font-size: 15px; text-align: center; padding: 4px 0 8px; font-family: inherit;
+      outline: none;
+    }
+    .field::placeholder { color: rgba(139,147,140,.5); }
+    .field:focus { border-bottom-color: rgba(232,237,230,.4); }
+
+    /* 入口挂在输入下方 */
+    .paths {
+      margin-top: 16px; width: 100%; max-width: 220px;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      min-height: 52px;
+    }
+    .paths-row {
+      display: flex; gap: 20px; justify-content: center; align-items: baseline;
+      flex-wrap: wrap;
+    }
+    .path {
+      font-size: 13px; color: var(--mist);
+      transition: color .2s ease, opacity .2s ease;
+    }
+    .path.locked { opacity: .34; }
+    .path.ready { color: var(--leaf-text); opacity: 1; }
+    .path.direct {
+      font-size: 14px; color: var(--fog);
+    }
+    .path.direct.ready { color: var(--leaf-text); }
+
+    .secs {
+      margin-top: 14px; font-size: 12px; color: rgba(159,212,168,.75);
+      font-variant-numeric: tabular-nums; min-height: 18px;
+      transition: opacity .14s linear;
+    }
+    .secs.dim { opacity: .35; }
+    .secs.gone { opacity: 0; }
+
+    .acts {
+      display: flex; align-items: center; padding-bottom: 6px;
+      position: relative; z-index: 1; min-height: 28px;
+    }
+    .act.leave {
+      font-size: 17px; color: var(--leaf-text); font-weight: 500;
+      letter-spacing: .04em;
+    }
+
+    .note {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); }
+    .kb-hint {
+      margin-top: 6px; font-size: 11px; color: var(--mist); text-align: center;
+      opacity: 0; transition: opacity .2s;
+    }
+    .kb-hint.show { opacity: 1; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Door · Think While Waiting</div>
+      <h1>停一下。想清楚再选怎么进。</h1>
+      <p>
+        问句只留「停一下」。输入 hint 是「这一次，要做什么」。入口挂在输入下面。<br />
+        有字 → 搜索直达 / 带着意图进入；没字且秒数走完 → 直接进入。离开始终是叶色主行动。键盘不自动弹。
+      </p>
+    </header>
+
+    <p class="sec">看着走 · <strong>空着等完出「直接进入」；写下才亮两条路</strong></p>
+    <section class="live-wrap">
+      <div class="col-head">
+        <h3>有深链 · 五秒</h3>
+        <p>可先写。秒数锁放行。离开一直可点</p>
+      </div>
+      <div class="phone breathing" id="live">
+        <div class="aura"></div>
+        <div class="door-tag">门</div>
+        <div class="center">
+          <div class="prompt">停一下</div>
+          <div class="name">小红书</div>
+          <div class="meta">今日第 4/8 次</div>
+          <div class="field-wrap">
+            <input class="field" id="field" type="text" placeholder="这一次，要做什么" autocomplete="off" />
+          </div>
+          <div class="paths" id="paths">
+            <div class="paths-row" id="pair">
+              <span class="path locked" id="search">搜索直达</span>
+              <span class="path locked" id="intent">带着意图进入</span>
+            </div>
+            <div class="paths-row hidden" id="solo">
+              <span class="path direct locked" id="direct">直接进入</span>
+            </div>
+          </div>
+          <div class="secs" id="secs">5s</div>
+        </div>
+        <div class="acts">
+          <span class="act leave">离开</span>
+        </div>
+      </div>
+      <p class="kb-hint" id="kbHint">点输入框才会出键盘 · 草图里不模拟系统键盘</p>
+    </section>
+
+    <p class="sec">同一骨架 · <strong>空着锁 · 写下锁 · 写下可进 · 空着直进</strong></p>
+    <section class="row">
+      <div class="col">
+        <div class="col-head">
+          <h3>① 刚进门</h3>
+          <p>空着。两条路在，但不能点</p>
+        </div>
+        <div class="phone breathing">
+          <div class="aura"></div>
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="prompt">停一下</div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <div class="field-wrap">
+              <input class="field" type="text" placeholder="这一次，要做什么" readonly tabindex="-1" />
+            </div>
+            <div class="paths">
+              <div class="paths-row">
+                <span class="path locked">搜索直达</span>
+                <span class="path locked">带着意图进入</span>
+              </div>
+            </div>
+            <div class="secs">5s</div>
+          </div>
+          <div class="acts"><span class="act leave">离开</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>② 写了，还在等</h3>
+          <p>有字。两条路仍锁到秒数完</p>
+        </div>
+        <div class="phone breathing">
+          <div class="aura"></div>
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="prompt">停一下</div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <div class="field-wrap">
+              <input class="field" type="text" value="周末去哪玩" readonly tabindex="-1" />
+            </div>
+            <div class="paths">
+              <div class="paths-row">
+                <span class="path locked">搜索直达</span>
+                <span class="path locked">带着意图进入</span>
+              </div>
+            </div>
+            <div class="secs">2s</div>
+          </div>
+          <div class="acts"><span class="act leave">离开</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>③ 有字 · 可进</h3>
+          <p>秒数完。两条路叶色可点</p>
+        </div>
+        <div class="phone">
+          <div class="aura" style="opacity:.28;transform:scale(.94)"></div>
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="prompt">停一下</div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <div class="field-wrap">
+              <input class="field" type="text" value="周末去哪玩" readonly tabindex="-1" />
+            </div>
+            <div class="paths">
+              <div class="paths-row">
+                <span class="path ready">搜索直达</span>
+                <span class="path ready">带着意图进入</span>
+              </div>
+            </div>
+            <div class="secs gone">·</div>
+          </div>
+          <div class="acts"><span class="act leave">离开</span></div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">空着走完 · <strong>直接进入</strong></p>
+    <section class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>④ 空着 · 秒数完</h3>
+          <p>两条路收起，出现「直接进入」</p>
+        </div>
+        <div class="phone">
+          <div class="aura" style="opacity:.28;transform:scale(.94)"></div>
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="prompt">停一下</div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <div class="field-wrap">
+              <input class="field" type="text" placeholder="这一次，要做什么" readonly tabindex="-1" />
+            </div>
+            <div class="paths">
+              <div class="paths-row">
+                <span class="path direct ready">直接进入</span>
+              </div>
+            </div>
+            <div class="secs gone">·</div>
+          </div>
+          <div class="acts"><span class="act leave">离开</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>无深链 · 有字可进</h3>
+          <p>不造搜索。只留带着意图进入</p>
+        </div>
+        <div class="phone">
+          <div class="aura" style="opacity:.28;transform:scale(.94)"></div>
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="prompt">停一下</div>
+            <div class="name">微信</div>
+            <div class="meta">今日第 2/8 次</div>
+            <div class="field-wrap">
+              <input class="field" type="text" value="回一下消息" readonly tabindex="-1" />
+            </div>
+            <div class="paths">
+              <div class="paths-row">
+                <span class="path ready">带着意图进入</span>
+              </div>
+            </div>
+            <div class="secs gone">·</div>
+          </div>
+          <div class="acts"><span class="act leave">离开</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>文案分层：</strong>场上只写「停一下」。问句下沉到输入 hint：「这一次，要做什么」。<br />
+      <strong>入口位置：</strong>紧贴输入框下方，不跟「离开」抢底栏。「离开」单独在底，叶色主行动。<br />
+      <strong>有字：</strong>「搜索直达」「带着意图进入」——无内容不可点；有内容且秒数完才可点。无深链不显示搜索。<br />
+      <strong>无字：</strong>秒数走完前两条路锁着；走完后换成「直接进入」（可点）。再打字则切回两条路。<br />
+      <strong>呼吸：</strong>去掉绿点撑场。用一枚大而慢的雾（约 4.8s）+「停一下」同拍明暗。秒数仍是小字，各走各的。<br />
+      <strong>键盘：</strong>不自动弹。点输入才出。<br />
+      <strong>不为：</strong>问句写很长；入口做成实心按钮；空着也能点搜索/带着意图；无深链假造搜索。
+    </div>
+  </div>
+  <script>
+    (function () {
+      var TOTAL = 5;
+      var phone = document.getElementById("live");
+      var secs = document.getElementById("secs");
+      var field = document.getElementById("field");
+      var pair = document.getElementById("pair");
+      var solo = document.getElementById("solo");
+      var search = document.getElementById("search");
+      var intent = document.getElementById("intent");
+      var direct = document.getElementById("direct");
+      var kbHint = document.getElementById("kbHint");
+      var timer = 0;
+      var left = TOTAL;
+      var done = false;
+
+      function hasText() {
+        return field.value.trim().replace(/\s/g, "").length >= 2;
+      }
+
+      function setPath(el, ready) {
+        el.classList.toggle("locked", !ready);
+        el.classList.toggle("ready", ready);
+      }
+
+      function paintPaths() {
+        var text = hasText();
+        if (text) {
+          pair.classList.remove("hidden");
+          solo.classList.add("hidden");
+          var ok = done && text;
+          setPath(search, ok);
+          setPath(intent, ok);
+        } else if (done) {
+          pair.classList.add("hidden");
+          solo.classList.remove("hidden");
+          setPath(direct, true);
+        } else {
+          pair.classList.remove("hidden");
+          solo.classList.add("hidden");
+          setPath(search, false);
+          setPath(intent, false);
+        }
+      }
+
+      function arm() {
+        done = false;
+        left = TOTAL;
+        phone.classList.add("breathing");
+        secs.textContent = left + "s";
+        secs.classList.remove("dim", "gone");
+        paintPaths();
+      }
+
+      function finish() {
+        done = true;
+        phone.classList.remove("breathing");
+        secs.classList.add("gone");
+        paintPaths();
+        setTimeout(function () {
+          field.value = "";
+          arm();
+          run();
+        }, 2400);
+      }
+
+      function run() {
+        clearInterval(timer);
+        timer = setInterval(function () {
+          secs.classList.add("dim");
+          setTimeout(function () {
+            left -= 1;
+            if (left <= 0) {
+              clearInterval(timer);
+              finish();
+            } else {
+              secs.textContent = left + "s";
+              secs.classList.remove("dim");
+            }
+          }, 140);
+        }, 1000);
+      }
+
+      field.addEventListener("input", paintPaths);
+      field.addEventListener("focus", function () { kbHint.classList.add("show"); });
+      field.addEventListener("blur", function () { kbHint.classList.remove("show"); });
+
+      arm();
+      run();
+    })();
+  </script>
+</body>
+</html>

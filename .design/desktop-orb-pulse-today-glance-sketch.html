@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>桌面球 · 监控中看今日旁路</title>
+  <style>
+    :root {
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --accent: #34c759;
+      --line: rgba(255,255,255,.1);
+      --field: rgba(255,255,255,.06);
+      --warn: #c47a6a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--ink);
+      background:
+        radial-gradient(ellipse at 18% 0%, rgba(52,199,89,.07), transparent 42%),
+        linear-gradient(180deg, #0c0c0e, #050506 70%);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 80px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto 22px; }
+    .eyebrow {
+      font-size: 11px; font-weight: 650; letter-spacing: .16em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+    }
+    h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; line-height: 1.3; }
+    .hero p { margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.65; }
+    .thesis {
+      margin-top: 16px; display: inline-block; padding: 10px 16px; border-radius: 999px;
+      background: rgba(52,199,89,.12); border: 1px solid rgba(52,199,89,.28);
+      color: #c6f5d2; font-size: 13px; line-height: 1.5;
+    }
+
+    .spine-flow {
+      display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+      margin: 0 auto 26px; max-width: 720px;
+    }
+    .spine-flow i {
+      font-style: normal; font-size: 12px; font-weight: 650;
+      padding: 7px 11px; border-radius: 999px; border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .spine-flow i.now {
+      color: #d4efe0; border-color: rgba(52,199,89,.35);
+      background: rgba(52,199,89,.1);
+    }
+
+    .stage-row {
+      display: flex; flex-wrap: wrap; gap: 22px; justify-content: center;
+      align-items: flex-start; margin-bottom: 28px;
+    }
+    .phone-wrap { width: min(300px, 100%); }
+    .phone-label {
+      text-align: center; font-size: 12px; color: var(--muted);
+      font-weight: 650; margin-bottom: 10px;
+    }
+    .phone-label.bad { color: rgba(196,122,106,.9); }
+    .phone-cap {
+      margin-top: 12px; font-size: 12px; color: var(--dim);
+      text-align: center; line-height: 1.55;
+    }
+    .phone {
+      background: #000; border: 1px solid #2a2a2c; border-radius: 36px;
+      padding: 12px 10px 16px;
+    }
+    .bar {
+      height: 20px; display: flex; justify-content: space-between;
+      padding: 0 14px; font-size: 11px; color: #aeaeb2; font-weight: 600;
+    }
+    .wall {
+      margin-top: 6px; height: 560px; border-radius: 22px; border: 1px solid #1e2024;
+      position: relative; overflow: hidden;
+      background:
+        radial-gradient(ellipse at 70% 18%, rgba(255,77,106,.16), transparent 42%),
+        linear-gradient(165deg, #1a2030 0%, #101418 50%, #0b0c0e 100%);
+    }
+    .wall.desk {
+      background: linear-gradient(165deg, #1a2420 0%, #101418 45%, #0b0c0e 100%);
+    }
+    .feed-name {
+      position: absolute; top: 14px; left: 18px;
+      font-size: 12px; font-weight: 650; color: rgba(255,255,255,.35);
+    }
+    .feed-fake {
+      position: absolute; inset: 36px 18px auto 18px;
+      display: grid; gap: 12px; opacity: .42;
+    }
+    .feed-fake .card {
+      height: 72px; border-radius: 14px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .feed-fake .card.tall { height: 110px; }
+    .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.28); }
+    .orb {
+      position: absolute; right: 18px; bottom: 88px; z-index: 3;
+      width: 44px; height: 44px; border-radius: 50%;
+      background:
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,.22), transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(52,199,89,.35), rgba(20,24,28,.9) 70%);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 8px 24px rgba(0,0,0,.4);
+      display: grid; place-items: center;
+    }
+    .orb::after {
+      content: "";
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid rgba(52,199,89,.85);
+      border-top-color: transparent;
+      animation: spin 1.4s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .panel {
+      position: absolute; right: 14px; bottom: 72px; left: 14px;
+      border-radius: 22px; padding: 16px 16px 14px;
+      background: #16181c;
+      border: .6px solid rgba(255,255,255,.14);
+      z-index: 2;
+    }
+    .panel.pick {
+      border-color: rgba(52,199,89,.35);
+      box-shadow: 0 0 0 1px rgba(52,199,89,.12), 0 18px 40px rgba(0,0,0,.45);
+    }
+    .panel.bad-outline {
+      outline: 1px dashed rgba(196,122,106,.45);
+      outline-offset: 5px;
+    }
+    .panel.sheet {
+      top: 48px; bottom: 58px;
+      display: flex; flex-direction: column;
+    }
+
+    .head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .head .back { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .head .name { font-size: 14px; font-weight: 650; }
+    .head .spacer { width: 36px; }
+
+    .live {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 14px; padding-bottom: 12px;
+      border-bottom: .6px solid var(--line);
+    }
+    .live .t { font-size: 13px; font-weight: 600; }
+    .live .s { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .live .now {
+      font-size: 16px; font-weight: 650; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .live .now span {
+      display: block; font-size: 10px; color: var(--muted);
+      font-weight: 500; margin-top: 2px; text-align: right;
+    }
+
+    .stats {
+      display: flex; gap: 28px; margin-bottom: 14px;
+    }
+    .stats div {
+      font-size: 22px; font-weight: 300;
+      font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+    }
+    .stats div.acc { color: var(--accent); font-weight: 400; }
+    .stats span {
+      display: block; font-size: 10px; color: var(--muted);
+      margin-top: 4px; font-weight: 500;
+    }
+
+    .spine { font-size: 12px; line-height: 1.75; color: var(--muted); }
+    .spine .line {
+      display: flex; justify-content: space-between; gap: 10px;
+      padding: 3px 0;
+    }
+    .spine .line .left {
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .spine .line b { font-weight: 500; color: var(--ink); }
+    .spine .line .dur {
+      flex: none; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink);
+    }
+    .spine .line.on .dur { color: var(--accent); }
+    .spine .fold { color: var(--dim); margin-top: 4px; }
+    .spine .held { color: var(--dim); margin-top: 8px; font-size: 11px; }
+
+    /* —— today glance rail —— */
+    .today-rail {
+      margin-top: 14px; padding-top: 12px;
+      border-top: .6px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; cursor: pointer;
+    }
+    .today-rail .left { min-width: 0; }
+    .today-rail .k {
+      font-size: 11px; color: var(--muted); font-weight: 500;
+    }
+    .today-rail .v {
+      margin-top: 3px; font-size: 12px; color: var(--ink); font-weight: 500;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .today-rail .v b {
+      font-weight: 650; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .today-rail .go {
+      flex: none; font-size: 12px; color: var(--accent); font-weight: 650;
+    }
+    .today-rail.muted-only .v { color: var(--muted); }
+
+    .quiet-foot {
+      margin-top: 12px; display: flex; justify-content: space-between;
+      align-items: center;
+    }
+    .link { font-size: 12px; color: var(--accent); font-weight: 650; }
+    .link.dim { color: var(--muted); font-weight: 600; }
+
+    /* —— today sheet —— */
+    .sheet-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .sheet-head .back { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .sheet-head .title { font-size: 14px; font-weight: 650; }
+    .sheet-sum {
+      margin-bottom: 16px;
+    }
+    .sheet-sum .nums {
+      display: flex; gap: 22px; margin-bottom: 8px;
+    }
+    .sheet-sum .nums div {
+      font-size: 20px; font-weight: 300;
+      font-variant-numeric: tabular-nums;
+    }
+    .sheet-sum .nums div.acc { color: var(--accent); font-weight: 400; }
+    .sheet-sum .nums span {
+      display: block; font-size: 10px; color: var(--muted);
+      margin-top: 3px; font-weight: 500;
+    }
+    .sheet-sum .line {
+      font-size: 12px; color: var(--muted); line-height: 1.5;
+    }
+    .sheet-sum .line b {
+      font-weight: 650; color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rank { flex: 1; min-height: 0; overflow: hidden; }
+    .rank .lab {
+      font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 8px;
+    }
+    .rank .row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0;
+      border-bottom: .6px solid rgba(255,255,255,.05);
+    }
+    .rank .row.here { opacity: 1; }
+    .rank .row .ico {
+      width: 28px; height: 28px; border-radius: 8px; flex: none;
+      display: grid; place-items: center;
+      font-size: 10px; font-weight: 700; color: #fff;
+    }
+    .rank .row .ico.xh { background: linear-gradient(145deg, #ff4d6a, #c9184a); }
+    .rank .row .ico.dy { background: linear-gradient(145deg, #2a2a2e, #111); }
+    .rank .row .ico.wx { background: linear-gradient(145deg, #52c41a, #237804); }
+    .rank .row .ico.wb { background: linear-gradient(145deg, #e8a838, #c45a2a); }
+    .rank .row .meta { flex: 1; min-width: 0; }
+    .rank .row .n {
+      font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .rank .row .n .dot {
+      font-size: 10px; color: var(--accent); font-weight: 650;
+    }
+    .rank .row .s { font-size: 11px; color: var(--dim); margin-top: 2px; }
+    .rank .row .dur {
+      flex: none; font-size: 13px; font-weight: 600;
+      font-variant-numeric: tabular-nums; color: var(--ink);
+    }
+    .rank .row.here .dur { color: var(--accent); }
+
+    .sheet-foot {
+      margin-top: 12px; padding-top: 10px;
+      border-top: .6px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* bad hub-in-app */
+    .hub-title { font-size: 13px; font-weight: 650; margin-bottom: 8px; }
+    .hub-total {
+      font-size: 28px; font-weight: 300;
+      font-variant-numeric: tabular-nums; margin-bottom: 10px;
+    }
+    .hub-total span {
+      display: block; font-size: 10px; color: var(--muted);
+      margin-top: 4px; font-weight: 500;
+    }
+    .chips {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px;
+    }
+    .chip {
+      text-align: center; padding: 8px 4px; border-radius: 12px;
+      background: var(--field); border: 1px solid var(--line);
+      font-size: 10px; color: var(--muted);
+    }
+    .chip b {
+      display: block; font-size: 11px; color: var(--ink);
+      font-weight: 650; margin-bottom: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* capsule */
+    .capsule {
+      position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+      z-index: 3; width: calc(100% - 48px);
+      border-radius: 999px; padding: 10px 14px;
+      background: rgba(22,24,28,.92);
+      border: .6px solid rgba(255,255,255,.16);
+      box-shadow: 0 12px 32px rgba(0,0,0,.45);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .capsule.pick {
+      border-color: rgba(52,199,89,.4);
+      box-shadow: 0 0 0 1px rgba(52,199,89,.12), 0 12px 32px rgba(0,0,0,.45);
+    }
+    .capsule .pulse-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); flex: none;
+      box-shadow: 0 0 10px rgba(52,199,89,.55);
+    }
+    .capsule .meta { flex: 1; min-width: 0; }
+    .capsule .n {
+      font-size: 12px; font-weight: 650;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .capsule .s { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .capsule .now {
+      flex: none; text-align: right;
+      font-size: 14px; font-weight: 650; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .capsule .now span {
+      display: block; font-size: 10px; color: var(--muted);
+      font-weight: 500; margin-top: 1px;
+    }
+    .capsule-peek {
+      position: absolute; left: 24px; right: 24px; bottom: 152px; z-index: 3;
+      border-radius: 16px; padding: 12px 14px;
+      background: #16181c;
+      border: .6px solid rgba(52,199,89,.35);
+      box-shadow: 0 0 0 1px rgba(52,199,89,.1), 0 14px 32px rgba(0,0,0,.4);
+    }
+    .capsule-peek .k { font-size: 11px; color: var(--muted); }
+    .capsule-peek .v {
+      margin-top: 4px; font-size: 13px; font-weight: 500; line-height: 1.45;
+    }
+    .capsule-peek .v b {
+      font-weight: 650; color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .capsule-peek .go {
+      margin-top: 8px; font-size: 12px; color: var(--accent); font-weight: 650;
+      text-align: right;
+    }
+
+    .notes {
+      max-width: 680px; margin: 8px auto 0;
+      border-top: 1px solid var(--line); padding-top: 22px;
+    }
+    .notes h2 { font-size: 14px; font-weight: 650; text-align: center; margin-bottom: 12px; }
+    .notes li {
+      list-style: none; font-size: 13px; color: var(--ink); line-height: 1.5;
+      padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .notes li span { display: block; color: var(--dim); font-size: 12px; margin-top: 3px; }
+    .quiet-note {
+      margin: 24px auto 0; max-width: 560px; text-align: center;
+      font-size: 13px; color: var(--dim); line-height: 1.65;
+    }
+    .map {
+      margin: 18px auto 0; max-width: 540px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11px; color: var(--muted); line-height: 1.7;
+      white-space: pre; text-align: left;
+      padding: 14px 16px; border-radius: 12px;
+      background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Desktop orb · monitored in-app</div>
+      <h1>监控使用中，也能瞥一眼今日，但不换主语</h1>
+      <p>
+        人正在刷被监控的 App。点开球仍先看<strong style="font-weight:650;color:var(--ink)">当前这个 App</strong>；
+        脚下一行「今日」旁路，点开才是全局轻览——不是把 Hub / 今日 Tab 整页搬进来。
+      </p>
+      <div class="thesis">Pulse（本 App）→ 今日旁路一行 → 轻览 · 小票</div>
+    </header>
+
+    <div class="spine-flow">
+      <i>点球</i>
+      <i class="now">Pulse 本 App</i>
+      <i class="now">今日旁路</i>
+      <i>小票 / 心锚</i>
+    </div>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label bad">现 · 只有本 App</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="orb" aria-hidden="true"></div>
+            <div class="panel">
+              <div class="head">
+                <span class="back">← 收起</span>
+                <span class="name">小红书</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="live">
+                <div>
+                  <div class="t">意图 · 看穿搭</div>
+                  <div class="s">进行中</div>
+                </div>
+                <div class="now">8:29<span>本次</span></div>
+              </div>
+              <div class="stats">
+                <div class="acc">1时4分<span>今日</span></div>
+                <div>6次<span>进入</span></div>
+              </div>
+              <div class="spine">
+                <div class="line"><span class="left">14:02 – 14:19 · <b>看穿搭参考</b></span><span class="dur">17分</span></div>
+                <div class="line"><span class="left">15:40 – 15:51 · <b>刷一下</b></span><span class="dur">11分</span></div>
+                <div class="line on"><span class="left">16:08 – 现在 · <b>看穿搭</b></span><span class="dur">8分</span></div>
+                <div class="fold">其余 3 次很短</div>
+                <div class="held">守住 2 次</div>
+              </div>
+              <div class="quiet-foot">
+                <span></span>
+                <span class="link">完整记录 →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">主语清楚，但看不见今天整体。要对照只能回心锚。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label">取 · Pulse + 今日旁路</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="orb" aria-hidden="true"></div>
+            <div class="panel pick">
+              <div class="head">
+                <span class="back">← 收起</span>
+                <span class="name">小红书</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="live">
+                <div>
+                  <div class="t">意图 · 看穿搭</div>
+                  <div class="s">进行中</div>
+                </div>
+                <div class="now">8:29<span>本次</span></div>
+              </div>
+              <div class="stats">
+                <div class="acc">1时4分<span>今日</span></div>
+                <div>6次<span>进入</span></div>
+              </div>
+              <div class="spine">
+                <div class="line"><span class="left">14:02 – 14:19 · <b>看穿搭参考</b></span><span class="dur">17分</span></div>
+                <div class="line"><span class="left">15:40 – 15:51 · <b>刷一下</b></span><span class="dur">11分</span></div>
+                <div class="line on"><span class="left">16:08 – 现在 · <b>看穿搭</b></span><span class="dur">8分</span></div>
+                <div class="fold">其余 3 次很短</div>
+              </div>
+              <div class="today-rail">
+                <div class="left">
+                  <div class="k">今日 · 监控中</div>
+                  <div class="v">共 <b>2时18分</b> · 守住 <b>2</b> · 进入 <b>11</b></div>
+                </div>
+                <span class="go">›</span>
+              </div>
+              <div class="quiet-foot">
+                <span class="link dim">完整记录 →</span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">本 App 仍是主故事。脚下一行事实，不抢脊线；点开才扩。</p>
+      </div>
+    </div>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label">取 · 点开今日旁路</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="panel pick sheet">
+              <div class="sheet-head">
+                <span class="back">← 小红书</span>
+                <span class="title">今日</span>
+                <span style="width:48px"></span>
+              </div>
+              <div class="sheet-sum">
+                <div class="nums">
+                  <div class="acc">2时18分<span>监控合计</span></div>
+                  <div>11次<span>进入</span></div>
+                  <div>2次<span>守住</span></div>
+                </div>
+                <div class="line">小红书占 <b>1时4分</b> · 其余 <b>1时14分</b></div>
+              </div>
+              <div class="rank">
+                <div class="lab">今天用过</div>
+                <div class="row here">
+                  <div class="ico xh">红</div>
+                  <div class="meta">
+                    <div class="n">小红书 <span class="dot">进行中</span></div>
+                    <div class="s">进入 6 · 本次 8分</div>
+                  </div>
+                  <div class="dur">1时4分</div>
+                </div>
+                <div class="row">
+                  <div class="ico dy">抖</div>
+                  <div class="meta">
+                    <div class="n">抖音</div>
+                    <div class="s">进入 3</div>
+                  </div>
+                  <div class="dur">48分</div>
+                </div>
+                <div class="row">
+                  <div class="ico wx">微</div>
+                  <div class="meta">
+                    <div class="n">微信</div>
+                    <div class="s">进入 2</div>
+                  </div>
+                  <div class="dur">26分</div>
+                </div>
+              </div>
+              <div class="sheet-foot">
+                <span class="link dim">打开心锚</span>
+                <span class="link">今日小票 →</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">轻览：合计 + 当前占比 + Top。当前 App 标「进行中」。深钻走小票或心锚。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label bad">不取 · 直接开 Hub</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="panel bad-outline">
+              <div class="hub-title">今天</div>
+              <div class="hub-total">2时18分<span>监控合计</span></div>
+              <div class="chips">
+                <div class="chip"><b>小红书</b>1时4分</div>
+                <div class="chip"><b>抖音</b>48分</div>
+                <div class="chip"><b>微信</b>26分</div>
+                <div class="chip"><b>微博</b>—</div>
+              </div>
+              <div class="quiet-foot" style="margin-top:16px">
+                <span class="link">今天 →</span>
+                <span class="link dim">打开心锚</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">人在 App 里，第一眼却是总览芯片墙——主语被抢走，像又开了一个仪表盘。</p>
+      </div>
+    </div>
+
+    <div class="stage-row">
+      <div class="phone-wrap">
+        <div class="phone-label">取 · 意图胶囊旁路</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="wall">
+            <div class="feed-name">小红书</div>
+            <div class="feed-fake">
+              <div class="card tall"></div>
+              <div class="card"></div>
+              <div class="card"></div>
+            </div>
+            <div class="capsule-peek pick">
+              <div class="k">今日 · 监控中</div>
+              <div class="v">共 <b>2时18分</b> · 守住 <b>2</b> · 进入 <b>11</b></div>
+              <div class="go">看看 ›</div>
+            </div>
+            <div class="capsule pick">
+              <div class="pulse-dot"></div>
+              <div class="meta">
+                <div class="n">看穿搭 · 小红书</div>
+                <div class="s">今日 1时4分 · 6次</div>
+              </div>
+              <div class="now">8:29<span>本次</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">有意图时仍是胶囊。长按 / 再点一次才抬出今日一行，不默认占高度。</p>
+      </div>
+
+      <div class="phone-wrap">
+        <div class="phone-label">取 · 无会话时也留一行</div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>微信</span></div>
+          <div class="wall" style="background:linear-gradient(165deg,#1a2420 0%,#101418 45%,#0b0c0e 100%)">
+            <div class="feed-name">微信</div>
+            <div class="scrim"></div>
+            <div class="orb" aria-hidden="true" style="animation:none"></div>
+            <div class="panel pick" style="bottom:140px">
+              <div class="head">
+                <span class="back">← 收起</span>
+                <span class="name">微信</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="stats">
+                <div class="acc">26分<span>今日</span></div>
+                <div>2次<span>进入</span></div>
+              </div>
+              <div class="spine">
+                <div class="line"><span class="left">10:12 – 10:21 · <b>回消息</b></span><span class="dur">9分</span></div>
+                <div class="line"><span class="left">15:02 – 15:19 · <b>进群</b></span><span class="dur">17分</span></div>
+              </div>
+              <div class="today-rail">
+                <div class="left">
+                  <div class="k">今日 · 监控中</div>
+                  <div class="v">共 <b>2时18分</b> · 守住 <b>2</b> · 进入 <b>11</b></div>
+                </div>
+                <span class="go">›</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="phone-cap">非进行中同样留旁路。数字与桌面 Hub、小票同源，只是入口更轻。</p>
+      </div>
+    </div>
+
+    <section class="notes">
+      <h2>框外 · 取舍</h2>
+      <ul>
+        <li>主语不变：监控 in-app 仍先进 Pulse，不直接开 Hub<span>与「未监控 in-app 看当前 App」同一原则；总览是旁路，不是首页</span></li>
+        <li>旁路一行只报三数：监控合计 · 守住 · 进入<span>与今日小票 peek 同口气；不加热力、不加四格芯片</span></li>
+        <li>点开轻览：合计 + 当前占比一句 + Top 列表（标进行中）<span>脚上「今日小票 / 打开心锚」；改规则仍回方案</span></li>
+        <li>意图会话：胶囊默认不抬高；再点 / 长按才出今日一行<span>避免进行中条带被总览挤掉</span></li>
+        <li>数据：usage_records 监控口径，与 Hub / Pulse / 小票同源<span>不混系统前台；未监控 App 不进这行合计</span></li>
+      </ul>
+    </section>
+
+    <pre class="map">点球（监控 App 内）
+  └─ Pulse · 本 App（本次 / 今日 / 进入 / 脊线）
+       └─ 今日旁路一行  →  轻览（合计 · Top）
+            ├─ 今日小票
+            └─ 打开心锚
+
+对比不取：点球 → Hub 芯片墙（主语丢了）</pre>
+
+    <p class="quiet-note">
+      桌面仍开完整 Hub；App 内是 Pulse + 旁路。同一套今日数字，两处入口重量不同。
+    </p>
+  </div>
+</body>
+</html>

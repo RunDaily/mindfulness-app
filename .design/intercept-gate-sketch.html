@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>意图门拦截页 · 结构草图 v2</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #1c1c1e;
+      --line: #3a3a3c;
+      --text: #ffffff;
+      --muted: #8e8e93;
+      --green: #34c759;
+      --green-dim: rgba(52, 199, 89, 0.18);
+      --radius: 20px;
+      --gap: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, #1a1a1c 0%, #0a0a0a 45%, #000 100%);
+      color: var(--text);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+      gap: 16px;
+    }
+    .page-title { text-align: center; max-width: 420px; }
+    .page-title h1 { font-size: 15px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .page-title p { font-size: 13px; color: #636366; line-height: 1.5; }
+
+    .phone {
+      width: min(390px, 100%);
+      background: var(--bg);
+      border: 1px solid #2a2a2c;
+      border-radius: 36px;
+      padding: 14px 12px 22px;
+      box-shadow: 0 0 0 1px #111, 0 24px 80px rgba(0,0,0,.65);
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);
+      position: relative;
+      overflow: hidden;
+    }
+    .status-bar {
+      height: 28px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 18px 4px; font-size: 12px; font-weight: 600; color: #aeaeb2;
+    }
+    /* 分区：中/下有卡片；上区平铺无壳 */
+    .region { position: relative; }
+    .region.top {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 8px 4px 4px;
+    }
+    .region.mid, .region.bot {
+      background: var(--surface);
+      border: 1px solid #2a2a2c;
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .region-tag {
+      position: absolute; top: -9px; left: 14px;
+      font-size: 10px; font-weight: 600; letter-spacing: .06em;
+      color: var(--green); background: #0d1a10;
+      border: 1px solid rgba(52,199,89,.35);
+      border-radius: 999px; padding: 2px 8px;
+    }
+
+    /* 上区 */
+    .top {
+      display: grid; grid-template-columns: 1fr auto; gap: 12px;
+      align-items: center; min-height: 108px; padding-top: 8px;
+    }
+    .app-meta { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .app-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: linear-gradient(145deg, #ff5a6a, #c9184a);
+      display: grid; place-items: center; font-size: 11px; font-weight: 700;
+    }
+    .app-name { font-size: 17px; font-weight: 600; }
+    .app-sub { margin-top: 4px; font-size: 12px; color: var(--muted); }
+    .clock-ph {
+      width: 88px; height: 88px; border-radius: 50%;
+      border: 1.5px dashed #4a4a4e;
+      background: radial-gradient(circle at 50% 50%, #242426 0%, #161618 70%);
+      position: relative;
+    }
+    .clock-ph::before, .clock-ph::after {
+      content: ""; position: absolute; left: 50%; top: 50%;
+      background: #aeaeb2; border-radius: 2px; transform-origin: bottom center;
+    }
+    .clock-ph::before {
+      width: 2.5px; height: 22px; margin-left: -1.25px; margin-top: -22px; transform: rotate(20deg);
+    }
+    .clock-ph::after {
+      width: 2px; height: 28px; margin-left: -1px; margin-top: -28px;
+      transform: rotate(110deg); background: #8e8e93;
+    }
+    .clock-dot {
+      position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;
+      margin: -3px 0 0 -3px; border-radius: 50%; background: var(--green); z-index: 1;
+    }
+    .clock-label {
+      position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%);
+      white-space: nowrap; font-size: 10px; color: #636366;
+    }
+
+    /* 中区 · 决策组件 */
+    .mid { padding-top: 22px; display: flex; flex-direction: column; gap: 12px; }
+    .ask { font-size: 18px; font-weight: 600; line-height: 1.35; }
+
+    .mode-switch {
+      display: inline-flex; align-self: flex-start;
+      background: #0e0e10; border: 1px solid var(--line);
+      border-radius: 999px; padding: 3px; gap: 2px;
+    }
+    .mode-switch button {
+      border: 0; background: transparent; color: var(--muted);
+      font-size: 12px; font-weight: 600; padding: 6px 12px;
+      border-radius: 999px; cursor: pointer; font-family: inherit;
+    }
+    .mode-switch button.on {
+      background: var(--green-dim); color: var(--green);
+    }
+
+    .decision-shell {
+      background: #0e0e10;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    /* 搜索形态（主） */
+    .search-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+    }
+    .search-icon {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 1.5px solid #5a5a5e; display: grid; place-items: center;
+      color: var(--muted); font-size: 12px; flex-shrink: 0;
+    }
+    .search-input {
+      flex: 1; border: 0; outline: 0; background: transparent;
+      color: var(--text); font-size: 15px; font-family: inherit;
+    }
+    .search-input::placeholder { color: #636366; }
+    .search-go {
+      border: 0; background: var(--green); color: #003a12;
+      font-size: 13px; font-weight: 700; padding: 8px 12px;
+      border-radius: 10px; cursor: pointer; font-family: inherit;
+      white-space: nowrap;
+    }
+    .hint-line {
+      display: none;
+    }
+
+    /* 意图输入形态（切换后） */
+    .intent-pane { display: none; padding: 12px 14px 14px; }
+    .intent-pane.show { display: block; }
+    .search-pane.hide { display: none; }
+    .intent-area {
+      width: 100%; min-height: 88px; resize: none;
+      border: 0; outline: 0; background: transparent;
+      color: var(--text); font-size: 15px; line-height: 1.45;
+      font-family: inherit;
+    }
+    .intent-area::placeholder { color: #636366; }
+    .intent-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 8px; gap: 8px;
+    }
+    .intent-footer .ghost {
+      border: 0; background: transparent; color: var(--muted);
+      font-size: 12px; cursor: pointer; font-family: inherit;
+    }
+    .intent-confirm {
+      border: 0; background: var(--green); color: #003a12;
+      font-size: 13px; font-weight: 700; padding: 8px 14px;
+      border-radius: 10px; cursor: pointer; font-family: inherit;
+    }
+
+    .leave-link {
+      text-align: center; margin-top: 2px;
+      font-size: 14px; font-weight: 600; color: var(--green);
+      padding: 10px; cursor: pointer;
+    }
+
+    /* 下区 */
+    .bot { padding-top: 22px; }
+    .bot-title { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+    .bot-title span { color: var(--green); margin-right: 4px; }
+    .entries { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .entry {
+      aspect-ratio: 1; border: 1.5px dashed #3a3a3c; border-radius: 16px;
+      background: #141416; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
+      color: #aeaeb2; font-size: 12px; font-weight: 500;
+    }
+    .entry-icon {
+      width: 28px; height: 28px; border-radius: 50%; border: 1px solid #3a3a3c;
+      display: grid; place-items: center; font-size: 13px; color: var(--green);
+    }
+    .bot-note { margin-top: 12px; text-align: center; font-size: 11px; color: #48484a; }
+
+    /* 时长弹层 */
+    .sheet-mask {
+      position: absolute; inset: 0; background: rgba(0,0,0,.62);
+      display: none; align-items: flex-end; z-index: 20;
+      border-radius: 36px;
+    }
+    .sheet-mask.show { display: flex; }
+    .sheet {
+      width: 100%; background: #1c1c1e;
+      border-radius: 22px 22px 0 0;
+      border-top: 1px solid #3a3a3c;
+      padding: 18px 16px 28px;
+      animation: up .22s ease-out;
+    }
+    @keyframes up {
+      from { transform: translateY(24px); opacity: .4; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .sheet-handle {
+      width: 36px; height: 4px; border-radius: 999px;
+      background: #3a3a3c; margin: 0 auto 14px;
+    }
+    .sheet-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .sheet-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+    .sheet-purpose {
+      font-size: 13px; color: #d1d1d6; background: #0e0e10;
+      border: 1px solid var(--line); border-radius: 12px;
+      padding: 10px 12px; margin-bottom: 14px;
+    }
+    .chips { display: flex; gap: 8px; margin-bottom: 14px; }
+    .chip {
+      flex: 1; text-align: center; padding: 12px 0; border-radius: 999px;
+      border: 1px solid var(--line); font-size: 14px; color: #aeaeb2;
+      background: transparent; cursor: pointer; font-family: inherit;
+    }
+    .chip.on {
+      border-color: var(--green); color: var(--green); background: var(--green-dim);
+    }
+    .sheet-enter {
+      width: 100%; padding: 14px; border-radius: 14px; border: 0;
+      background: var(--green); color: #003a12;
+      font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit;
+    }
+    .sheet-cancel {
+      width: 100%; margin-top: 10px; padding: 10px; border: 0;
+      background: transparent; color: var(--muted);
+      font-size: 13px; cursor: pointer; font-family: inherit;
+    }
+
+    .legend {
+      width: min(390px, 100%); display: grid; gap: 8px;
+      font-size: 12px; color: #8e8e93; line-height: 1.45; padding: 0 4px;
+    }
+    .legend strong { color: #d1d1d6; font-weight: 600; }
+
+    .flow {
+      width: min(390px, 100%);
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 14px;
+      padding: 12px 14px; font-size: 12px; color: #aeaeb2; line-height: 1.6;
+    }
+    .flow b { color: var(--green); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="page-title">
+    <h1>意图门拦截页 · 结构草图 v2</h1>
+    <p>决策区默认搜索 · 组件内可切意图输入 · 时长在意图确定后弹层</p>
+  </div>
+
+  <div class="phone" id="phone">
+    <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+
+    <section class="region top">
+      <div class="region-tag">上区</div>
+      <div class="app-meta">
+        <div class="app-icon">红</div>
+        <div>
+          <div class="app-name">小红书</div>
+          <div class="app-sub">今日第 3 次</div>
+        </div>
+      </div>
+      <div style="position:relative;padding-bottom:10px;">
+        <div class="clock-ph"><div class="clock-dot"></div></div>
+        <div class="clock-label">时钟 · 占位</div>
+      </div>
+    </section>
+
+    <section class="region mid">
+      <div class="region-tag">中区 · 决策</div>
+      <div class="mode-switch" role="tablist" aria-label="决策模式">
+        <button type="button" class="on" id="tabSearch" onclick="setMode('search')">搜索直达</button>
+        <button type="button" id="tabIntent" onclick="setMode('intent')">写意图</button>
+      </div>
+
+      <div class="decision-shell">
+        <!-- 主形态：搜索 -->
+        <div class="search-pane" id="searchPane">
+          <div class="search-row">
+            <div class="search-icon">⌕</div>
+            <input class="search-input" id="searchInput" placeholder="输入内容，直达搜索" />
+            <button type="button" class="search-go" onclick="openDuration('搜索：' + (searchInput.value.trim() || '关键词'))">进入</button>
+          </div>
+        </div>
+
+        <!-- 切换形态：意图输入 -->
+        <div class="intent-pane" id="intentPane">
+          <textarea class="intent-area" id="intentInput" placeholder="写下此刻的意图…"></textarea>
+          <div class="intent-footer">
+            <button type="button" class="ghost" onclick="setMode('search')">切回搜索直达</button>
+            <button type="button" class="intent-confirm" onclick="openDuration(intentInput.value.trim() || '手写意图')">确定意图</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="leave-link">不进去了</div>
+
+    <section class="region bot">
+      <div class="region-tag">下区 · 正向入口</div>
+      <div class="bot-title"><span>—</span>也可以去做</div>
+      <div class="entries">
+        <div class="entry"><div class="entry-icon">◎</div>我的目标</div>
+        <div class="entry"><div class="entry-icon">☰</div>我的待办</div>
+        <div class="entry"><div class="entry-icon">✧</div>我的习惯</div>
+      </div>
+      <div class="bot-note">类别入口 · 暂不接真实跳转</div>
+    </section>
+
+    <!-- 时长弹层：意图确定之后才出现 -->
+    <div class="sheet-mask" id="sheetMask" onclick="if(event.target===this) closeDuration()">
+      <div class="sheet" role="dialog" aria-label="选择时长">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">这一次给多久？</div>
+        <div class="sheet-sub">意图已定 · 再选时长后进入</div>
+        <div class="sheet-purpose" id="sheetPurpose">—</div>
+        <div class="chips">
+          <button type="button" class="chip" onclick="pickChip(this)">5 分</button>
+          <button type="button" class="chip on" onclick="pickChip(this)">15 分</button>
+          <button type="button" class="chip" onclick="pickChip(this)">30 分</button>
+        </div>
+        <button type="button" class="sheet-enter" onclick="closeDuration()">确认进入</button>
+        <button type="button" class="sheet-cancel" onclick="closeDuration()">返回修改意图</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <b>交互流</b>：打开门 → 默认搜索框 →（可选）切「写意图」→ 点进入/确定意图 → <b>弹层选时长</b> → 确认进入<br />
+    中区主面不堆时长芯片，避免「还没想清楚要做什么」就被时长打扰。
+  </div>
+
+  <div class="legend">
+    <div><strong>上区</strong>：App 语境 + 拟物时钟 · 无圆角卡片壳</div>
+    <div><strong>中区</strong>：同一组件，搜索直达 / 写意图；「不进去了」在卡片外</div>
+    <div><strong>下区</strong>：一类正向出口（目标 / 待办 / 习惯）</div>
+  </div>
+
+  <script>
+    function setMode(mode) {
+      const search = mode === 'search';
+      document.getElementById('tabSearch').classList.toggle('on', search);
+      document.getElementById('tabIntent').classList.toggle('on', !search);
+      document.getElementById('searchPane').classList.toggle('hide', !search);
+      document.getElementById('intentPane').classList.toggle('show', !search);
+      if (search) document.getElementById('searchInput').focus();
+      else document.getElementById('intentInput').focus();
+    }
+    function openDuration(purpose) {
+      document.getElementById('sheetPurpose').textContent = purpose;
+      document.getElementById('sheetMask').classList.add('show');
+    }
+    function closeDuration() {
+      document.getElementById('sheetMask').classList.remove('show');
+    }
+    function pickChip(el) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+      el.classList.add('on');
+    }
+  </script>
+</body>
+</html>

@@ -4,8 +4,10 @@ import android.graphics.drawable.Drawable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.life.mindfulnessapp.data.AppPreferences
+import com.life.mindfulnessapp.domain.model.ThemeMode
 import com.life.mindfulnessapp.domain.model.AppInfo
 import com.life.mindfulnessapp.domain.usecase.GetInstalledAppsUseCase
+import com.life.mindfulnessapp.util.AppNameSearch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -33,8 +35,7 @@ class PositiveDestinationsViewModel @Inject constructor(
     private val getInstalledAppsUseCase: GetInstalledAppsUseCase
 ) : ViewModel() {
 
-    val isDarkTheme: StateFlow<Boolean> = appPreferences.isDarkTheme
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val themeMode: StateFlow<ThemeMode> = appPreferences.themeMode
 
     private val _allApps = MutableStateFlow<List<AppInfo>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
@@ -77,11 +78,11 @@ class PositiveDestinationsViewModel @Inject constructor(
         val q = query.trim()
         val filtered = if (q.isEmpty()) apps
         else apps.filter {
-            it.appName.contains(q, ignoreCase = true) ||
-                it.packageName.contains(q, ignoreCase = true)
+            AppNameSearch.matches(it.appName, it.packageName, q)
         }
-        filtered.sortedWith(
+                        filtered.sortedWith(
             compareByDescending<AppInfo> { it.packageName in selected }
+                .thenBy { AppNameSearch.sortKey(it.appName) }
                 .thenBy { it.appName }
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

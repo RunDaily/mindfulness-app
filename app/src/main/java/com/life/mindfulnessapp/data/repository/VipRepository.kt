@@ -24,12 +24,11 @@ sealed class VipResult {
 // ════════════════════════════════════════════
 
 /**
- * VIP 状态完全保存在本机，购买通过 Google Play 完成，无需账号登录。
+ * VIP 状态完全保存在本机。
  *
- * 功能门禁说明（免费版限制）：
- *  - 监控 App 数量：最多 3 个
- *  - 每周限额设置：VIP（标准版及以上）专属
- *  - 数据历史查看：免费版仅最近 7 天，VIP 30 天，高级版永久
+ * 当前权益（对外强调）：
+ *  - 免费版：最多监控 [AppPreferences.FREE_MONITOR_LIMIT] 个 App；三项能力可用
+ *  - 会员：无限 App 管理坑位，以及持续更新的更多能力
  */
 @Singleton
 class VipRepository @Inject constructor(
@@ -48,17 +47,13 @@ class VipRepository @Inject constructor(
         return AppPreferences.FREE_PERIOD_ENABLED || isVip() || currentCount < AppPreferences.FREE_MONITOR_LIMIT
     }
 
-    fun canUseAllThemes(): Boolean = isVip()
+    fun canUseAllThemes(): Boolean = true
 
-    fun canSetWeeklyLimit(): Boolean = isVip()
+    fun canSetWeeklyLimit(): Boolean = true
 
-    fun canViewExtendedHistory(): Boolean = isPremium()
+    fun canViewExtendedHistory(): Boolean = true
 
-    fun getDataRetentionDays(): Int = when (appPreferences.getVipLevel()) {
-        0 -> 7
-        1 -> 30
-        else -> Int.MAX_VALUE
-    }
+    fun getDataRetentionDays(): Int = Int.MAX_VALUE
 
     /** 刷新本地 VIP 展示状态（不再请求服务端） */
     fun refreshLocalStatus(): VipResult {
@@ -92,22 +87,22 @@ class VipRepository @Inject constructor(
     }
 
     /**
-     * 激活本机 7 天高级版试用（每台设备一次，无需账号）。
+     * 激活本机 7 天会员试用（每台设备一次，无需账号）。
      */
     fun activateTrial(): VipResult {
         if (appPreferences.hasUsedTrial) {
             return VipResult.Error("每台设备仅可使用一次免费试用")
         }
         if (isVip()) {
-            return VipResult.Error("当前已是 VIP，无需试用")
+            return VipResult.Error("当前已是会员，无需试用")
         }
         val expire = System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000
         appPreferences.hasUsedTrial = true
-        appPreferences.saveVipStatus(level = 2, expireTime = expire)
+        appPreferences.saveVipStatus(level = 1, expireTime = expire)
         return VipResult.Success(
-            vipLevel = 2,
+            vipLevel = 1,
             expireTime = expire,
-            message = "已激活 7 天高级版免费试用 🎉"
+            message = "已激活 7 天会员试用"
         )
     }
 
@@ -117,25 +112,24 @@ class VipRepository @Inject constructor(
         val level = appPreferences.getVipLevel()
         val expire = appPreferences.vipExpireTime.value
         return when {
-            level <= 0 -> "免费版"
-            expire == 0L -> if (level >= 2) "高级版 · 永久有效" else "标准版 · 永久有效"
+            level <= 0 -> "免费版 · 最多 ${AppPreferences.FREE_MONITOR_LIMIT} 个 App 管理坑位"
+            expire == 0L -> "会员 · 永久有效"
             expire > System.currentTimeMillis() -> {
                 val days = ((expire - System.currentTimeMillis()) / (1000 * 60 * 60 * 24)).coerceAtLeast(0)
-                val prefix = if (level >= 2) "高级版" else "标准版"
-                "$prefix · 剩余 $days 天"
+                if (appPreferences.isBetaUnlocked()) {
+                    "权益还剩 $days 天"
+                } else {
+                    "会员 · 剩余 $days 天"
+                }
             }
-            else -> "VIP 已过期"
+            else -> "会员已过期"
         }
     }
 
     private fun resolveVipGrant(plan: VipPlan): Pair<Int, Long> {
         val now = System.currentTimeMillis()
         val dayMs = 24L * 60 * 60 * 1000
-        return when (plan) {
-            VipPlan.MONTHLY_STANDARD -> 1 to (now + 30 * dayMs)
-            VipPlan.YEARLY_STANDARD -> 1 to (now + 365 * dayMs)
-            VipPlan.YEARLY_PREMIUM -> 2 to (now + 365 * dayMs)
-            VipPlan.LIFETIME -> 2 to 0L
-        }
+        val expire = if (plan.durationDays <= 0) 0L else now + plan.durationDays * dayMs
+        return 1 to expire
     }
 }

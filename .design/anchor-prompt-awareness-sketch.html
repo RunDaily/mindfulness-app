@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>锚提示 · 觉察问题 · 觉察值</title>
+  <style>
+    :root {
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --line: rgba(255,255,255,.1);
+      --accent: #7eb8a2;
+      --accent-soft: rgba(126,184,162,.16);
+      --warm: #d4b483;
+      --warm-soft: rgba(212,180,131,.14);
+      --search: #8eb4d4;
+      --search-soft: rgba(142,180,212,.14);
+      --island: #121214;
+      --bar: rgba(28,28,30,.92);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--ink);
+      background:
+        radial-gradient(ellipse at 30% -5%, rgba(126,184,162,.07), transparent 42%),
+        radial-gradient(ellipse at 80% 10%, rgba(142,180,212,.05), transparent 35%),
+        linear-gradient(180deg, #0c0c0e, #050506 70%);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 96px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; }
+
+    .hero { text-align: center; max-width: 620px; margin: 0 auto 36px; }
+    .eyebrow {
+      font-size: 11px; font-weight: 650; letter-spacing: .16em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+    }
+    h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+    .hero p { margin-top: 12px; font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+    .section { margin-bottom: 56px; }
+    .sec-head { text-align: center; margin-bottom: 20px; }
+    .sec-head h2 { font-size: 15px; font-weight: 650; }
+    .sec-head p {
+      margin-top: 8px; font-size: 13px; color: var(--muted);
+      line-height: 1.6; max-width: 540px; margin-left: auto; margin-right: auto;
+    }
+
+    .note {
+      max-width: 640px; margin: 0 auto 22px;
+      padding: 14px 16px;
+      border-left: 2px solid var(--accent);
+      background: rgba(255,255,255,.02);
+      border-radius: 0 10px 10px 0;
+      font-size: 13px; color: var(--muted); line-height: 1.65;
+    }
+    .note strong { color: var(--ink); font-weight: 600; }
+
+    .pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      max-width: 720px;
+      margin: 0 auto 28px;
+    }
+    @media (max-width: 700px) { .pair { grid-template-columns: 1fr; } }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px 18px 20px;
+      background: rgba(255,255,255,.025);
+    }
+    .card h3 {
+      font-size: 14px; font-weight: 650; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .pill {
+      font-size: 10px; font-weight: 650; letter-spacing: .08em;
+      padding: 3px 8px; border-radius: 999px; text-transform: uppercase;
+    }
+    .pill.hint { background: var(--accent-soft); color: var(--accent); }
+    .pill.ask { background: var(--warm-soft); color: var(--warm); }
+    .card .meta { font-size: 12px; color: var(--dim); margin-bottom: 12px; }
+    .card ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+    .card li {
+      font-size: 13px; color: var(--muted); line-height: 1.45;
+      padding-left: 12px; position: relative;
+    }
+    .card li::before {
+      content: ""; position: absolute; left: 0; top: .55em;
+      width: 5px; height: 5px; border-radius: 50%; background: var(--dim);
+    }
+
+    .row {
+      display: flex; flex-wrap: wrap; gap: 18px; justify-content: center;
+      align-items: flex-start;
+    }
+    .phone-wrap { width: min(248px, 100%); }
+    .phone-label {
+      text-align: center; font-size: 12px; color: var(--muted);
+      font-weight: 650; margin-bottom: 8px;
+    }
+    .phone-label em {
+      font-style: normal; display: block; font-weight: 500;
+      color: var(--dim); font-size: 11px; margin-top: 3px;
+    }
+    .phone {
+      background: #000; border: 1px solid #2a2a2c; border-radius: 30px;
+      padding: 10px 8px 14px;
+    }
+    .statusbar {
+      height: 18px; display: flex; justify-content: space-between;
+      padding: 0 12px; font-size: 10px; color: #aeaeb2; font-weight: 600;
+    }
+    .stage {
+      margin-top: 4px; height: 420px; border-radius: 18px; border: 1px solid #1e2024;
+      position: relative; overflow: hidden;
+      background:
+        linear-gradient(165deg, #1a1418 0%, #121014 40%, #0b0c0e 100%);
+    }
+    .stage.search {
+      background: linear-gradient(165deg, #16181c 0%, #101114 50%, #0b0c0e 100%);
+    }
+    .stage.browse {
+      background: linear-gradient(165deg, #141816 0%, #101210 45%, #0b0c0e 100%);
+    }
+    .fake-card {
+      position: absolute; left: 14px; right: 14px; top: 48px;
+      height: 100px; border-radius: 14px;
+      background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.05);
+    }
+    .fake-lines {
+      position: absolute; left: 14px; right: 14px; top: 164px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .fake-lines i {
+      display: block; height: 8px; border-radius: 4px;
+      background: rgba(255,255,255,.055); font-style: normal;
+    }
+    .fake-lines i:nth-child(1) { width: 72%; }
+    .fake-lines i:nth-child(2) { width: 88%; }
+    .fake-lines i:nth-child(3) { width: 54%; }
+    .fake-lines i:nth-child(4) { width: 66%; }
+
+    /* —— companion bar —— */
+    .dock {
+      position: absolute; left: 50%; bottom: 22px;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0; width: 86%;
+      z-index: 5;
+    }
+    .bar {
+      width: 100%;
+      background: var(--bar);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 22px;
+      padding: 9px 12px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 8px 28px rgba(0,0,0,.35);
+      transition: border-radius .45s cubic-bezier(.2,.8,.2,1),
+                  padding .45s cubic-bezier(.2,.8,.2,1),
+                  background .35s ease;
+    }
+    .bar.ask-open {
+      border-radius: 18px 18px 20px 20px;
+      padding-bottom: 0;
+      background: rgba(22,22,24,.96);
+    }
+    .mark {
+      width: 28px; height: 28px; border-radius: 50%;
+      flex-shrink: 0;
+      display: grid; place-items: center;
+      position: relative;
+    }
+    .mark.app {
+      background: linear-gradient(145deg, #3a3a3c, #1c1c1e);
+      border: 1px solid rgba(255,255,255,.12);
+      animation: spin 10s linear infinite;
+    }
+    .mark.app span {
+      width: 14px; height: 14px; border-radius: 4px;
+      background: linear-gradient(135deg, #7eb8a2, #4a8f78);
+    }
+    .mark.timer {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      color: var(--warm); font-size: 13px;
+    }
+    .mark.search {
+      background: var(--search-soft);
+      border: 1px solid rgba(142,180,212,.25);
+      color: var(--search); font-size: 13px;
+    }
+    .mark.search .pulse {
+      position: absolute; inset: -3px; border-radius: 50%;
+      border: 1px solid rgba(142,180,212,.35);
+      animation: seek 1.8s ease-in-out infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes seek {
+      0%, 100% { transform: scale(.92); opacity: .35; }
+      50% { transform: scale(1.12); opacity: .8; }
+    }
+    .bar-mid { flex: 1; min-width: 0; }
+    .bar-clock {
+      font-variant-numeric: tabular-nums;
+      font-size: 15px; font-weight: 600; letter-spacing: .02em;
+      color: var(--ink);
+    }
+    .bar-sub {
+      font-size: 11px; color: var(--muted); margin-top: 1px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .stop {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,.22);
+      display: grid; place-items: center; flex-shrink: 0;
+    }
+    .stop i {
+      width: 7px; height: 7px; border-radius: 1.5px;
+      background: rgba(255,255,255,.55); font-style: normal;
+    }
+
+    /* —— 锚提示：从条上浮起的轻片 —— */
+    .anchor-hint {
+      position: absolute;
+      left: 50%; bottom: 78px;
+      transform: translateX(-50%) translateY(8px);
+      width: max-content; max-width: 88%;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(20px);
+      font-size: 12.5px; font-weight: 500;
+      color: rgba(242,242,247,.92);
+      letter-spacing: .01em;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,.25);
+      z-index: 6;
+    }
+    .anchor-hint.show {
+      animation: hintInOut 2.8s cubic-bezier(.2,.8,.2,1) forwards;
+    }
+    .anchor-hint .dot {
+      display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+      background: var(--accent); margin-right: 7px; vertical-align: 1px;
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    @keyframes hintInOut {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(10px) scale(.96); }
+      14%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+      78%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateX(-50%) translateY(-4px) scale(.98); }
+    }
+
+    /* —— 觉察问题：条内展开 —— */
+    .ask-panel {
+      width: 100%;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height .5s cubic-bezier(.2,.8,.2,1),
+                  opacity .35s ease,
+                  padding .4s ease;
+      padding: 0 4px;
+    }
+    .ask-panel.open {
+      max-height: 120px;
+      opacity: 1;
+      padding: 10px 4px 12px;
+    }
+    .ask-q {
+      font-size: 13px; font-weight: 550; color: var(--ink);
+      text-align: center; margin-bottom: 10px; line-height: 1.4;
+    }
+    .ask-acts {
+      display: flex; gap: 8px; justify-content: center;
+    }
+    .ask-acts button {
+      appearance: none; border: 0; cursor: pointer;
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      padding: 7px 14px; border-radius: 999px;
+      transition: transform .15s ease, background .2s ease, color .2s ease;
+    }
+    .ask-acts button:active { transform: scale(.96); }
+    .ask-acts .ghost {
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .ask-acts .solid {
+      background: rgba(255,255,255,.14);
+      color: var(--ink);
+    }
+    .ask-acts .soft {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    /* 觉察值微光：答完后条上的脊点 */
+    .awareness-spark {
+      position: absolute; right: 14px; top: 10px;
+      display: flex; align-items: center; gap: 5px;
+      font-size: 10px; color: var(--dim); font-weight: 600;
+      letter-spacing: .04em;
+      opacity: 0; transform: translateY(-4px);
+      transition: opacity .4s ease, transform .4s ease;
+    }
+    .awareness-spark.show { opacity: 1; transform: translateY(0); }
+    .awareness-spark .beads {
+      display: flex; gap: 3px;
+    }
+    .awareness-spark .beads b {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: rgba(255,255,255,.15);
+      font-weight: 400;
+    }
+    .awareness-spark .beads b.on {
+      background: var(--accent);
+      box-shadow: 0 0 6px rgba(126,184,162,.45);
+    }
+
+    .play-bar {
+      display: flex; justify-content: center; gap: 8px;
+      margin-top: 10px; flex-wrap: wrap;
+    }
+    .play-bar button {
+      appearance: none; border: 1px solid var(--line);
+      background: rgba(255,255,255,.04); color: var(--muted);
+      font-family: inherit; font-size: 11px; font-weight: 600;
+      padding: 6px 10px; border-radius: 999px; cursor: pointer;
+    }
+    .play-bar button:hover { color: var(--ink); border-color: rgba(255,255,255,.2); }
+    .play-bar button.active {
+      color: var(--accent); border-color: rgba(126,184,162,.4);
+      background: var(--accent-soft);
+    }
+
+    /* flow steps */
+    .flow {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+      max-width: 900px; margin: 0 auto 24px;
+    }
+    .flow .step {
+      flex: 1 1 140px; max-width: 180px;
+      text-align: center; padding: 12px 10px;
+      border: 1px solid var(--line); border-radius: 12px;
+      background: rgba(255,255,255,.02);
+    }
+    .flow .step .n {
+      font-size: 10px; font-weight: 650; letter-spacing: .12em;
+      color: var(--accent); margin-bottom: 6px;
+    }
+    .flow .step strong { display: block; font-size: 13px; margin-bottom: 4px; }
+    .flow .step span { font-size: 11px; color: var(--dim); line-height: 1.45; }
+
+    /* scenario table */
+    .scenarios {
+      max-width: 920px; margin: 0 auto;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .sc {
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px 18px; background: rgba(255,255,255,.02);
+    }
+    .sc-head {
+      display: flex; align-items: baseline; gap: 10px;
+      margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .sc-head h3 { font-size: 14px; font-weight: 650; }
+    .sc-head .tag {
+      font-size: 11px; color: var(--dim); font-weight: 500;
+    }
+    .sc-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 700px) { .sc-grid { grid-template-columns: 1fr; } }
+    .sc-cell {
+      padding: 12px; border-radius: 10px;
+      background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.05);
+    }
+    .sc-cell .when {
+      font-size: 10px; font-weight: 650; letter-spacing: .08em;
+      text-transform: uppercase; margin-bottom: 6px;
+    }
+    .sc-cell .when.hint { color: var(--accent); }
+    .sc-cell .when.ask { color: var(--warm); }
+    .sc-cell .when.exit { color: var(--search); }
+    .sc-cell .copy {
+      font-size: 13px; color: var(--ink); font-weight: 550; margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .sc-cell .why { font-size: 11px; color: var(--dim); line-height: 1.45; }
+    .sc-cell .opts {
+      margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .sc-cell .opts span {
+      font-size: 11px; padding: 3px 8px; border-radius: 999px;
+      background: rgba(255,255,255,.06); color: var(--muted);
+    }
+
+    /* morph demo strip */
+    .morph-strip {
+      max-width: 520px; margin: 0 auto;
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+    }
+    .morph-stage {
+      width: min(340px, 100%);
+      height: 160px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #0a0a0c;
+      position: relative;
+      overflow: hidden;
+      display: flex; align-items: flex-end; justify-content: center;
+      padding-bottom: 18px;
+    }
+    .morph-caption {
+      text-align: center; margin-top: 12px;
+      font-size: 12px; color: var(--dim);
+    }
+
+    .value-row {
+      display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+      max-width: 880px; margin: 0 auto;
+    }
+    .value-card {
+      flex: 1 1 240px; max-width: 280px;
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px; background: rgba(255,255,255,.02);
+    }
+    .value-card h3 { font-size: 13px; font-weight: 650; margin-bottom: 8px; }
+    .value-card p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .value-card.yes { border-color: rgba(126,184,162,.35); }
+    .value-card.no { border-color: rgba(255,255,255,.08); opacity: .85; }
+    .value-card .verdict {
+      font-size: 11px; font-weight: 650; letter-spacing: .06em;
+      margin-bottom: 8px;
+    }
+    .value-card.yes .verdict { color: var(--accent); }
+    .value-card.no .verdict { color: var(--dim); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .mark.app { animation: none; }
+      .mark.search .pulse { animation: none; }
+      .anchor-hint.show { animation: none; opacity: 1; transform: translateX(-50%); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Awareness Forms</div>
+      <h1>锚提示 · 觉察问题 · 觉察值</h1>
+      <p>
+        两种觉察形态共用一条陪伴条骨架：锚提示是短暂看见，觉察问题是可贴条展开的轻反馈。
+        答过的问题留下极轻的积点——觉察值，而不是积分榜。
+      </p>
+    </header>
+
+    <!-- 1. 两种形态 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>一、两种形态</h2>
+        <p>同属觉察，职责不同：一个只让你看见，一个让你轻轻回一下。</p>
+      </div>
+      <div class="pair">
+        <div class="card">
+          <h3><span class="pill hint">锚提示</span> 看见</h3>
+          <div class="meta">2–3 秒 · 不可点 · 贴条上浮</div>
+          <ul>
+            <li>形态：细长浮片 / 胶囊，定住再消</li>
+            <li>气质：高级、轻快、少动——不跑马灯</li>
+            <li>内容：回声意图、时间事实、搜的状态</li>
+            <li>不打断：不挡操作，不要求回应</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3><span class="pill ask">觉察问题</span> 回应</h3>
+          <div class="meta">可交互 · 从条内展开 · 二选一即过</div>
+          <ul>
+            <li>形态：陪伴条向下/向内顺滑展开</li>
+            <li>气质：与条一体，不是另起弹层</li>
+            <li>内容：一句问 + 两个短答</li>
+            <li>结果：答完收回条，并记一笔觉察值</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="flow">
+        <div class="step">
+          <div class="n">01</div>
+          <strong>陪伴条安静</strong>
+          <span>计时 + 路径图标</span>
+        </div>
+        <div class="step">
+          <div class="n">02</div>
+          <strong>锚提示浮现</strong>
+          <span>上浮定住 → 淡出</span>
+        </div>
+        <div class="step">
+          <div class="n">03</div>
+          <strong>条内展开问题</strong>
+          <span>同一块岛变高</span>
+        </div>
+        <div class="step">
+          <div class="n">04</div>
+          <strong>点一下收回</strong>
+          <span>积一点觉察值</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 交互草图：可点播 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>二、交互草图 · 点一下看过渡</h2>
+        <p>三条路径：左标不同；锚提示与觉察问题共用同一套过渡。</p>
+      </div>
+
+      <div class="row">
+        <!-- Intent -->
+        <div class="phone-wrap" data-path="intent">
+          <div class="phone-label">意图 · 正计时<em>图标转动 · 回声与时间</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage">
+              <div class="fake-card"></div>
+              <div class="fake-lines"><i></i><i></i><i></i><i></i></div>
+              <div class="awareness-spark" id="spark-intent">
+                <span>觉察</span>
+                <span class="beads"><b></b><b></b><b></b></span>
+              </div>
+              <div class="anchor-hint" id="hint-intent"><span class="dot"></span>你刚才说：回消息</div>
+              <div class="dock">
+                <div class="bar" id="bar-intent">
+                  <div class="mark app"><span></span></div>
+                  <div class="bar-mid">
+                    <div class="bar-clock">0:47</div>
+                    <div class="bar-sub">回消息</div>
+                  </div>
+                  <div class="stop"><i></i></div>
+                </div>
+                <div class="ask-panel" id="ask-intent">
+                  <div class="ask-q">还在做这件事吗？</div>
+                  <div class="ask-acts">
+                    <button class="ghost" type="button" data-answer="drift">有点偏了</button>
+                    <button class="solid" type="button" data-answer="stay">还在</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="play-bar">
+            <button type="button" data-demo="hint" data-target="intent">播锚提示</button>
+            <button type="button" data-demo="ask" data-target="intent">展开问题</button>
+            <button type="button" data-demo="reset" data-target="intent">复位</button>
+          </div>
+        </div>
+
+        <!-- Browse -->
+        <div class="phone-wrap" data-path="browse">
+          <div class="phone-label">刷一刷 · 倒计时<em>计时器图标 · 过程少打断</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage browse">
+              <div class="fake-card"></div>
+              <div class="fake-lines"><i></i><i></i><i></i><i></i></div>
+              <div class="awareness-spark" id="spark-browse">
+                <span>觉察</span>
+                <span class="beads"><b></b><b></b><b></b></span>
+              </div>
+              <div class="anchor-hint" id="hint-browse"><span class="dot"></span>还剩 1 分钟</div>
+              <div class="dock">
+                <div class="bar" id="bar-browse">
+                  <div class="mark timer">⏱</div>
+                  <div class="bar-mid">
+                    <div class="bar-clock">4:32</div>
+                    <div class="bar-sub">刷一刷</div>
+                  </div>
+                  <div class="stop"><i></i></div>
+                </div>
+                <div class="ask-panel" id="ask-browse">
+                  <div class="ask-q">这轮刷够了吗？</div>
+                  <div class="ask-acts">
+                    <button class="ghost" type="button" data-answer="more">再一会儿</button>
+                    <button class="soft" type="button" data-answer="enough">够了</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="play-bar">
+            <button type="button" data-demo="hint" data-target="browse">播锚提示</button>
+            <button type="button" data-demo="ask" data-target="browse">展开问题</button>
+            <button type="button" data-demo="reset" data-target="browse">复位</button>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="phone-wrap" data-path="search">
+          <div class="phone-label">搜索 · 正计时<em>搜索图标轻脉动 · 找没找到</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage search">
+              <div class="fake-card"></div>
+              <div class="fake-lines"><i></i><i></i><i></i><i></i></div>
+              <div class="awareness-spark" id="spark-search">
+                <span>觉察</span>
+                <span class="beads"><b></b><b></b><b></b></span>
+              </div>
+              <div class="anchor-hint" id="hint-search"><span class="dot"></span>搜到了吗？</div>
+              <div class="dock">
+                <div class="bar" id="bar-search">
+                  <div class="mark search"><span class="pulse"></span>⌕</div>
+                  <div class="bar-mid">
+                    <div class="bar-clock">1:12</div>
+                    <div class="bar-sub">退票规则</div>
+                  </div>
+                  <div class="stop"><i></i></div>
+                </div>
+                <div class="ask-panel" id="ask-search">
+                  <div class="ask-q">你还在搜吗？</div>
+                  <div class="ask-acts">
+                    <button class="ghost" type="button" data-answer="still">还在搜</button>
+                    <button class="solid" type="button" data-answer="done">找到了</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="play-bar">
+            <button type="button" data-demo="hint" data-target="search">播锚提示</button>
+            <button type="button" data-demo="ask" data-target="search">展开问题</button>
+            <button type="button" data-demo="reset" data-target="search">复位</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 过渡原则 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>三、过渡怎么顺滑</h2>
+        <p>不是两个浮层叠着切，而是同一块岛在变。</p>
+      </div>
+      <div class="note">
+        <strong>原则：</strong>锚提示浮在条<strong>上方</strong>，不改条的高度；觉察问题把条<strong>向下展开</strong>，计时行保留为「岛顶」。
+        提示出现时左标动效可略停；问题展开时左标继续静静在，表示还在这段使用里。
+        不要顶部跑马灯，也不要全屏半透明蒙层——那会从「陪伴」变成「打断」。
+      </div>
+      <div class="morph-strip">
+        <div class="morph-stage" id="morph-stage">
+          <div class="anchor-hint" id="morph-hint" style="bottom:72px"><span class="dot"></span>你刚才说：回消息</div>
+          <div class="dock" style="width:78%; bottom:14px">
+            <div class="bar" id="morph-bar">
+              <div class="mark app"><span></span></div>
+              <div class="bar-mid">
+                <div class="bar-clock">3:02</div>
+                <div class="bar-sub">回消息</div>
+              </div>
+              <div class="stop"><i></i></div>
+            </div>
+            <div class="ask-panel" id="morph-ask">
+              <div class="ask-q">还在做这件事吗？</div>
+              <div class="ask-acts">
+                <button class="ghost" type="button">有点偏了</button>
+                <button class="solid" type="button">还在</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="play-bar">
+          <button type="button" id="morph-play">自动演示过渡</button>
+        </div>
+        <p class="morph-caption" id="morph-cap">安静陪伴条 → 锚提示 → 觉察问题 → 收回</p>
+      </div>
+    </section>
+
+    <!-- 4. 情景文案 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>四、情景 · 锚提示与觉察问题</h2>
+        <p>锚提示偏「事实/回声」；觉察问题偏「此刻是否还对齐」。</p>
+      </div>
+
+      <div class="scenarios">
+        <article class="sc">
+          <div class="sc-head">
+            <h3>意图</h3>
+            <span class="tag">强化意图 → 时间觉察 → 结果觉察</span>
+          </div>
+          <div class="sc-grid">
+            <div class="sc-cell">
+              <div class="when hint">30s · 锚提示</div>
+              <div class="copy">你刚才说：回消息</div>
+              <div class="why">短回声。长意图截断：「你刚才说：整理相册…」</div>
+            </div>
+            <div class="sc-cell">
+              <div class="when ask">3min · 觉察问题</div>
+              <div class="copy">还在做这件事吗？</div>
+              <div class="why">比「已经 3 分钟了」更可答；事实可放在副线。</div>
+              <div class="opts"><span>还在</span><span>有点偏了</span></div>
+            </div>
+            <div class="sc-cell">
+              <div class="when exit">退出 · 觉察问题</div>
+              <div class="copy">完成了吗？</div>
+              <div class="why">轻复盘，二选一即过，不二次拦截。</div>
+              <div class="opts"><span>完成了</span><span>没做完</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="sc">
+          <div class="sc-head">
+            <h3>刷一刷</h3>
+            <span class="tag">过程靠倒计时自明 · 临期/到点再问</span>
+          </div>
+          <div class="sc-grid">
+            <div class="sc-cell">
+              <div class="when hint">临期 · 锚提示</div>
+              <div class="copy">还剩 1 分钟</div>
+              <div class="why">过程中少打断；额度将尽时只报事实。</div>
+            </div>
+            <div class="sc-cell">
+              <div class="when ask">到点 / 退出 · 觉察问题</div>
+              <div class="copy">这轮刷够了吗？</div>
+              <div class="why">承认消费行为，给「停」一个体面出口。</div>
+              <div class="opts"><span>够了</span><span>再一会儿</span></div>
+            </div>
+            <div class="sc-cell">
+              <div class="when ask">再一会儿之后</div>
+              <div class="copy">再加 3 分钟？</div>
+              <div class="why">若选续刷，短延时后可再问一次；不密网。</div>
+              <div class="opts"><span>加 3 分</span><span>结束</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="sc">
+          <div class="sc-head">
+            <h3>搜索</h3>
+            <span class="tag">找没找到 · 是否还在找</span>
+          </div>
+          <div class="sc-grid">
+            <div class="sc-cell">
+              <div class="when hint">30s · 锚提示</div>
+              <div class="copy">搜到了吗？</div>
+              <div class="why">轻问一句即可；此处仍用锚提示，不展开条。</div>
+            </div>
+            <div class="sc-cell">
+              <div class="when ask">3min · 觉察问题</div>
+              <div class="copy">你还在搜吗？</div>
+              <div class="why">搜索易漂到信息流；给「找到了」一个快出口。</div>
+              <div class="opts"><span>还在搜</span><span>找到了</span></div>
+            </div>
+            <div class="sc-cell">
+              <div class="when exit">退出 · 觉察问题</div>
+              <div class="copy">找到答案了吗？</div>
+              <div class="why">结果觉察；「找到了」可带一点正向微反馈。</div>
+              <div class="opts"><span>找到了</span><span>没找到</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="sc">
+          <div class="sc-head">
+            <h3>偏航后 · 共用</h3>
+            <span class="tag">从觉察问题「有点偏了」顺滑接到软离场</span>
+          </div>
+          <div class="sc-grid">
+            <div class="sc-cell">
+              <div class="when ask">偏航确认</div>
+              <div class="copy">要先离开吗？</div>
+              <div class="why">仍在同一岛内，不换一套弹窗语言。</div>
+              <div class="opts"><span>先离开</span><span>再待一会</span></div>
+            </div>
+            <div class="sc-cell">
+              <div class="when hint">若再待一会</div>
+              <div class="copy">好，我还在</div>
+              <div class="why">一句锚提示收束，条回到安静计时。</div>
+            </div>
+            <div class="sc-cell">
+              <div class="when exit">若先离开</div>
+              <div class="copy">（回主界面 / 结束会话）</div>
+              <div class="why">动作立刻发生；复盘问题可在下一拍极轻出现。</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 5. 觉察值 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>五、觉察值 · 有没有必要</h2>
+        <p>有必要，但要做成「积点」而不是「分数游戏」。</p>
+      </div>
+      <div class="note">
+        <strong>判断：</strong>值得有，但<strong>不要做成排行榜、等级、连续打卡</strong>。
+        它的职责是：让「我刚才回了一下」留下可见痕迹，并把多次反馈收成可回顾的薄数据——例如今日答了几次、偏航几次、搜到了几次。
+        界面上最多是条旁 1–3 个小珠，或「我」页一行淡淡的今日觉察；用户不应为刷觉察值而点。
+      </div>
+      <div class="value-row">
+        <div class="value-card yes">
+          <div class="verdict">建议做</div>
+          <h3>静默积点</h3>
+          <p>每次答完觉察问题 +1 珠（当次会话最多亮 2–3 颗）。退出复盘也算。锚提示不计——它不需要用户反馈。</p>
+        </div>
+        <div class="value-card yes">
+          <div class="verdict">建议做</div>
+          <h3>回顾用，不激励刷</h3>
+          <p>「我」或日回顾里：今天有过几次看见、几次偏航、几次找到。服务于关系感，不服务于 KPI。</p>
+        </div>
+        <div class="value-card no">
+          <div class="verdict">不要做</div>
+          <h3>分数 / 升级 / 连胜</h3>
+          <p>一旦变成「再点一下涨分」，觉察就变质。珠子满了就满了，不解锁皮肤、不加时长。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" style="margin-bottom:0">
+      <div class="sec-head">
+        <h2>六、落地优先级</h2>
+        <p>先形态与过渡，再文案分路径，觉察值最后薄薄挂上。</p>
+      </div>
+      <div class="flow">
+        <div class="step">
+          <div class="n">P0</div>
+          <strong>锚提示容器</strong>
+          <span>替掉跑马灯；2–3s 定住淡出</span>
+        </div>
+        <div class="step">
+          <div class="n">P0</div>
+          <strong>条内觉察问题</strong>
+          <span>与现有轻问岛合并成一套</span>
+        </div>
+        <div class="step">
+          <div class="n">P1</div>
+          <strong>三路左标 + 计时</strong>
+          <span>意图转圈 / 刷倒计时 / 搜脉动</span>
+        </div>
+        <div class="step">
+          <div class="n">P1</div>
+          <strong>分情景文案</strong>
+          <span>上表节奏与选项</span>
+        </div>
+        <div class="step">
+          <div class="n">P2</div>
+          <strong>觉察值珠</strong>
+          <span>会话内微光 + 日回顾一行</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const sparkCount = { intent: 0, browse: 0, search: 0 };
+
+    function playHint(id) {
+      const el = document.getElementById('hint-' + id);
+      if (!el) return;
+      el.classList.remove('show');
+      void el.offsetWidth;
+      el.classList.add('show');
+    }
+
+    function openAsk(id) {
+      const bar = document.getElementById('bar-' + id);
+      const ask = document.getElementById('ask-' + id);
+      const hint = document.getElementById('hint-' + id);
+      if (hint) hint.classList.remove('show');
+      if (bar) bar.classList.add('ask-open');
+      if (ask) ask.classList.add('open');
+    }
+
+    function closeAsk(id, markSpark) {
+      const bar = document.getElementById('bar-' + id);
+      const ask = document.getElementById('ask-' + id);
+      if (bar) bar.classList.remove('ask-open');
+      if (ask) ask.classList.remove('open');
+      if (markSpark) {
+        sparkCount[id] = Math.min(3, (sparkCount[id] || 0) + 1);
+        const spark = document.getElementById('spark-' + id);
+        if (spark) {
+          spark.classList.add('show');
+          const beads = spark.querySelectorAll('b');
+          beads.forEach((b, i) => b.classList.toggle('on', i < sparkCount[id]));
+        }
+      }
+    }
+
+    function resetPath(id) {
+      closeAsk(id, false);
+      const hint = document.getElementById('hint-' + id);
+      if (hint) hint.classList.remove('show');
+      sparkCount[id] = 0;
+      const spark = document.getElementById('spark-' + id);
+      if (spark) {
+        spark.classList.remove('show');
+        spark.querySelectorAll('b').forEach(b => b.classList.remove('on'));
+      }
+    }
+
+    document.querySelectorAll('[data-demo]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const demo = btn.dataset.demo;
+        const id = btn.dataset.target;
+        document.querySelectorAll(`.phone-wrap[data-path="${id}"] .play-bar button`)
+          .forEach(b => b.classList.toggle('active', b === btn && demo !== 'reset'));
+        if (demo === 'hint') { closeAsk(id, false); playHint(id); }
+        if (demo === 'ask') openAsk(id);
+        if (demo === 'reset') {
+          resetPath(id);
+          btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        }
+      });
+    });
+
+    document.querySelectorAll('.ask-panel button[data-answer]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const panel = btn.closest('.ask-panel');
+        const id = panel.id.replace('ask-', '');
+        closeAsk(id, true);
+        const wrap = btn.closest('.phone-wrap');
+        wrap.querySelectorAll('.play-bar button').forEach(b => b.classList.remove('active'));
+      });
+    });
+
+    // morph auto demo
+    const morphBar = document.getElementById('morph-bar');
+    const morphAsk = document.getElementById('morph-ask');
+    const morphHint = document.getElementById('morph-hint');
+    const morphCap = document.getElementById('morph-cap');
+    let morphTimer = null;
+
+    function morphReset() {
+      morphBar.classList.remove('ask-open');
+      morphAsk.classList.remove('open');
+      morphHint.classList.remove('show');
+    }
+
+    document.getElementById('morph-play').addEventListener('click', () => {
+      if (morphTimer) { clearTimeout(morphTimer); morphTimer = null; }
+      morphReset();
+      morphCap.textContent = '① 安静陪伴条';
+      morphTimer = setTimeout(() => {
+        morphHint.classList.add('show');
+        morphCap.textContent = '② 锚提示上浮（2–3s）';
+        morphTimer = setTimeout(() => {
+          morphHint.classList.remove('show');
+          morphBar.classList.add('ask-open');
+          morphAsk.classList.add('open');
+          morphCap.textContent = '③ 同一条岛展开为觉察问题';
+          morphTimer = setTimeout(() => {
+            morphReset();
+            morphCap.textContent = '④ 收回 · 可亮一颗觉察珠';
+            morphTimer = setTimeout(() => {
+              morphCap.textContent = '安静陪伴条 → 锚提示 → 觉察问题 → 收回';
+              morphTimer = null;
+            }, 1200);
+          }, 2200);
+        }, 2600);
+      }, 700);
+    });
+  </script>
+</body>
+</html>

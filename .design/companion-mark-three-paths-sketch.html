@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>陪伴条 · 三路左标对照</title>
+  <style>
+    :root {
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --accent: #34c759;
+      --warm: #e0b85c;
+      --search: #8eb4d4;
+      --line: rgba(255,255,255,.1);
+      --island: #0a0a0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--ink);
+      background:
+        radial-gradient(ellipse at 18% 0%, rgba(52,199,89,.05), transparent 42%),
+        radial-gradient(ellipse at 82% 8%, rgba(142,180,212,.04), transparent 38%),
+        linear-gradient(180deg, #0c0c0e, #050506 72%);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 88px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; }
+
+    .hero { text-align: center; max-width: 560px; margin: 0 auto 32px; }
+    .eyebrow {
+      font-size: 11px; font-weight: 650; letter-spacing: .14em;
+      color: var(--accent); text-transform: uppercase; margin-bottom: 10px;
+    }
+    h1 { font-size: 21px; font-weight: 650; letter-spacing: -.02em; }
+    .hero p { margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.65; }
+
+    .principle {
+      max-width: 720px; margin: 0 auto 36px;
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+    }
+    @media (max-width: 720px) { .principle { grid-template-columns: 1fr; } }
+    .principle .cell {
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 12px 14px; background: rgba(255,255,255,.03);
+      font-size: 12px; line-height: 1.5; color: var(--muted);
+    }
+    .principle .cell h3 {
+      font-size: 11px; font-weight: 650; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--ink); margin-bottom: 6px;
+    }
+    .principle .cell strong { color: #d8d8dc; font-weight: 600; }
+
+    .section { margin-bottom: 52px; }
+    .sec-head { text-align: center; margin-bottom: 18px; }
+    .sec-head h2 { font-size: 15px; font-weight: 650; }
+    .sec-head p {
+      margin-top: 6px; font-size: 13px; color: var(--muted);
+      line-height: 1.55; max-width: 520px; margin-left: auto; margin-right: auto;
+    }
+
+    .row {
+      display: flex; flex-wrap: wrap; gap: 18px; justify-content: center;
+      align-items: flex-start;
+    }
+    .phone-wrap { width: min(248px, 100%); }
+    .phone-label {
+      text-align: center; font-size: 12px; color: var(--muted);
+      font-weight: 650; margin-bottom: 8px;
+    }
+    .phone-label em {
+      font-style: normal; display: block; font-weight: 500;
+      color: var(--dim); font-size: 11px; margin-top: 3px;
+    }
+    .pick {
+      display: inline-block; margin-top: 2px; padding: 2px 8px;
+      border-radius: 999px; font-size: 10px; font-weight: 650;
+      letter-spacing: .04em;
+    }
+    .pick.fav {
+      color: #c6f5d2; background: rgba(52,199,89,.14);
+      border: 1px solid rgba(52,199,89,.28);
+    }
+    .pick.alt {
+      color: var(--muted); background: rgba(255,255,255,.04);
+      border: 1px solid var(--line);
+    }
+    .pick.now {
+      color: #aeaeb2; background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .phone {
+      background: #000; border: 1px solid #2a2a2c; border-radius: 30px;
+      padding: 10px 8px 14px;
+    }
+    .statusbar {
+      height: 18px; display: flex; justify-content: space-between;
+      padding: 0 12px; font-size: 10px; color: #aeaeb2; font-weight: 600;
+    }
+    .stage {
+      margin-top: 4px; height: 300px; border-radius: 18px; border: 1px solid #1e2024;
+      position: relative; overflow: hidden;
+    }
+    .stage.intent {
+      background: linear-gradient(165deg, #16181c 0%, #101114 50%, #0b0c0e 100%);
+    }
+    .stage.browse {
+      background: linear-gradient(165deg, #1a1418 0%, #121014 40%, #0b0c0e 100%);
+    }
+    .stage.search {
+      background: linear-gradient(165deg, #141820 0%, #101418 50%, #0b0c0e 100%);
+    }
+
+    .fake-card {
+      position: absolute; left: 14px; right: 14px; top: 40px;
+      height: 88px; border-radius: 14px;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.06);
+    }
+    .fake-lines {
+      position: absolute; left: 14px; right: 14px; top: 144px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .fake-lines i {
+      display: block; height: 8px; border-radius: 4px;
+      background: rgba(255,255,255,.06); font-style: normal;
+    }
+    .fake-lines i:nth-child(1) { width: 72%; }
+    .fake-lines i:nth-child(2) { width: 88%; }
+    .fake-lines i:nth-child(3) { width: 54%; }
+
+    /* companion bar — light shell matching production */
+    .cap {
+      position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px;
+      height: 36px; padding: 0 10px 0 6px;
+      border-radius: 18px;
+      background: rgba(245,245,247,.94);
+      border: 0.6px solid rgba(0,0,0,.18);
+      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+      z-index: 3;
+    }
+    .cap .clock {
+      display: flex; flex-direction: column; justify-content: center;
+      min-width: 52px; line-height: 1.05;
+    }
+    .cap .clock .t {
+      font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums;
+      font-family: "SF Mono", ui-monospace, Menlo, monospace;
+      color: #1c1c1e; letter-spacing: -.02em;
+    }
+    .cap .clock .s {
+      font-size: 9px; font-weight: 550; color: #8e8e93; margin-top: 1px;
+      max-width: 88px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .cap .stop {
+      width: 12px; height: 12px; border-radius: 2.5px;
+      background: #e5484d; margin-left: 2px; flex: none;
+    }
+
+    /* —— marks —— */
+    .mark {
+      width: 26px; height: 26px; border-radius: 50%; flex: none;
+      position: relative; display: grid; place-items: center;
+    }
+
+    /* Intent A · spinning app */
+    .mark.app {
+      background: conic-gradient(from 40deg, #00a1d6, #0b6e94, #00a1d6);
+      animation: spin 8s linear infinite;
+    }
+    .mark.app::after {
+      content: ""; position: absolute; inset: 7px; border-radius: 50%;
+      background: #061820;
+    }
+    .mark.app.still { animation: none; }
+    .mark.app.breathe {
+      animation: appBreath 3.2s ease-in-out infinite;
+    }
+
+    /* Intent B · app + soft anchor dot */
+    .mark.app-anchor {
+      background: conic-gradient(from 40deg, #00a1d6, #0b6e94, #00a1d6);
+    }
+    .mark.app-anchor::after {
+      content: ""; position: absolute; inset: 7px; border-radius: 50%;
+      background: #061820;
+    }
+    .mark.app-anchor .dot {
+      position: absolute; right: -1px; bottom: -1px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent);
+      border: 1.5px solid rgba(245,245,247,.94);
+      box-shadow: 0 0 0 0 rgba(52,199,89,.35);
+      animation: softPing 2.8s ease-out infinite;
+    }
+
+    /* Browse A · material timer */
+    .mark.timer {
+      background: rgba(0,0,0,.04);
+      border: 0.7px solid rgba(0,0,0,.1);
+      color: #1c1c1e;
+    }
+    .mark.timer svg { width: 14px; height: 14px; opacity: .88; }
+    .mark.timer.warn { color: #b8891a; border-color: rgba(184,137,26,.28); }
+
+    /* Browse B · thin hourglass */
+    .mark.hourglass {
+      background: rgba(0,0,0,.04);
+      border: 0.7px solid rgba(0,0,0,.1);
+      color: #1c1c1e;
+    }
+    .mark.hourglass svg { width: 13px; height: 13px; opacity: .9; }
+    .mark.hourglass .sand {
+      transform-origin: 12px 12px;
+      animation: sandTilt 4.5s ease-in-out infinite;
+    }
+
+    /* Browse C · depleting ring (symbol alt; arc already exists on real countdown) */
+    .ring-host {
+      width: 30px; height: 30px; flex: none;
+      display: grid; place-items: center; position: relative;
+    }
+    .ring-host svg.arc {
+      position: absolute; inset: 0; width: 30px; height: 30px;
+      transform: rotate(-90deg);
+    }
+    .ring-host .mark { width: 22px; height: 22px; }
+    .ring-host .mark.timer svg { width: 12px; height: 12px; }
+
+    /* Search A · magnifier + scale pulse */
+    .mark.search {
+      background: rgba(52,199,89,.14);
+      border: 0.7px solid rgba(52,199,89,.28);
+      color: #1a7a3a;
+    }
+    .mark.search svg { width: 13px; height: 13px; }
+    .mark.search .halo {
+      position: absolute; inset: -3px; border-radius: 50%;
+      border: 1px solid rgba(52,199,89,.45);
+      animation: searchPulse 1.6s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    .mark.search.quiet .halo { display: none; }
+    .mark.search.quiet {
+      background: rgba(0,0,0,.04);
+      border-color: rgba(0,0,0,.1);
+      color: #3a3a3c;
+    }
+
+    /* Search C · single settle ripple then quiet */
+    .mark.ripple-search {
+      background: rgba(0,0,0,.04);
+      border: 0.7px solid rgba(0,0,0,.1);
+      color: #3a3a3c;
+      overflow: visible;
+    }
+    .mark.ripple-search svg { width: 13px; height: 13px; opacity: .85; }
+    .mark.ripple-search .wave {
+      position: absolute; inset: -4px; border-radius: 50%;
+      border: 1px solid rgba(52,199,89,.35);
+      animation: settleRipple 3.6s ease-out infinite;
+      pointer-events: none;
+    }
+
+    .note {
+      margin-top: 10px; font-size: 12px; color: var(--dim);
+      text-align: center; line-height: 1.5; max-width: 240px;
+      margin-left: auto; margin-right: auto;
+    }
+    .note strong { color: var(--muted); font-weight: 600; }
+
+    .zoom {
+      margin: 22px auto 0; max-width: 900px;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    }
+    @media (max-width: 800px) { .zoom { grid-template-columns: 1fr; } }
+    .zoom-card {
+      border: 1px solid var(--line); border-radius: 16px;
+      padding: 14px; background: rgba(255,255,255,.03);
+    }
+    .zoom-card h4 {
+      font-size: 12px; font-weight: 650; margin-bottom: 12px;
+      text-align: center; color: var(--muted);
+    }
+    .zoom-stage {
+      height: 64px; display: grid; place-items: center;
+      background: rgba(0,0,0,.35); border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .zoom-stage .cap { position: static; transform: none; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+    .zoom-cap {
+      margin-top: 10px; font-size: 11px; color: var(--dim);
+      line-height: 1.5; text-align: center;
+    }
+
+    .verdict {
+      max-width: 640px; margin: 8px auto 0;
+      border: 1px solid rgba(52,199,89,.22);
+      background: rgba(52,199,89,.06);
+      border-radius: 16px; padding: 16px 18px;
+      font-size: 13px; line-height: 1.65; color: var(--muted);
+    }
+    .verdict h3 {
+      font-size: 12px; font-weight: 650; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+    }
+    .verdict li { margin-left: 1.1em; margin-top: 4px; }
+    .verdict strong { color: #d8d8dc; font-weight: 600; }
+
+    .divider {
+      height: 1px; background: var(--line);
+      margin: 8px auto 40px; max-width: 200px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes appBreath {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.04); opacity: .92; }
+    }
+    @keyframes softPing {
+      0% { box-shadow: 0 0 0 0 rgba(52,199,89,.4); }
+      70% { box-shadow: 0 0 0 5px rgba(52,199,89,0); }
+      100% { box-shadow: 0 0 0 0 rgba(52,199,89,0); }
+    }
+    @keyframes searchPulse {
+      from { transform: scale(.92); opacity: .35; }
+      to { transform: scale(1.12); opacity: .75; }
+    }
+    @keyframes settleRipple {
+      0% { transform: scale(.85); opacity: .55; }
+      35% { transform: scale(1.25); opacity: 0; }
+      100% { transform: scale(1.25); opacity: 0; }
+    }
+    @keyframes sandTilt {
+      0%, 100% { transform: rotate(0deg); }
+      45% { transform: rotate(180deg); }
+      55% { transform: rotate(180deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Companion mark</div>
+      <h1>三路左标 · 现形态 / 收动效 / 换符号</h1>
+      <p>同一条陪伴条骨架，只换左侧锚标。框内不解释取舍；取舍写在 note 与文末建议。</p>
+    </header>
+
+    <div class="principle">
+      <div class="cell">
+        <h3>意图</h3>
+        正计时 · 带着事进来<br />
+        标应说 <strong>在场 + 目的</strong>，不必像唱片一直转。
+      </div>
+      <div class="cell">
+        <h3>刷一刷</h3>
+        倒计时 · 过程少打断<br />
+        标应说 <strong>额度在减</strong>，动效最轻。
+      </div>
+      <div class="cell">
+        <h3>搜索</h3>
+        正计时 · 去搜了就在<br />
+        标应说 <strong>已入搜</strong>，不是还在找。
+      </div>
+    </div>
+
+    <!-- ========== INTENT ========== -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>A · 意图</h2>
+        <p>现：App 慢转。中：停转 / 轻呼吸。右：静置 App + 心锚点。</p>
+      </div>
+      <div class="row">
+        <div class="phone-wrap">
+          <div class="phone-label">现在 <span class="pick now">现形态</span><em>App 连续转圈</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage intent">
+              <div class="fake-card"></div>
+              <div class="fake-lines"><i></i><i></i><i></i></div>
+              <div class="cap">
+                <div class="mark app" aria-hidden="true"></div>
+                <div class="clock">
+                  <span class="t">08:24</span>
+                  <span class="s">回消息</span>
+                </div>
+                <div class="stop"></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">辨识强，但和桌面圆球同语汇；「活」偏多，「事」偏少。</p>
+        </div>
+
+        <div class="phone-wrap">
+          <div class="phone-label">收动效 <span class="pick fav">更贴</span><em>静置 · 极慢呼吸</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage intent">
+              <div class="fake-card"></div>
+              <div class="fake-lines"><i></i><i></i><i></i></div>
+              <div class="cap">
+                <div class="mark app still breathe" aria-hidden="true"></div>
+                <div class="clock">
+                  <span class="t">08:24</span>
+                  <span class="s">回消息</span>
+                </div>
+                <div class="stop"></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">仍是这个 App，但安静下来。像「带着事坐下」，不像唱片。</p>
+        </div>
+
+        <div class="phone-wrap">
+          <div class="phone-label">换符号 <span class="pick alt">备选</span><em>App + 锚点</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage intent">
+              <div class="fake-card"></div>
+              <div class="fake-lines"><i></i><i></i><i></i></div>
+              <div class="cap">
+                <div class="mark app-anchor" aria-hidden="true"><span class="dot"></span></div>
+                <div class="clock">
+                  <span class="t">08:24</span>
+                  <span class="s">回消息</span>
+                </div>
+                <div class="stop"></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">多一颗心锚点强调「有意图」。信息更满，需克制点尺寸。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ========== BROWSE ========== -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>B · 刷一刷</h2>
+        <p>现：计时器静置。中：细线沙漏轻倾。右：计时器 + 外圈耗尽弧（与真倒计时一致）。</p>
+      </div>
+      <div class="row">
+        <div class="phone-wrap">
+          <div class="phone-label">现在 <span class="pick fav">可留</span><em>Timer · 几乎不动</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage browse">
+              <div class="fake-card"></div>
+              <div class="fake-lines"><i></i><i></i><i></i></div>
+              <div class="cap">
+                <div class="mark timer" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 2h4"/><path d="M12 14V9"/><circle cx="12" cy="14" r="7"/>
+                  </svg>
+                </div>
+                <div class="clock">
+                  <span class="t">08:24</span>
+                  <span class="s">这一次</span>
+                </div>
+                <div class="stop"></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">三项里最稳。倒计时事实清楚，少打断也对。</p>
+        </div>
+
+        <div class="phone-wrap">
+          <div class="phone-label">换符号 <span class="pick alt">气质</span><em>细线沙漏</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage browse">
+              <div class="fake-card"></div>
+              <div class="fake-lines"><i></i><i></i><i></i></div>
+              <div class="cap">
+                <div class="mark hourglass" aria-hidden="true">
+                  <svg class="sand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7 3h10"/><path d="M7 21h10"/>
+                    <path d="M8 3v3a4 4 0 0 0 2.2 3.6L12 11l1.8-1.4A4 4 0 0 0 16 6V3"/>
+                    <path d="M8 21v-3a4 4 0 0 1 2.2-3.6L12 13l1.8 1.4A4 4 0 0 1 16 18v3"/>
+                  </svg>
+                </div>
+                <div class="clock">
+                  <span class="t">08:24</span>
+                  <span class="s">这一次</span>
+                </div>
+                <div class="stop"></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">更「有限一段时间」。倾动略花，刷一刷宜再收或只临期才动。</p>
+        </div>
+
+        <div class="phone-wrap">
+          <div class="phone-label">收动效+弧 <span class="pick alt">若已有弧</span><em>Timer 静 + 外弧</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage browse">
+              <div class="fake-card"></div>
+              <div class="fake-lines"><i></i><i></i><i></i></div>
+              <div class="cap">
+                <div class="ring-host">
+                  <svg class="arc" viewBox="0 0 30 30" aria-hidden="true">
+                    <circle cx="15" cy="15" r="13.2" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="1.6"/>
+                    <circle cx="15" cy="15" r="13.2" fill="none" stroke="#34c759" stroke-width="1.6"
+                      stroke-linecap="round" stroke-dasharray="52 83" opacity=".85"/>
+                  </svg>
+                  <div class="mark timer" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M10 2h4"/><path d="M12 14V9"/><circle cx="12" cy="14" r="7"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="clock">
+                  <span class="t">08:24</span>
+                  <span class="s">这一次</span>
+                </div>
+                <div class="stop"></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">额度感靠外弧，图标可继续静。若产品已上倒计时弧，左标不必再换。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ========== SEARCH ========== -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>C · 搜索</h2>
+        <p>现：放大镜 + 缩放环。中：同图标去环。右：入场一次涟漪后静置。</p>
+      </div>
+      <div class="row">
+        <div class="phone-wrap">
+          <div class="phone-label">现在 <span class="pick now">现形态</span><em>⌕ + 持续脉动</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage search">
+              <div class="fake-card" style="height:64px"></div>
+              <div class="fake-lines" style="top:120px"><i></i><i></i><i></i></div>
+              <div class="cap">
+                <div class="mark search" aria-hidden="true">
+                  <span class="halo"></span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/>
+                  </svg>
+                </div>
+                <div class="clock">
+                  <span class="t">08:24</span>
+                  <span class="s">这次搜索</span>
+                </div>
+                <div class="stop"></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">语义清楚，但像还在找；环也偏通知呼吸。</p>
+        </div>
+
+        <div class="phone-wrap">
+          <div class="phone-label">收动效 <span class="pick fav">更贴</span><em>⌕ 静置</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage search">
+              <div class="fake-card" style="height:64px"></div>
+              <div class="fake-lines" style="top:120px"><i></i><i></i><i></i></div>
+              <div class="cap">
+                <div class="mark search quiet" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/>
+                  </svg>
+                </div>
+                <div class="clock">
+                  <span class="t">08:24</span>
+                  <span class="s">这次搜索</span>
+                </div>
+                <div class="stop"></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">「去搜了」已成立。改动最小，和刷一刷静标对齐。</p>
+        </div>
+
+        <div class="phone-wrap">
+          <div class="phone-label">换符号动效 <span class="pick alt">仪式</span><em>一次涟漪后静</em></div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="stage search">
+              <div class="fake-card" style="height:64px"></div>
+              <div class="fake-lines" style="top:120px"><i></i><i></i><i></i></div>
+              <div class="cap">
+                <div class="mark ripple-search" aria-hidden="true">
+                  <span class="wave"></span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/>
+                  </svg>
+                </div>
+                <div class="clock">
+                  <span class="t">08:24</span>
+                  <span class="s">这次搜索</span>
+                </div>
+                <div class="stop"></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">进场有一下「落地」，之后安静。实现上宜只播一次，草图为循环示意。</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- zoom strip -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>并排特写 · 建议组合</h2>
+        <p>意图收转、刷一刷留 Timer、搜索去环。</p>
+      </div>
+      <div class="zoom">
+        <div class="zoom-card">
+          <h4>意图 · 轻呼吸 App</h4>
+          <div class="zoom-stage">
+            <div class="cap">
+              <div class="mark app still breathe"></div>
+              <div class="clock"><span class="t">08:24</span><span class="s">回消息</span></div>
+              <div class="stop"></div>
+            </div>
+          </div>
+          <p class="zoom-cap">停转；最多 3s 级呼吸。与桌面球转圈分开。</p>
+        </div>
+        <div class="zoom-card">
+          <h4>刷一刷 · Timer</h4>
+          <div class="zoom-stage">
+            <div class="cap">
+              <div class="mark timer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 2h4"/><path d="M12 14V9"/><circle cx="12" cy="14" r="7"/>
+                </svg>
+              </div>
+              <div class="clock"><span class="t">08:24</span><span class="s">这一次</span></div>
+              <div class="stop"></div>
+            </div>
+          </div>
+          <p class="zoom-cap">保持现状。紧迫只改 tint，不另加动效。</p>
+        </div>
+        <div class="zoom-card">
+          <h4>搜索 · ⌕ 静</h4>
+          <div class="zoom-stage">
+            <div class="cap">
+              <div class="mark search quiet">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/>
+                </svg>
+              </div>
+              <div class="clock"><span class="t">08:24</span><span class="s">这次搜索</span></div>
+              <div class="stop"></div>
+            </div>
+          </div>
+          <p class="zoom-cap">去掉缩放环。需要仪式时再加「进场一次涟漪」。</p>
+        </div>
+      </div>
+
+      <div class="verdict" style="margin-top:28px">
+        <h3>建议落地</h3>
+        <ol>
+          <li><strong>意图</strong>：停转（或极慢呼吸）。先不要上锚点角标。</li>
+          <li><strong>刷一刷</strong>：留 Timer；沙漏仅当气质升级时再议。</li>
+          <li><strong>搜索</strong>：去持续脉动环；涟漪作可选进场，不循环。</li>
+        </ol>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

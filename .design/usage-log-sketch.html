@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>使用日志 · 小时 | 钟点</title>
+  <style>
+    :root { --bg:#000; --muted:#8e8e93; --dim:#636366; --green:#34c759; --blue:#6bb4f0; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      min-height:100vh;
+      background:radial-gradient(ellipse at 50% 0%,#1a1a1c 0%,#0a0a0a 45%,#000 100%);
+      color:#fff; font-family:"SF Pro Text","PingFang SC",sans-serif;
+      display:flex; flex-direction:column; align-items:center;
+      padding:24px 16px 48px; gap:14px;
+    }
+    .page-title { text-align:center; max-width:420px; }
+    .page-title h1 { font-size:15px; font-weight:600; color:var(--muted); margin-bottom:6px; }
+    .page-title p { font-size:13px; color:var(--dim); line-height:1.5; }
+    .phone {
+      width:min(390px,100%); background:#000; border:1px solid #2a2a2c;
+      border-radius:36px; padding:14px 0 24px; box-shadow:0 24px 80px rgba(0,0,0,.65);
+    }
+    .topbar { padding:8px 20px 10px; }
+    .topbar h2 { font-size:17px; font-weight:600; }
+    .sticky {
+      display:flex; align-items:center; gap:8px; padding:10px 14px 8px;
+      background:#000; border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    .sticky .name { font-size:13px; font-weight:600; color:rgba(255,255,255,.55); }
+    .sticky .range { font-size:11px; font-family:ui-monospace,Menlo,monospace; color:rgba(255,255,255,.28); }
+    .sticky .hair { flex:1; height:1px; background:rgba(255,255,255,.08); }
+
+    .row {
+      display:grid; grid-template-columns:28px 40px 18px 1fr; gap:0 4px;
+      padding:0 10px; min-height:52px; align-items:start;
+    }
+    .hour {
+      text-align:right; padding-top:14px;
+      font:600 12px/1 ui-monospace,Menlo,monospace; color:rgba(255,255,255,.45);
+    }
+    .clock {
+      text-align:right; padding-top:14px; padding-right:2px;
+      font:500 11px/1 ui-monospace,Menlo,monospace; color:rgba(255,255,255,.36);
+    }
+    .spine { position:relative; display:flex; justify-content:center; padding-top:16px; }
+    .spine::before {
+      content:""; position:absolute; top:0; bottom:0; left:50%;
+      width:1px; margin-left:-.5px; background:rgba(255,255,255,.12);
+    }
+    .dot {
+      position:relative; z-index:1; width:9px; height:9px; border-radius:50%;
+      background:rgba(255,255,255,.55); box-shadow:0 0 0 3px #000;
+    }
+    .dot.blue { background:var(--blue); }
+    .body { padding:10px 0 10px 6px; display:flex; flex-direction:column; gap:6px; }
+    .chip {
+      align-self:flex-start; font-size:12px; font-weight:600;
+      padding:3px 8px; border-radius:6px;
+      background:rgba(255,255,255,.08); color:rgba(255,255,255,.7);
+    }
+    .chip.blue { background:rgba(107,180,240,.16); color:var(--blue); }
+    .app { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:500; }
+    .ico { width:18px; height:18px; border-radius:4px; background:rgba(255,255,255,.08);
+      display:grid; place-items:center; font-size:9px; color:rgba(255,255,255,.5); }
+    .sec { font-size:12px; color:rgba(255,255,255,.45); }
+    .quiet {
+      display:grid; grid-template-columns:28px 40px 18px 1fr; gap:0 4px;
+      padding:0 10px; height:20px; align-items:center;
+    }
+    .quiet .h { text-align:right; font:500 10px ui-monospace,Menlo,monospace; color:rgba(255,255,255,.22); }
+    .quiet .lbl { font-size:10px; color:rgba(255,255,255,.2); padding-left:6px; }
+    .cap { max-width:390px; font-size:12px; color:var(--dim); text-align:center; line-height:1.55; }
+  </style>
+</head>
+<body>
+  <div class="page-title">
+    <h1>使用日志 · 左双列时间</h1>
+    <p>小时 | 钟点 · 场景在右。屏保类显示为「点亮屏幕」。</p>
+  </div>
+  <div class="phone">
+    <div class="topbar"><h2>使用日志</h2></div>
+    <div class="sticky"><span class="name">上午</span><span class="range">6:00–12:00</span><div class="hair"></div></div>
+
+    <div class="quiet">
+      <div class="h">6–8</div><div></div><div></div><div class="lbl">安静</div>
+    </div>
+
+    <div class="row">
+      <div class="hour">9</div>
+      <div class="clock">09:14</div>
+      <div class="spine"><div class="dot"></div></div>
+      <div class="body">
+        <span class="chip">打开</span>
+        <div class="app"><div class="ico">亮</div>点亮屏幕</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="hour"></div>
+      <div class="clock">09:14</div>
+      <div class="spine"><div class="dot blue"></div></div>
+      <div class="body">
+        <span class="chip blue">进入</span>
+        <div class="app"><div class="ico" style="background:linear-gradient(145deg,#ff5a6a,#c9184a)"></div>微信</div>
+        <div class="sec">回消息给老板</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="hour"></div>
+      <div class="clock">09:28</div>
+      <div class="spine"><div class="dot"></div></div>
+      <div class="body">
+        <span class="chip">离开</span>
+        <div class="app"><div class="ico" style="background:linear-gradient(145deg,#ff5a6a,#c9184a)"></div>微信</div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">时间结构全在左；内容区只留场景。</p>
+</body>
+</html>

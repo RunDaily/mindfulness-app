@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心锚 · 快捷标签直达一览</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --sand: #c4a35a;
+      --line: rgba(232,237,230,.12); --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 40px; }
+    header { max-width: 700px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 50em; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .sec { text-align: center; font-size: 11px; letter-spacing: .12em; color: var(--sand); font-weight: 600; }
+    .phones {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start;
+    }
+    @media (max-width: 960px) { .phones { grid-template-columns: 1fr; justify-items: center; } }
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 280px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.45; }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9 / 17.2; border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+      padding: 22px 20px 16px;
+    }
+    .back { font-size: 12px; color: var(--mist); }
+    .brand {
+      margin-top: 8px;
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 20px; font-weight: 500;
+    }
+    .sub { margin-top: 4px; font-size: 12px; color: var(--fog); line-height: 1.45; }
+    .legend {
+      margin-top: 16px; display: flex; gap: 16px; font-size: 11px; color: var(--mist);
+    }
+    .legend b { color: var(--leaf-text); font-weight: 500; }
+    .legend i { font-style: normal; color: var(--fog); }
+
+    .table { margin-top: 14px; display: grid; gap: 0; }
+    .row {
+      display: grid; grid-template-columns: 1fr auto; gap: 10px;
+      padding: 11px 0; border-top: 1px solid var(--line);
+      align-items: baseline;
+    }
+    .row:first-child { border-top: none; }
+    .name { font-size: 14px; color: var(--paper); }
+    .meta { margin-top: 2px; font-size: 11px; color: var(--mist); line-height: 1.4; }
+    .mark { font-size: 12px; white-space: nowrap; }
+    .mark.yes { color: var(--leaf-text); }
+    .mark.no { color: var(--mist); }
+    .mark.soft { color: var(--sand); }
+
+    .app { font-size: 12px; color: var(--mist); letter-spacing: .04em; }
+    .hero {
+      margin-top: 22px;
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 22px; font-weight: 500; line-height: 1.35;
+    }
+    .field {
+      margin-top: 14px; border-bottom: 1px solid rgba(232,237,230,.2);
+      padding: 6px 0 10px; font-size: 15px; color: var(--mist);
+    }
+    .label-row {
+      margin-top: 18px; display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .label { font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .edit { font-size: 12px; color: var(--mist); }
+    .tags { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 11px 14px; }
+    .tag { font-size: 13px; color: var(--fog); }
+    .tag .dot {
+      display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+      background: var(--leaf-text); margin-right: 6px; vertical-align: middle; opacity: .85;
+    }
+    .tag.plain .dot { display: none; }
+    .hint { margin-top: 10px; font-size: 11px; color: var(--mist); line-height: 1.5; }
+    .acts {
+      margin-top: auto; display: flex; justify-content: space-between; padding-top: 16px;
+    }
+    .act { font-size: 15px; color: var(--mist); }
+    .act.go { color: var(--leaf-text); font-weight: 500; }
+
+    .catalog {
+      border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px;
+      overflow-x: auto;
+    }
+    .catalog h2 {
+      font-size: 12px; color: var(--sand); letter-spacing: .08em; margin-bottom: 12px; font-weight: 600;
+    }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.5;
+      min-width: 640px;
+    }
+    th {
+      text-align: left; color: var(--mist); font-weight: 500;
+      padding: 6px 10px 10px 0; border-bottom: 1px solid var(--line);
+    }
+    td {
+      padding: 9px 10px 9px 0; border-bottom: 1px solid rgba(232,237,230,.06);
+      color: var(--fog); vertical-align: top;
+    }
+    td.app { color: var(--paper); font-weight: 500; white-space: nowrap; }
+    td.kind { color: var(--leaf-text); white-space: nowrap; }
+    td.pages { color: var(--fog); }
+    .notes {
+      border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px;
+      font-size: 12px; line-height: 1.8; color: var(--fog);
+    }
+    .notes h2 { font-size: 12px; color: var(--sand); letter-spacing: .08em; margin-bottom: 8px; font-weight: 600; }
+    .notes strong { color: var(--paper); font-weight: 600; }
+    .notes ul { padding-left: 1.1em; }
+    .notes li { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Quick Tags · Deep Link Awareness</div>
+      <h1>标签能直达哪一页，用户得看得见。</h1>
+      <p>
+        快捷标签分两类：只填意图文案；或绑定固定页深链，进入后落到消息 / 订单 / 关注等。
+        搜索直达是另一条路（带词搜）。产品里要有一张「本 App 能直达什么」的表，让人选标签时心里有数。
+      </p>
+      <div class="thesis">能直达标出来 · 不能直达也诚实 · 按 App 一张表</div>
+    </header>
+
+    <div class="sec">产品里怎么呈现</div>
+    <section class="phones">
+      <div>
+        <div class="col-head">
+          <h3>1 · 方案 · 直达一览</h3>
+          <p>挂在意图门 / 快捷标签下；只说事实</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 小红书</div>
+          <div class="brand">直达一览</div>
+          <div class="sub">点带叶点的标签进入后，会尽量落到对应页。非官方契约，版本更新可能失效。</div>
+          <div class="legend">
+            <span><b>●</b> 可直达</span>
+            <span><i>○</i> 仅填意图</span>
+          </div>
+          <div class="table">
+            <div class="row">
+              <div>
+                <div class="name">回消息</div>
+                <div class="meta">消息中心</div>
+              </div>
+              <span class="mark yes">可直达</span>
+            </div>
+            <div class="row">
+              <div>
+                <div class="name">逛商城</div>
+                <div class="meta">商城 Tab</div>
+              </div>
+              <span class="mark yes">可直达</span>
+            </div>
+            <div class="row">
+              <div>
+                <div class="name">看关注</div>
+                <div class="meta">关注流</div>
+              </div>
+              <span class="mark yes">可直达</span>
+            </div>
+            <div class="row">
+              <div>
+                <div class="name">编辑资料</div>
+                <div class="meta">个人资料编辑</div>
+              </div>
+              <span class="mark yes">可直达</span>
+            </div>
+            <div class="row">
+              <div>
+                <div class="name">发布内容</div>
+                <div class="meta">暂无可靠链</div>
+              </div>
+              <span class="mark no">仅填意图</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>2 · 管理标签时标出</h3>
+          <p>添加 / 调整时，可直达的词带副文</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 返回</div>
+          <div class="brand">快捷标签</div>
+          <div class="sub">小红书 · 已启用 4 / 6</div>
+          <div class="table" style="margin-top:18px;">
+            <div class="row">
+              <div>
+                <div class="name">回消息</div>
+                <div class="meta">可直达 · 消息中心</div>
+              </div>
+              <span class="mark yes">开</span>
+            </div>
+            <div class="row">
+              <div>
+                <div class="name">改简介</div>
+                <div class="meta">自制 · 仅填意图</div>
+              </div>
+              <span class="mark yes">开</span>
+            </div>
+            <div class="row">
+              <div>
+                <div class="name">看收藏</div>
+                <div class="meta">预设 · 仅填意图</div>
+              </div>
+              <span class="mark yes">开</span>
+            </div>
+          </div>
+          <div style="margin-top:auto;padding-top:16px;font-size:13px;color:var(--leaf-text);">＋ 添加标签</div>
+          <div style="margin-top:8px;font-size:12px;color:var(--mist);">添加时，可直达的预设会先列出</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>3 · 门口轻提示</h3>
+          <p>不解释架构；叶点 = 进入会试着直达</p>
+        </div>
+        <div class="phone">
+          <div class="app">小红书</div>
+          <div class="hero">你要干什么？</div>
+          <div class="field">这一次…</div>
+          <div class="label-row">
+            <span class="label">快捷标签</span>
+            <span class="edit">调整</span>
+          </div>
+          <div class="tags">
+            <span class="tag"><span class="dot"></span>回消息</span>
+            <span class="tag"><span class="dot"></span>逛商城</span>
+            <span class="tag plain">改简介</span>
+            <span class="tag"><span class="dot"></span>编辑资料</span>
+          </div>
+          <div class="hint">带叶点的，进入后会尽量直达对应页</div>
+          <div class="acts">
+            <span class="act">返回</span>
+            <span class="act go">进入</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="catalog">
+      <h2>现状 · 固定页深链目录（产品可知晓）</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>App</th>
+            <th>类型</th>
+            <th>可直达的固定页（节选）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="app">小红书</td>
+            <td class="kind">固定页 · 偏官方</td>
+            <td class="pages">回消息 · 逛商城 · 看关注 · 看发现 · 编辑资料</td>
+          </tr>
+          <tr>
+            <td class="app">抖音 / 极速版</td>
+            <td class="kind">固定页 · 社区</td>
+            <td class="pages">我的 · 看热搜 · 稍后再看 · 回消息 · 编辑主页</td>
+          </tr>
+          <tr>
+            <td class="app">快手 / 极速版</td>
+            <td class="kind">固定页 · 社区</td>
+            <td class="pages">看关注 · 回消息 · 看发现（主站）</td>
+          </tr>
+          <tr>
+            <td class="app">微博</td>
+            <td class="kind">固定页 · 社区</td>
+            <td class="pages">回消息 · 我的 · 看发现 · 看首页 · 看@我</td>
+          </tr>
+          <tr>
+            <td class="app">知乎</td>
+            <td class="kind">固定页 · 社区</td>
+            <td class="pages">去提问 · 设置 · 看推荐</td>
+          </tr>
+          <tr>
+            <td class="app">哔哩哔哩 / 国际版</td>
+            <td class="kind">固定页 · 社区</td>
+            <td class="pages">看收藏 · 我的 · 看首页（主站）</td>
+          </tr>
+          <tr>
+            <td class="app">淘宝</td>
+            <td class="kind">固定页 · 社区</td>
+            <td class="pages">看订单 · 购物车 · 回消息 · 我的淘宝</td>
+          </tr>
+          <tr>
+            <td class="app">美团</td>
+            <td class="kind">固定页 · 社区</td>
+            <td class="pages">回消息 · 我的 · 购物车 · 找美食</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top:12px;font-size:11px;color:var(--mist);line-height:1.6;">
+        另有「搜索直达」目录（带词搜）：小红书、快手、B 站、微博、知乎、豆瓣、抖音、淘宝、天猫、京东、拼多多、值得买、美团、外卖、点评、百度地图等——与固定页是两张表，门口「搜索直达」走搜词表。
+      </p>
+    </section>
+
+    <section class="notes">
+      <h2>框外 · 和实现的关系（不进界面）</h2>
+      <ul>
+        <li><strong>能不能真直达：</strong>能。库里已有 <code>AppDeepLinkCatalog</code> + <code>deepLinkId</code> + <code>IntentLandMode.DEEPLINK</code>。旧常用意图面板会绑 id；三路写意图门目前多半只填文案、以 NORMAL 进入——要把「点可直达标签 → 进入 → 落地」接上。</li>
+        <li><strong>和搜索直达：</strong>搜词一条路；固定页一条路。用户侧可都叫「直达」，表里分「搜」与「到某页」。</li>
+        <li><strong>知晓面：</strong>① 方案 · 本 App「直达一览」整表；② 标签管理行副文「可直达 · xxx」；③ 门口叶点轻标（可选）。不要在门口讲 scheme / 官方契约。</li>
+        <li><strong>诚实：</strong>社区链标「可能失效」；无链的标签不要假装直达。手写词若命中匹配词，可静默试直达，但不强承诺。</li>
+        <li><strong>文案对齐：</strong>预设「回复消息」与目录「回消息」等需统一，否则绑不上 id。</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>

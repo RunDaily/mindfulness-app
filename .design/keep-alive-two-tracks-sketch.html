@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>后台保活 · 能工作 / 防清理</title>
+  <style>
+    :root {
+      --ink: #070908;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --leaf: #3d7a4a;
+      --leaf-text: #9fd4a8;
+      --sand: #c4a35a;
+      --warn: #c47a6a;
+      --line: rgba(232, 237, 230, 0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background:
+        radial-gradient(ellipse at 38% -8%, #1a2420 0%, transparent 48%),
+        var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 88px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 40px; }
+
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf);
+      font-weight: 600; margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .sec {
+      text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist);
+    }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+
+    .row2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;
+      max-width: 680px; margin: 0 auto; width: 100%;
+    }
+    .row3 {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start;
+    }
+    @media (max-width: 960px) {
+      .row3, .row2 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head {
+      text-align: center; margin-bottom: 10px;
+      max-width: 300px; margin-left: auto; margin-right: auto;
+    }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9 / 17.8; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .phone.tall { aspect-ratio: 9 / 19.2; }
+    .phone.bad {
+      outline: 1px dashed rgba(196,122,106,.45);
+      outline-offset: 6px;
+    }
+    .bar {
+      height: 28px; padding: 10px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex-shrink: 0;
+    }
+    .body {
+      flex: 1; padding: 4px 18px 12px; display: flex; flex-direction: column;
+      min-height: 0; overflow: hidden;
+    }
+
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500; letter-spacing: .01em;
+    }
+    .back {
+      font-size: 12px; color: var(--mist); margin-bottom: 6px;
+    }
+    .page-title {
+      font-size: 17px; font-weight: 550; color: var(--paper);
+      margin-bottom: 2px;
+    }
+    .device {
+      font-size: 11px; color: rgba(139,147,140,.55); margin-bottom: 6px;
+    }
+
+    .pulse {
+      margin-top: 10px; margin-bottom: 6px;
+      font-size: 13px; color: var(--leaf-text); letter-spacing: .01em;
+    }
+    .pulse .chev { color: var(--mist); font-size: 12px; margin-left: 4px; }
+    .warn {
+      margin-top: 8px; margin-bottom: 4px;
+      font-size: 12px; color: var(--warn); line-height: 1.45;
+    }
+
+    .progress {
+      font-size: 14px; font-weight: 550; color: var(--paper);
+      margin-bottom: 2px;
+    }
+    .progress.ok { color: var(--leaf-text); }
+    .progress-sub {
+      font-size: 11px; color: rgba(139,147,140,.55); line-height: 1.4;
+      margin-bottom: 4px;
+    }
+
+    .lab {
+      margin-top: 16px; margin-bottom: 2px;
+      font-size: 10px; letter-spacing: .1em; color: var(--mist);
+    }
+    .lab.first { margin-top: 12px; }
+    .lab .hint {
+      display: block; letter-spacing: 0; font-size: 10.5px;
+      color: rgba(139,147,140,.42); margin-top: 3px; text-transform: none;
+    }
+
+    .row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 12px; padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .row .n { font-size: 15px; font-weight: 500; color: var(--paper); line-height: 1.3; }
+    .row .m {
+      font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.35;
+    }
+    .row .r {
+      font-size: 13px; color: #c5d0c6; text-align: right;
+      font-variant-numeric: tabular-nums; flex-shrink: 0;
+      align-self: center;
+    }
+    .row .r.ok { color: rgba(159,212,168,.55); font-size: 12px; }
+    .row .r.bad { color: var(--warn); font-size: 12px; font-weight: 550; }
+    .row .r.quiet { color: var(--mist); font-size: 12px; }
+    .row.faint .n { color: rgba(232,237,230,.38); }
+    .row.faint .m { color: rgba(139,147,140,.35); }
+    .row.faint .r { color: rgba(139,147,140,.45); }
+    .row.soft .n { font-size: 14px; color: var(--fog); font-weight: 450; }
+    .row.soft .m { font-size: 10.5px; }
+
+    .sw {
+      width: 34px; height: 19px; border-radius: 999px; position: relative;
+      background: rgba(232,237,230,.16); flex-shrink: 0; align-self: center;
+    }
+    .sw.on { background: rgba(61,122,74,.85); }
+    .sw i {
+      position: absolute; top: 2px; left: 2px; width: 15px; height: 15px;
+      border-radius: 50%; background: var(--paper);
+    }
+    .sw.on i { left: 17px; }
+
+    .nav {
+      flex-shrink: 0; display: flex; justify-content: space-around;
+      padding: 10px 4px 12px; border-top: 1px solid var(--line);
+      font-size: 10px; color: var(--mist);
+    }
+    .nav .on { color: var(--leaf-text); font-weight: 600; }
+
+    .foot {
+      margin-top: auto; padding-top: 14px;
+      font-size: 10.5px; color: rgba(139,147,140,.38);
+      line-height: 1.4;
+    }
+
+    .link-row {
+      margin-top: 14px; padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 13px; color: var(--fog);
+    }
+    .link-row .m {
+      font-size: 11px; color: rgba(139,147,140,.45); margin-top: 3px;
+    }
+
+    .notes {
+      max-width: 720px; margin: 0 auto;
+      font-size: 12.5px; color: var(--fog); line-height: 1.65;
+    }
+    .notes h2 {
+      font-size: 13px; font-weight: 600; color: var(--sand); margin-bottom: 10px;
+    }
+    .notes ul { list-style: none; display: grid; gap: 8px; }
+    .notes li strong { color: var(--paper); font-weight: 550; }
+    .map {
+      margin-top: 14px; padding: 12px 14px; border-radius: 10px;
+      background: rgba(0,0,0,.28); border: 1px solid var(--line);
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11.5px; color: #a8b4aa; line-height: 1.7; white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">KEEP-ALIVE · 结构</div>
+      <h1>能工作 · 防清理 · 入口提前</h1>
+      <p>
+        收口仍是一页，但不再用「十项加固仪表盘」。
+        可检测的算进度；厂商手勾不进主进度。国产机把防清理置顶。
+      </p>
+      <div class="thesis">两段故事 · 机型要命项 · 「我」固定入口</div>
+    </header>
+
+    <!-- 0 · 入口 -->
+    <div>
+      <div class="sec"><strong>0 · 入口</strong>　挂在「我」，别等中断横幅</div>
+      <div class="row2" style="margin-top:18px">
+
+        <div>
+          <div class="col-head">
+            <h3>好 · 固定一行</h3>
+            <p>健康正常时也看得见；副文只报可检测进度</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">我</div>
+              <div class="pulse">监控正常<span class="chev">›</span></div>
+
+              <div class="row">
+                <div>
+                  <div class="n">后台保活</div>
+                  <div class="m">防清理 · 4 / 5</div>
+                </div>
+                <div class="r quiet">›</div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">设置</div>
+                  <div class="m">主题、胶囊与陪伴</div>
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">和小锚聊</div>
+                  <div class="m">问题、想法，直接说</div>
+                </div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">关于</div>
+                  <div class="m">版本、更新与协议</div>
+                </div>
+              </div>
+            </div>
+            <div class="nav">
+              <span>今日</span><span>方案</span><span>日程锁</span><span class="on">我</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>需修时</h3>
+            <p>保活行变重；健康明细仍可展开</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">我</div>
+              <div class="warn">有 2 项需处理 · 否则无法拦截</div>
+
+              <div class="row faint">
+                <div class="n">用量访问</div>
+                <div class="r">已开启</div>
+              </div>
+              <div class="row">
+                <div class="n">悬浮窗</div>
+                <div class="r bad">需开启</div>
+              </div>
+              <div class="row faint">
+                <div class="n">无障碍</div>
+                <div class="r">已开启</div>
+              </div>
+
+              <div class="row" style="margin-top:6px; border-top:none; padding-top:16px">
+                <div>
+                  <div class="n">后台保活</div>
+                  <div class="m">防清理未就绪 · 去完成</div>
+                </div>
+                <div class="r bad">2 项</div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">设置</div>
+                  <div class="m">主题、胶囊与陪伴</div>
+                </div>
+              </div>
+            </div>
+            <div class="nav">
+              <span>今日</span><span>方案</span><span>日程锁</span><span class="on">我</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1 · 新页结构 -->
+    <div>
+      <div class="sec"><strong>1 · 保活页</strong>　两段 · 小米为例（严苛机）</div>
+      <div class="row3" style="margin-top:18px">
+
+        <div>
+          <div class="col-head">
+            <h3>未完成</h3>
+            <p>防清理在上；能工作已齐则淡</p>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 我</div>
+              <div class="page-title">后台保活</div>
+              <div class="device">小米 · 防清理优先</div>
+              <div class="progress">防清理 1 / 3</div>
+              <div class="progress-sub">能工作已齐 · 5 / 5</div>
+
+              <div class="lab first">防清理<div class="hint">本机一键清理会杀进程</div></div>
+              <div class="row">
+                <div>
+                  <div class="n">多任务锁定</div>
+                  <div class="m">卡片下拉至锁头</div>
+                </div>
+                <div class="r bad">去做</div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">自启动</div>
+                  <div class="m">应用管理 → 自启动</div>
+                </div>
+                <div class="r bad">去做</div>
+              </div>
+              <div class="row faint">
+                <div>
+                  <div class="n">省电无限制</div>
+                  <div class="m">省电策略 → 无限制</div>
+                </div>
+                <div class="r ok">已开</div>
+              </div>
+
+              <div class="lab">能工作</div>
+              <div class="row faint">
+                <div class="n">用量访问</div>
+                <div class="r ok">已开</div>
+              </div>
+              <div class="row faint">
+                <div class="n">悬浮窗</div>
+                <div class="r ok">已开</div>
+              </div>
+              <div class="row faint">
+                <div class="n">通知</div>
+                <div class="r ok">已开</div>
+              </div>
+              <div class="row faint">
+                <div class="n">电池优化</div>
+                <div class="r ok">已开</div>
+              </div>
+              <div class="row faint">
+                <div class="n">无障碍</div>
+                <div class="r ok">已开</div>
+              </div>
+
+              <div class="lab">加强</div>
+              <div class="row soft">
+                <div>
+                  <div class="n">壁纸守护</div>
+                  <div class="m">独立进程，减轻误杀</div>
+                </div>
+                <div class="r quiet">去设</div>
+              </div>
+              <div class="row soft">
+                <div>
+                  <div class="n">隐藏最近任务</div>
+                  <div class="m">多任务里不显示心锚</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>已完成</h3>
+            <p>进度只报可检测项；加强仍可扫</p>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 我</div>
+              <div class="page-title">后台保活</div>
+              <div class="device">小米 · 防清理优先</div>
+              <div class="progress ok">防清理就绪</div>
+              <div class="progress-sub">能工作已齐 · 加强可选</div>
+
+              <div class="lab first">防清理</div>
+              <div class="row faint">
+                <div>
+                  <div class="n">多任务锁定</div>
+                  <div class="m">已确认</div>
+                </div>
+                <div class="r ok">完成</div>
+              </div>
+              <div class="row faint">
+                <div>
+                  <div class="n">自启动</div>
+                </div>
+                <div class="r ok">完成</div>
+              </div>
+              <div class="row faint">
+                <div>
+                  <div class="n">省电无限制</div>
+                </div>
+                <div class="r ok">已开</div>
+              </div>
+
+              <div class="lab">能工作</div>
+              <div class="row faint">
+                <div class="n">五项权限</div>
+                <div class="r ok">已齐</div>
+              </div>
+
+              <div class="lab">加强</div>
+              <div class="row soft faint">
+                <div>
+                  <div class="n">壁纸守护</div>
+                  <div class="m">桌面已用心锚壁纸</div>
+                </div>
+                <div class="r ok">已开</div>
+              </div>
+              <div class="row soft">
+                <div>
+                  <div class="n">隐藏最近任务</div>
+                </div>
+                <div class="sw on"><i></i></div>
+              </div>
+
+              <div class="foot">强行停止后需手动打开。锁定与白名单决定清不清理得到你。</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>三星 · 顺序反转</h3>
+            <p>能工作在上；防清理只留锁定与勿休眠</p>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 我</div>
+              <div class="page-title">后台保活</div>
+              <div class="device">三星 · SM-S9110</div>
+              <div class="progress">能工作 4 / 5</div>
+              <div class="progress-sub">本机清理较温和</div>
+
+              <div class="lab first">能工作</div>
+              <div class="row faint">
+                <div class="n">悬浮窗</div>
+                <div class="r ok">已开</div>
+              </div>
+              <div class="row faint">
+                <div class="n">用量访问</div>
+                <div class="r ok">已开</div>
+              </div>
+              <div class="row faint">
+                <div class="n">通知</div>
+                <div class="r ok">已开</div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">无障碍</div>
+                  <div class="m">侧载须先允许受限制设置</div>
+                </div>
+                <div class="r bad">去开</div>
+              </div>
+              <div class="row faint">
+                <div class="n">电池不受限制</div>
+                <div class="r ok">已开</div>
+              </div>
+
+              <div class="lab">防清理<div class="hint">建议完成</div></div>
+              <div class="row">
+                <div>
+                  <div class="n">允许受限制设置</div>
+                  <div class="m">应用信息 → 右上角</div>
+                </div>
+                <div class="r bad">去做</div>
+              </div>
+              <div class="row faint">
+                <div>
+                  <div class="n">多任务锁定</div>
+                </div>
+                <div class="r ok">完成</div>
+              </div>
+              <div class="row soft">
+                <div>
+                  <div class="n">勿休眠</div>
+                  <div class="m">后台使用限制</div>
+                </div>
+                <div class="r quiet">去做</div>
+              </div>
+
+              <div class="lab">加强</div>
+              <div class="row soft">
+                <div>
+                  <div class="n">壁纸守护</div>
+                </div>
+                <div class="r quiet">去设</div>
+              </div>
+              <div class="row soft">
+                <div>
+                  <div class="n">隐藏最近任务</div>
+                </div>
+                <div class="sw"><i></i></div>
+              </div>
+              <!-- 无 vivo 入口 -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · 对照现状 -->
+    <div>
+      <div class="sec"><strong>2 · 对照</strong>　现状要丢掉的形态</div>
+      <div class="row2" style="margin-top:18px">
+
+        <div>
+          <div class="col-head">
+            <h3>不好 · 十项仪表盘</h3>
+            <p>三块平行卡片 · 进度含水 · 机型文案错位</p>
+          </div>
+          <div class="phone tall bad">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹</div>
+              <div class="page-title">后台保活</div>
+              <div class="device">三星 · SM-S9110</div>
+              <div class="progress">已完成 4 / 10</div>
+              <div class="progress-sub" style="color:rgba(196,122,106,.65)">关键：电池不受限制；侧载…</div>
+
+              <div style="margin-top:10px;padding:10px 12px;border:1px solid rgba(232,237,230,.14);border-radius:12px;background:rgba(255,255,255,.02)">
+                <div style="font-size:10px;color:var(--mist);margin-bottom:8px">系统权限</div>
+                <div style="font-size:12px;color:var(--fog);line-height:1.8;opacity:.75">
+                  悬浮窗 已开启<br/>用量 已开启<br/>通知 已开启<br/>无障碍 去设置<br/>电池 已开启
+                </div>
+              </div>
+              <div style="margin-top:8px;padding:10px 12px;border:1px solid rgba(232,237,230,.14);border-radius:12px;background:rgba(255,255,255,.02)">
+                <div style="font-size:10px;color:var(--mist);margin-bottom:8px">本机设置</div>
+                <div style="font-size:12px;color:var(--fog);line-height:1.8;opacity:.75">
+                  1 受限制设置<br/>2 勿休眠<br/>3 多任务锁定 ✓
+                </div>
+              </div>
+              <div style="margin-top:8px;padding:10px 12px;border:1px solid rgba(232,237,230,.14);border-radius:12px;background:rgba(255,255,255,.02)">
+                <div style="font-size:10px;color:var(--mist);margin-bottom:6px">强化保活（国产机建议全开）</div>
+                <div style="font-size:12px;color:var(--fog);opacity:.75">壁纸 · 隐藏最近任务</div>
+              </div>
+              <div class="link-row">
+                vivo OriginOS 保活指南
+                <div class="m">锁定 · 自启动 · …</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>好 · 同一脊线</h3>
+            <p>无卡片墙；缺的加重，齐的淡；加强最轻</p>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 我</div>
+              <div class="page-title">后台保活</div>
+              <div class="device">小米 · 防清理优先</div>
+              <div class="progress">防清理 1 / 3</div>
+              <div class="progress-sub">先做未完成项</div>
+
+              <div class="lab first">防清理</div>
+              <div class="row">
+                <div>
+                  <div class="n">多任务锁定</div>
+                  <div class="m">卡片下拉至锁头</div>
+                </div>
+                <div class="r bad">去做</div>
+              </div>
+              <div class="row">
+                <div>
+                  <div class="n">自启动</div>
+                </div>
+                <div class="r bad">去做</div>
+              </div>
+              <div class="row faint">
+                <div class="n">省电无限制</div>
+                <div class="r ok">已开</div>
+              </div>
+
+              <div class="lab">能工作 · 已齐</div>
+              <div class="row faint">
+                <div class="n">五项权限</div>
+                <div class="r ok">已齐</div>
+              </div>
+
+              <div class="lab">加强</div>
+              <div class="row soft">
+                <div class="n">壁纸守护</div>
+                <div class="r quiet">去设</div>
+              </div>
+              <div class="row soft">
+                <div class="n">隐藏最近任务</div>
+                <div class="sw on"><i></i></div>
+              </div>
+
+              <div class="link-row" style="opacity:.85">
+                清理加速白名单
+                <div class="m">安全中心 · 可选加深</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · vivo 子页入口 -->
+    <div>
+      <div class="sec"><strong>3 · vivo</strong>　六步仍是子页，只在 vivo 出现</div>
+      <div class="row2" style="margin-top:18px">
+        <div>
+          <div class="col-head">
+            <h3>主页底部</h3>
+            <p>不是第三段清单，是一条去完整路径</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 我</div>
+              <div class="page-title">后台保活</div>
+              <div class="device">vivo · OriginOS</div>
+              <div class="progress">防清理 2 / 3</div>
+
+              <div class="lab first">防清理</div>
+              <div class="row faint">
+                <div class="n">多任务锁定</div>
+                <div class="r ok">完成</div>
+              </div>
+              <div class="row">
+                <div class="n">自启动</div>
+                <div class="r bad">去做</div>
+              </div>
+              <div class="row faint">
+                <div class="n">后台高耗电</div>
+                <div class="r ok">已开</div>
+              </div>
+
+              <div class="lab">能工作 · 已齐</div>
+              <div class="row faint">
+                <div class="n">五项权限</div>
+                <div class="r ok">已齐</div>
+              </div>
+
+              <div class="link-row">
+                OriginOS 完整六步
+                <div class="m">白名单 · 冻结例外 · 需重启</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>能工作未齐时</h3>
+            <p>缺权限时能工作上移加重；防清理仍在</p>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 我</div>
+              <div class="page-title">后台保活</div>
+              <div class="device">华为</div>
+              <div class="progress">能工作 3 / 5</div>
+              <div class="progress-sub">先开权限，再防清理</div>
+
+              <div class="lab first">能工作</div>
+              <div class="row">
+                <div class="n">悬浮窗</div>
+                <div class="r bad">去开</div>
+              </div>
+              <div class="row faint">
+                <div class="n">用量访问</div>
+                <div class="r ok">已开</div>
+              </div>
+              <div class="row">
+                <div class="n">无障碍</div>
+                <div class="r bad">去开</div>
+              </div>
+              <div class="row faint">
+                <div class="n">通知 · 电池</div>
+                <div class="r ok">已开</div>
+              </div>
+
+              <div class="lab">防清理</div>
+              <div class="row soft">
+                <div>
+                  <div class="n">启动管理三项</div>
+                  <div class="m">关自动 · 自启关联后台全开</div>
+                </div>
+                <div class="r quiet">去做</div>
+              </div>
+              <div class="row soft">
+                <div class="n">多任务锁定</div>
+                <div class="r quiet">去做</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="notes">
+      <h2>框外约定</h2>
+      <ul>
+        <li><strong>两段故事</strong>：能工作（可自动检测）/ 防清理（机型要命项）。加强永远最轻，不进主进度。</li>
+        <li><strong>进度</strong>：只数字可检测项。手勾（锁定、自启确认）标「完成 / 去做」，不掺进 4/10。</li>
+        <li><strong>顺序</strong>：国产严苛机防清理在上；能工作已齐则收成一行「五项权限已齐」。三星等温和机能工作在上。</li>
+        <li><strong>入口</strong>：「我」固定「后台保活」行；中断横幅仍可直达。设置里不另开一套。</li>
+        <li><strong>机型入口</strong>：vivo 六步、小米清理白名单等只在本机出现；三星不出现 vivo 链。</li>
+        <li><strong>形态</strong>：与「我」同一脊线，不要系统权限卡片墙。</li>
+      </ul>
+      <div class="map">我
+ ├ 监控健康（坏了展开明细）
+ ├ 后台保活          ← 新固定入口 · 副文=可检测进度
+ ├ 设置
+ ├ 和小锚聊
+ └ 关于
+
+后台保活
+ ├ [严苛机] 防清理 → 能工作(淡) → 加强
+ ├ [温和机] 能工作 → 防清理 → 加强
+ └ 机型子链（仅匹配时）</div>
+    </section>
+  </div>
+</body>
+</html>

@@ -4,7 +4,7 @@ import kotlin.math.abs
 
 /**
  * 首页时间轴的展示层节点。
- * 在 [TimelineEvent] 之上做视觉折叠：连续门外停下可合并（同 App 或跨 App 连点离开）。
+ * 在 [TimelineEvent] 之上做视觉折叠：仅合并「同 App、短时守住后又返回再守住」的连续条目。
  */
 sealed class TimelineDisplayItem {
     abstract val timeMs: Long
@@ -22,7 +22,7 @@ sealed class TimelineDisplayItem {
     }
 
     /**
-     * 合并簇：短时连续门外停下（可同 App，也可跨 App）。
+     * 合并簇：同 App 短时连续守住离开（暂停后又返回再守住）。
      * [events] 保持与时间轴一致的倒序（最新在前）。
      */
     data class MergedCluster(
@@ -44,21 +44,13 @@ sealed class TimelineDisplayItem {
         val isMixedApps: Boolean
             get() = events.distinctBy { it.packageName }.size > 1
 
-        /** 主标题，如「离开了 · 3次」「门外停下 · 5次」 */
+        /** 主标题，如「守住离开 · 3次」「守住 · 到了心锚 · 2次」 */
         val titleLabel: String
             get() {
-                if (isMixedApps) return "门外停下 · ${count}次"
-                val family = events.first().mergeFamily()
-                val base = when (family) {
-                    MergeFamily.GATE_QUIT -> {
-                        val toOwn = events.count { it.isGateDismissToOwnApp }
-                        when {
-                            toOwn == events.size -> "到了心锚"
-                            toOwn == 0 -> "离开了"
-                            else -> "门外停下"
-                        }
-                    }
-                    MergeFamily.ABNORMAL, MergeFamily.NONE -> "短暂记录"
+                val toOwn = events.count { it.isGateDismissToOwnApp }
+                val base = when {
+                    toOwn == events.size -> "守住 · 到了心锚"
+                    else -> "守住离开"
                 }
                 return "$base · ${count}次"
             }
@@ -68,26 +60,25 @@ sealed class TimelineDisplayItem {
     }
 }
 
-/** 合并族：只有同族才视觉合并，避免「门外停下」和「息屏结束」糊成一条 */
-enum class MergeFamily {
-    GATE_QUIT,
-    ABNORMAL,
-    NONE
-}
+/**
+ * 将已按时间倒序的 [TimelineEvent] 列表转为展示层节点。
+ * 守住离开视为有价值的事实，逐条展示，不再合并折叠。
+ */
+fun collapseTimelineForDisplay(
+    events: List<TimelineEvent>
+): List<TimelineDisplayItem> =
+    events.map { TimelineDisplayItem.Single(it) }
 
-/** 同 App 门外停下：允许较长间隔仍合并 */
-private const val MERGE_SAME_APP_GAP_MS = 45L * 60L * 1000L
-
-/** 跨 App 连点离开：更短窗口，避免把半天的离开糊成一条 */
-private const val MERGE_CROSS_APP_GAP_MS = 20L * 60L * 1000L
-
-fun TimelineEvent.UsageEvent.mergeFamily(): MergeFamily = when {
-    isGateQuit -> MergeFamily.GATE_QUIT
-    else -> MergeFamily.NONE
-}
+// ── 以下保留供兼容：合并逻辑已停用 ──────────────────────────────────────────
 
 /**
- * 是否可作为合并候选：仅连续门外停下。
+ * 同 App「暂停后又返回再守住」的相邻间隔上限（历史合并用，现已停用）。
+ */
+@Suppress("unused")
+private const val MERGE_RETURN_GAP_MS = 3L * 60L * 1000L
+
+/**
+ * 是否可作为合并候选：仅守住离开，且无备注。
  */
 fun TimelineEvent.UsageEvent.isMergeCandidate(): Boolean {
     if (isOngoing || isLimitReached || isSeed) return false
@@ -95,60 +86,65 @@ fun TimelineEvent.UsageEvent.isMergeCandidate(): Boolean {
     return isGateQuit
 }
 
+/**
+ * 仅同 App、短间隔的连续守住可合并（已停用，保留签名）。
+ */
+@Suppress("unused")
 private fun canMergeAdjacent(
     newer: TimelineEvent.UsageEvent,
     older: TimelineEvent.UsageEvent
 ): Boolean {
     if (!newer.isMergeCandidate() || !older.isMergeCandidate()) return false
-    if (newer.mergeFamily() != older.mergeFamily()) return false
-    if (newer.mergeFamily() == MergeFamily.NONE) return false
-    val gap = abs(newer.startTime - older.startTime)
-    return if (newer.packageName == older.packageName) {
-        gap <= MERGE_SAME_APP_GAP_MS
-    } else {
-        // 跨 App：连串「离开了」收成「门外停下 · N次」
-        gap <= MERGE_CROSS_APP_GAP_MS
-    }
+    if (newer.packageName != older.packageName) return false
+    return abs(newer.startTime - older.startTime) <= MERGE_RETURN_GAP_MS
 }
 
 /**
- * 将已按时间倒序的 [TimelineEvent] 列表折叠为展示层节点。
- * 仅合并连续 ≥2 条的候选；其余保持单条。
+ * 守住离开按「同一 App」发生先后编号（早→晚 = 第1次…）。
+ * 跨 App 互不影响；时间轴倒序展示时，同 App 越新数字越大。
  */
-fun collapseTimelineForDisplay(
-    events: List<TimelineEvent>
-): List<TimelineDisplayItem> {
-    if (events.isEmpty()) return emptyList()
-    val result = ArrayList<TimelineDisplayItem>(events.size)
-    var i = 0
-    while (i < events.size) {
-        val current = events[i]
-        val usage = current as? TimelineEvent.UsageEvent
-        if (usage == null || !usage.isMergeCandidate()) {
-            result += TimelineDisplayItem.Single(current)
-            i++
-            continue
-        }
-        val cluster = mutableListOf(usage)
-        var j = i + 1
-        while (j < events.size) {
-            val next = events[j] as? TimelineEvent.UsageEvent ?: break
-            if (!canMergeAdjacent(cluster.last(), next)) break
-            cluster += next
-            j++
-        }
-        if (cluster.size >= 2) {
-            val mixed = cluster.distinctBy { it.packageName }.size > 1
-            result += TimelineDisplayItem.MergedCluster(
-                packageName = usage.packageName,
-                appName = if (mixed) "多个应用" else usage.appName,
-                events = cluster.toList()
-            )
-            i = j
-        } else {
-            result += TimelineDisplayItem.Single(current)
-            i++
-        }
+data class HeldAwayOrdinalIndex(
+    val ordinalByRecordId: Map<Long, Int> = emptyMap(),
+    val countByPackage: Map<String, Int> = emptyMap()
+) {
+    /** 该 App 当日守住 ≥2 次才返回序位 */
+    fun ordinalFor(recordId: Long, packageName: String): Int? {
+        if ((countByPackage[packageName] ?: 0) < 2) return null
+        return ordinalByRecordId[recordId]
     }
-    return result
+
+    /** 同 App 合并簇的序位区间；跨 App 簇不展示 */
+    fun rangeLabelFor(events: List<TimelineEvent.UsageEvent>): String? {
+        if (events.isEmpty()) return null
+        val pkgs = events.map { it.packageName }.distinct()
+        if (pkgs.size != 1) return null
+        val pkg = pkgs.first()
+        if ((countByPackage[pkg] ?: 0) < 2) return null
+        return heldAwayOrdinalRangeLabel(events.mapNotNull { ordinalByRecordId[it.recordId] })
+    }
+}
+
+fun buildHeldAwayOrdinalIndex(events: List<TimelineEvent>): HeldAwayOrdinalIndex {
+    val quits = events.asSequence()
+        .filterIsInstance<TimelineEvent.UsageEvent>()
+        .filter { it.isGateQuit && !it.isSeed }
+        .toList()
+    if (quits.isEmpty()) return HeldAwayOrdinalIndex()
+    val ordinals = LinkedHashMap<Long, Int>()
+    val counts = HashMap<String, Int>()
+    quits.groupBy { it.packageName }.forEach { (pkg, list) ->
+        val sorted = list.sortedWith(compareBy({ it.startTime }, { it.recordId }))
+        counts[pkg] = sorted.size
+        sorted.forEachIndexed { index, event -> ordinals[event.recordId] = index + 1 }
+    }
+    return HeldAwayOrdinalIndex(ordinalByRecordId = ordinals, countByPackage = counts)
+}
+
+/** 合并簇：连续守住的序位区间文案，如「第3次」「第3–5次」 */
+fun heldAwayOrdinalRangeLabel(ordinals: Collection<Int>): String? {
+    if (ordinals.isEmpty()) return null
+    val sorted = ordinals.sorted()
+    val first = sorted.first()
+    val last = sorted.last()
+    return if (first == last) "第${first}次" else "第${first}–${last}次"
 }

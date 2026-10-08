@@ -71,6 +71,7 @@ import com.life.mindfulnessapp.ui.theme.NightCardBg
 import com.life.mindfulnessapp.ui.theme.NightDivider
 import com.life.mindfulnessapp.ui.theme.NightTextPrimary
 import com.life.mindfulnessapp.ui.theme.NightTextSecondary
+import com.life.mindfulnessapp.ui.theme.themeChrome
 
 /**
  * 「想去的地方」
@@ -83,17 +84,18 @@ fun PositiveDestinationsScreen(
     viewModel: PositiveDestinationsViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {}
 ) {
-    val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+    val chrome = themeChrome()
+    val isDarkTheme = chrome.isDark
     val destinations by viewModel.destinations.collectAsState()
     val picking by viewModel.isPicking.collectAsState()
     val loading by viewModel.isLoading.collectAsState()
 
-    val bgColor = if (isDarkTheme) NightBg else DayBg
-    val cardColor = if (isDarkTheme) NightCardBg else DayCardBg
-    val textPrimary = if (isDarkTheme) NightTextPrimary else DayTextPrimary
-    val textSecondary = if (isDarkTheme) NightTextSecondary else DayTextSecondary
-    val borderColor = if (isDarkTheme) NightBorder else DayBorder
-    val dividerColor = if (isDarkTheme) NightDivider else DayDivider
+    val bgColor = chrome.bg
+    val cardColor = chrome.card
+    val textPrimary = chrome.textPrimary
+    val textSecondary = chrome.textSecondary
+    val borderColor = chrome.border
+    val dividerColor = chrome.divider
     val accent = if (isDarkTheme) LogoGreen else Color(0xFF27AE60)
 
     if (picking) {
@@ -546,7 +548,7 @@ private fun PositiveDestinationPicker(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(apps, key = { it.packageName }) { app ->
+                    items(apps, key = { it.listKey }) { app ->
                         PickerAppRow(
                             app = app,
                             selected = app.packageName in selected,

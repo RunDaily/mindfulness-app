@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>觉察练习 · 插槽规划</title>
+  <style>
+    :root {
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --line: rgba(255,255,255,.1);
+      --leaf: #7eb8a2;
+      --leaf-soft: rgba(126,184,162,.14);
+      --warm: #d4b483;
+      --warm-soft: rgba(212,180,131,.12);
+      --search: #8eb4d4;
+      --shell: #121214;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--ink);
+      background:
+        radial-gradient(ellipse at 26% -8%, rgba(126,184,162,.08), transparent 44%),
+        radial-gradient(ellipse at 90% 4%, rgba(212,180,131,.05), transparent 34%),
+        linear-gradient(180deg, #0c0c0e, #050506 72%);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 110px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; }
+
+    .hero { text-align: center; max-width: 680px; margin: 0 auto 40px; }
+    .eyebrow {
+      font-size: 11px; font-weight: 650; letter-spacing: .16em;
+      color: var(--leaf); margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500;
+    }
+    .hero p { margin-top: 12px; font-size: 14px; color: var(--muted); line-height: 1.75; }
+    .thesis {
+      margin-top: 16px; display: inline-block;
+      padding: 8px 14px; border-radius: 999px;
+      background: var(--leaf-soft); border: 1px solid rgba(126,184,162,.32);
+      font-size: 12px; color: #b7d4c4; line-height: 1.45;
+    }
+
+    .section { margin-bottom: 64px; }
+    .sec-head { text-align: center; margin-bottom: 18px; }
+    .sec-head h2 { font-size: 15px; font-weight: 650; }
+    .sec-head p {
+      margin-top: 8px; font-size: 13px; color: var(--muted);
+      line-height: 1.65; max-width: 580px; margin-left: auto; margin-right: auto;
+    }
+
+    .note {
+      max-width: 720px; margin: 0 auto 22px;
+      padding: 14px 16px;
+      border-left: 2px solid var(--leaf);
+      background: rgba(255,255,255,.02);
+      border-radius: 0 10px 10px 0;
+      font-size: 13px; color: var(--muted); line-height: 1.7;
+    }
+    .note strong { color: var(--ink); font-weight: 600; }
+    .note.warm { border-left-color: var(--warm); }
+    .note.warn { border-left-color: #c47a6a; }
+
+    /* engine */
+    .engines {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      max-width: 900px; margin: 0 auto;
+    }
+    @media (max-width: 800px) { .engines { grid-template-columns: 1fr; } }
+    .engine {
+      border: 1px solid var(--line); border-radius: 16px;
+      padding: 18px 16px; background: rgba(255,255,255,.025);
+    }
+    .engine .n {
+      font-size: 11px; font-weight: 650; letter-spacing: .1em;
+      color: var(--leaf); margin-bottom: 8px;
+    }
+    .engine h3 { font-size: 15px; font-weight: 650; margin-bottom: 8px; }
+    .engine p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .engine ul {
+      margin-top: 10px; list-style: none; font-size: 12px;
+      color: rgba(242,242,247,.72); line-height: 1.65;
+    }
+    .engine li::before { content: "· "; color: var(--dim); }
+    .engine.gate { border-color: rgba(126,184,162,.35); }
+    .engine.content { border-color: rgba(212,180,131,.3); }
+    .engine.content .n { color: var(--warm); }
+    .engine.memory { border-color: rgba(142,180,212,.3); }
+    .engine.memory .n { color: var(--search); }
+
+    /* slot table */
+    .slots {
+      max-width: 820px; margin: 0 auto;
+      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+    }
+    .slot {
+      display: grid; grid-template-columns: 120px 1fr 88px;
+      gap: 12px; padding: 14px 16px; align-items: start;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+    .slot:last-child { border-bottom: none; }
+    .slot .id {
+      font-weight: 650; color: var(--ink); font-size: 12px;
+      letter-spacing: .02em;
+    }
+    .slot .body { color: var(--muted); line-height: 1.55; }
+    .slot .body strong { color: var(--ink); font-weight: 600; }
+    .badge {
+      justify-self: end; align-self: center;
+      font-size: 10px; font-weight: 650; letter-spacing: .06em;
+      padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+    }
+    .badge.v2 { color: #b7d4c4; background: var(--leaf-soft); border: 1px solid rgba(126,184,162,.3); }
+    .badge.v3 { color: #e0cda0; background: var(--warm-soft); border: 1px solid rgba(212,180,131,.3); }
+    .badge.later { color: var(--dim); background: rgba(255,255,255,.03); border: 1px solid var(--line); }
+
+    /* phones */
+    .row2, .row3 {
+      display: grid; gap: 22px; align-items: start; justify-content: center;
+    }
+    .row2 { grid-template-columns: repeat(2, minmax(0, 270px)); }
+    .row3 { grid-template-columns: repeat(3, minmax(0, 270px)); }
+    @media (max-width: 900px) {
+      .row2, .row3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col-head { text-align: center; margin-bottom: 10px; }
+    .col-head h3 { font-size: 13px; font-weight: 650; }
+    .col-head p { font-size: 11px; color: var(--dim); margin-top: 4px; line-height: 1.45; }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9/17.4;
+      border-radius: 30px; border: 1px solid rgba(255,255,255,.1);
+      background: #050706; overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4);
+      display: flex; flex-direction: column; margin: 0 auto;
+    }
+    .statusbar {
+      height: 28px; padding: 10px 14px 0;
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex: none;
+    }
+    .body {
+      flex: 1; padding: 2px 18px 10px;
+      display: flex; flex-direction: column; min-height: 0;
+    }
+    .title-bar {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .title-bar .t { font-size: 17px; font-weight: 650; }
+    .back { font-size: 12px; color: var(--dim); }
+
+    .lead {
+      font-size: 13px; color: rgba(232,237,230,.62); line-height: 1.55;
+      margin: 0 0 14px;
+    }
+    .card {
+      border-radius: 14px; background: rgba(255,255,255,.04);
+      border: 1px solid var(--line); overflow: hidden; margin-bottom: 12px;
+    }
+    .sw-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px; gap: 12px;
+    }
+    .sw-row .n { font-size: 14px; font-weight: 600; }
+    .sw-row .m { font-size: 11px; color: var(--dim); margin-top: 3px; }
+    .toggle {
+      width: 42px; height: 26px; border-radius: 999px; flex: none;
+      background: rgba(126,184,162,.55); position: relative;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: 3px; left: 19px;
+      width: 20px; height: 20px; border-radius: 50%; background: #f2f2f7;
+    }
+    .div { height: 1px; background: var(--line); margin: 0 14px; }
+    .rowi {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 13px 14px; gap: 10px;
+    }
+    .rowi .n { font-size: 14px; font-weight: 500; }
+    .rowi .m { font-size: 11px; color: var(--dim); margin-top: 3px; line-height: 1.35; }
+    .rowi .r { font-size: 12px; color: rgba(232,237,230,.35); }
+    .sec-lab {
+      font-size: 10px; color: var(--dim); letter-spacing: .06em;
+      margin: 14px 2px 6px;
+    }
+    .pack {
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+    }
+    .pack:last-child { border-bottom: none; }
+    .pack .title { font-size: 14px; font-weight: 600; }
+    .pack .sub { font-size: 11px; color: var(--dim); margin-top: 3px; line-height: 1.4; }
+    .pack.on .title { color: #c5e0d4; }
+    .pack .tag {
+      display: inline-block; margin-top: 6px;
+      font-size: 10px; color: var(--leaf); letter-spacing: .04em;
+    }
+    .stat {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 12px 14px;
+    }
+    .stat .big {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 28px; font-weight: 500; color: var(--ink);
+    }
+    .stat .lab { font-size: 12px; color: var(--dim); }
+
+    /* code shape */
+    .code {
+      max-width: 760px; margin: 0 auto;
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px 18px; font-size: 12px; line-height: 1.7;
+      color: var(--muted); font-family: ui-monospace, Menlo, monospace;
+      background: rgba(0,0,0,.25);
+    }
+    .code b { color: var(--ink); font-weight: 600; font-family: "SF Pro Display", "PingFang SC", sans-serif; }
+    .code .c { color: var(--leaf); }
+
+    .phases {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      max-width: 900px; margin: 0 auto;
+    }
+    @media (max-width: 800px) { .phases { grid-template-columns: 1fr; } }
+    .phase {
+      border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px; background: rgba(255,255,255,.02);
+    }
+    .phase h3 {
+      font-size: 12px; letter-spacing: .08em; margin-bottom: 10px;
+    }
+    .phase.a h3 { color: var(--leaf); }
+    .phase.b h3 { color: var(--warm); }
+    .phase.c h3 { color: var(--search); }
+    .phase ul { list-style: none; font-size: 13px; color: var(--muted); line-height: 1.7; }
+    .phase li::before { content: "· "; color: var(--dim); }
+
+    .forbid {
+      max-width: 680px; margin: 0 auto;
+      font-size: 13px; color: var(--muted); line-height: 1.75;
+    }
+    .forbid li { margin-left: 1.1em; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="hero">
+      <div class="eyebrow">SLOTS · EXTENSIBLE PRACTICE</div>
+      <h1>觉察练习 · 插槽</h1>
+      <p>
+        总闸已落地。插槽要拆的是：何时抛、抛什么、看见了什么——三件事分开，
+        以后加练习包不必改胶囊主流程。
+      </p>
+      <div class="thesis">时机引擎 × 内容引擎 × 看见记录 · 总闸仍是一道</div>
+    </header>
+
+    <!-- 〇 原则 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>〇 · 原则</h2>
+        <p>重在骨架，不在话术厚度。成功仍是看见，不是答对。</p>
+      </div>
+      <div class="note">
+        <strong>总闸不变：</strong>关 = 两幕全无。插槽只在开着时生效。<br />
+        <strong>不改主路径：</strong>门口、计时、到点、器械紧急态优先于任何练习包。<br />
+        <strong>二选一骨架：</strong>岛上永远是一句问 + 两个字动作；不做多轮、不做 AI 开导。
+      </div>
+      <div class="note warn">
+        <strong>禁止灌进插槽：</strong>心灵鸡汤长文、每分钟一问、滚动/切 Tab 触发、
+        未回答扣分、用户可见「这是觉察训练」解说。
+      </div>
+    </section>
+
+    <!-- 一 三引擎 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>一 · 三引擎（代码边界）</h2>
+        <p>今天的 MidSessionCheckPolicy / SessionAwarenessCopy 拆清职责。</p>
+      </div>
+      <div class="engines">
+        <div class="engine gate">
+          <div class="n">WHEN</div>
+          <h3>时机引擎</h3>
+          <p>决不「抛什么」，只决「此刻能不能抛」。</p>
+          <ul>
+            <li>总闸 · 节奏 · 每场上限</li>
+            <li>路径（刷一刷中途跳过）</li>
+            <li>短会话 / 紧急 / 剩余不足</li>
+            <li>UI 互斥（展岛、锚提示）</li>
+          </ul>
+        </div>
+        <div class="engine content">
+          <div class="n">WHAT</div>
+          <h3>内容引擎</h3>
+          <p>给定 path + mode + 练习包 → 一句问与二选一。</p>
+          <ul>
+            <li>内置包：路径回声（现网）</li>
+            <li>可选包：停顿 / 收束 / …</li>
+            <li>离开对照文案同属内容</li>
+            <li>variant 轮换仍在包内</li>
+          </ul>
+        </div>
+        <div class="engine memory">
+          <div class="n">SEEN</div>
+          <h3>看见记录</h3>
+          <p>答了什么不评分；只记「到场」。</p>
+          <ul>
+            <li>mid_check show / action</li>
+            <li>end_compare 完成</li>
+            <li>本周看见次数（只读）</li>
+            <li>不入库惩罚字段</li>
+          </ul>
+        </div>
+      </div>
+      <div class="code" style="margin-top:22px">
+        <span class="c">// 调用方（胶囊）只组合，不拼文案</span><br />
+        if (<b>TimingEngine</b>.shouldAskNow(session, prefs)) {<br />
+        &nbsp;&nbsp;val card = <b>ContentEngine</b>.midCard(path, mode, pack, variant)<br />
+        &nbsp;&nbsp;showIsland(card)<br />
+        &nbsp;&nbsp;<b>SeenStore</b>.markShown(...)<br />
+        }
+      </div>
+    </section>
+
+    <!-- 二 插槽清单 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>二 · 插槽清单与分期</h2>
+        <p>先拆接口，再填内容。V2 只做「能换包 + 看见一眼」。</p>
+      </div>
+      <div class="slots">
+        <div class="slot">
+          <div class="id">S1 练习包</div>
+          <div class="body">
+            <strong>内容插槽。</strong>内置「路径回声」（现文案）；可选再挂 1～2 个包。
+            每包：中途 prompt/yes/no · 可选覆盖离开对照。选一个生效，不叠多包。
+          </div>
+          <span class="badge v2">V2</span>
+        </div>
+        <div class="slot">
+          <div class="id">S2 节奏档</div>
+          <div class="body">
+            <strong>时机插槽。</strong>现有疏/常；加「密」每 3 分钟 + 每场上限可配（默认仍 6）。
+            仍不做自定义分钟输入。
+          </div>
+          <span class="badge v2">V2</span>
+        </div>
+        <div class="slot">
+          <div class="id">S3 本周看见</div>
+          <div class="body">
+            <strong>记录插槽。</strong>配置页底部一行：本周轻问 N · 对照 M。
+            点进去可看极简列表（可选 V2.1）。不计分、不排行。
+          </div>
+          <span class="badge v2">V2</span>
+        </div>
+        <div class="slot">
+          <div class="id">S4 路径细开</div>
+          <div class="body">
+            <strong>时机插槽。</strong>意图 / 搜索 / 刷一刷 各自：中途开否 · 离开开否。
+            默认维持现网差分；高级，藏在「更多」。
+          </div>
+          <span class="badge v3">V3</span>
+        </div>
+        <div class="slot">
+          <div class="id">S5 按 App</div>
+          <div class="body">
+            <strong>时机插槽。</strong>某 App 强制静音练习，或只用某包。
+            易与器械配置打架——延后，且不作开通门槛。
+          </div>
+          <span class="badge later">以后</span>
+        </div>
+        <div class="slot">
+          <div class="id">S6 锚提示</div>
+          <div class="body">
+            <strong>边界插槽。</strong>30s「你刚才说」今日属陪伴叙事，不进练习总闸。
+            若纳入：独立小开关「进门回声」，默认随练习或默认开——V3 再定。
+          </div>
+          <span class="badge v3">V3</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 三 练习包形态 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>三 · 练习包长什么样</h2>
+        <p>包是内容表，不是新交互形态。</p>
+      </div>
+      <div class="note">
+        每个包只提供：<strong>中途问句变体</strong> + <strong>二选一标签</strong> +（可选）<strong>离开主问</strong>。
+        岛壳、5 秒自消、偏了→结束对照——全包共用，不许包自定义流程。
+      </div>
+      <div class="row3">
+        <div>
+          <div class="col-head">
+            <h3>路径回声 · 内置</h3>
+            <p>现网 · 默认选中</p>
+          </div>
+          <div class="phone" style="aspect-ratio:9/14">
+            <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+            <div class="body">
+              <div class="sec-lab" style="margin-top:8px">中途 · 意图</div>
+              <div class="card" style="padding:12px">
+                <div style="font-size:12px;color:#7eb8a2;font-weight:650">还在做「看数据」吗？</div>
+                <div style="margin-top:10px;font-size:13px"><span style="color:#7eb8a2;font-weight:650">还在</span>
+                  <span style="margin-left:14px;opacity:.5">已经偏了</span></div>
+              </div>
+              <div class="sec-lab">离开</div>
+              <div class="card" style="padding:12px">
+                <div style="font-size:13px;font-weight:650">完成了吗？</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>停顿 · 可选包</h3>
+            <p>少提「事」，多提「这一下」</p>
+          </div>
+          <div class="phone" style="aspect-ratio:9/14">
+            <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+            <div class="body">
+              <div class="sec-lab" style="margin-top:8px">中途 · 意图</div>
+              <div class="card" style="padding:12px">
+                <div style="font-size:12px;color:#7eb8a2;font-weight:650">还要接着这一下吗？</div>
+                <div style="margin-top:10px;font-size:13px"><span style="color:#7eb8a2;font-weight:650">接着</span>
+                  <span style="margin-left:14px;opacity:.5">可以停</span></div>
+              </div>
+              <div class="sec-lab">离开</div>
+              <div class="card" style="padding:12px">
+                <div style="font-size:13px;font-weight:650">这一次，停得住吗？</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>搜索停 · 可选包</h3>
+            <p>只强化搜索路径文案</p>
+          </div>
+          <div class="phone" style="aspect-ratio:9/14">
+            <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+            <div class="body">
+              <div class="sec-lab" style="margin-top:8px">中途 · 搜索</div>
+              <div class="card" style="padding:12px">
+                <div style="font-size:12px;color:#7eb8a2;font-weight:650">答案已经够用了吗？</div>
+                <div style="margin-top:10px;font-size:13px"><span style="color:#7eb8a2;font-weight:650">还在找</span>
+                  <span style="margin-left:14px;opacity:.5">够了</span></div>
+              </div>
+              <div class="sec-lab">离开</div>
+              <div class="card" style="padding:12px">
+                <div style="font-size:13px;font-weight:650">找到答案了吗？</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="note warm" style="margin-top:20px">
+        V2 建议只上架 <strong>路径回声（内置）</strong> + <strong>停顿</strong> 两包。
+        「搜索停」可做停顿包内的路径差分，不必第三入口。
+      </div>
+    </section>
+
+    <!-- 四 配置页第二层 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>四 · 配置页怎么长</h2>
+        <p>第一屏仍是开关 + 节奏；插槽沉在下面，不抢总闸。</p>
+      </div>
+      <div class="row2">
+        <div>
+          <div class="col-head">
+            <h3>V2 · 开着时</h3>
+            <p>开关 · 节奏 · 练习包 · 看见</p>
+          </div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+            <div class="body">
+              <div class="title-bar">
+                <span class="back">‹</span>
+                <span class="t">觉察练习</span>
+              </div>
+              <p class="lead">使用中问一句；离开时对照。默认关。</p>
+              <div class="card">
+                <div class="sw-row">
+                  <div>
+                    <div class="n">开启觉察练习</div>
+                    <div class="m">意图门会话生效</div>
+                  </div>
+                  <div class="toggle"></div>
+                </div>
+                <div class="div"></div>
+                <div class="rowi">
+                  <div>
+                    <div class="n">中途节奏</div>
+                    <div class="m">疏 · 常 · 密</div>
+                  </div>
+                  <div class="r">常 ›</div>
+                </div>
+              </div>
+              <div class="sec-lab">练习包</div>
+              <div class="card">
+                <div class="pack on">
+                  <div class="title">路径回声</div>
+                  <div class="sub">跟着进门命名问 · 现网默认</div>
+                  <div class="tag">使用中</div>
+                </div>
+                <div class="pack">
+                  <div class="title">停顿</div>
+                  <div class="sub">少提事，多问这一下还要不要</div>
+                </div>
+              </div>
+              <div class="sec-lab">看见</div>
+              <div class="card">
+                <div class="stat">
+                  <div>
+                    <div class="lab">本周轻问</div>
+                    <div class="big">4</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="lab">对照</div>
+                    <div class="big" style="font-size:22px">2</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>发现目录</h3>
+            <p>副文仍短：包名不进目录</p>
+          </div>
+          <div class="phone">
+            <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+            <div class="body">
+              <div style="font-family:'Iowan Old Style',Songti SC,Georgia,serif;font-size:22px;margin-top:4px">发现</div>
+              <div class="sec-lab">工具</div>
+              <div class="rowi" style="padding-left:0;padding-right:0;border-bottom:1px solid var(--line)">
+                <div>
+                  <div class="n">这一周</div>
+                  <div class="m">近 7 日门口切片</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="rowi" style="padding-left:0;padding-right:0;border-bottom:1px solid var(--line)">
+                <div>
+                  <div class="n">日程锁</div>
+                  <div class="m">2 个时段</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="rowi" style="padding-left:0;padding-right:0;background:rgba(126,184,162,.12);margin:4px -8px;padding:13px 8px;border-radius:10px">
+                <div>
+                  <div class="n" style="color:#c5e0d4">觉察练习</div>
+                  <div class="m" style="color:rgba(183,212,196,.72)">常 · 路径回声</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="note" style="margin:16px 0 0;max-width:none;font-size:11px;padding:10px 12px">
+                开着时副文：<strong>常 · 路径回声</strong> / <strong>疏 · 停顿</strong>。<br />
+                关着仍只写「关」。
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 五 数据形状 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>五 · 数据形状（规划用）</h2>
+        <p>先定接口，实现时可渐进替换 SessionAwarenessCopy。</p>
+      </div>
+      <div class="code">
+        <b>AwarenessPack</b> { id, title, subtitle,<br />
+        &nbsp;&nbsp;mid(path, mode, naming, variant) → { prompt, yes, no },<br />
+        &nbsp;&nbsp;end?(path, mode) → { prompt, yes, no }&nbsp;&nbsp;<span class="c">// null = 用默认离开文案</span><br />
+        }<br /><br />
+        <b>Prefs</b> practiceEnabled · rhythm(疏/常/密) · activePackId · maxChecksPerSession<br /><br />
+        <b>SeenStore</b> weekMidShown · weekMidAnswered · weekEndCompared<br />
+        &nbsp;&nbsp;<span class="c">// 从现有 analytics 聚合即可，不必新表；不够再轻量本地计数</span>
+      </div>
+    </section>
+
+    <!-- 六 分期 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>六 · 建议分期</h2>
+      </div>
+      <div class="phases">
+        <div class="phase a">
+          <h3>V2 · 插槽可用</h3>
+          <ul>
+            <li>拆 Timing / Content 接口</li>
+            <li>内置路径回声 + 停顿包</li>
+            <li>节奏加「密」</li>
+            <li>本周看见一行</li>
+            <li>发现副文带包名</li>
+          </ul>
+        </div>
+        <div class="phase b">
+          <h3>V2.1 · 看见可回看</h3>
+          <ul>
+            <li>本周看见轻列表</li>
+            <li>每场上限可调（3/6/9）</li>
+            <li>埋点漏斗看板自用</li>
+          </ul>
+        </div>
+        <div class="phase c">
+          <h3>V3 · 细开</h3>
+          <ul>
+            <li>路径级中途/离开开关</li>
+            <li>锚提示是否纳入</li>
+            <li>按 App 静音（谨慎）</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 七 不做 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>七 · 明确不做</h2>
+      </div>
+      <ul class="forbid">
+        <li>包里自定义流程（多轮问答、强制踢出、呼吸作业）</li>
+        <li>云端下发题库当开通依赖（可后做，V2 全本地）</li>
+        <li>看见次数排行、勋章、扣分</li>
+        <li>把练习包塞进门口 / 方案配置主路径</li>
+        <li>默认打开任何新包——新包装上仍须人点选</li>
+      </ul>
+    </section>
+
+    <!-- 八 待你定 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>八 · 拍板点</h2>
+        <p>下面三句定了，就可以按 V2 开做。</p>
+      </div>
+      <div class="note">
+        <strong>1. V2 包清单：</strong>是否就「路径回声 + 停顿」两包？<br />
+        <strong>2. 发现副文：</strong>开着时写「常 · 路径回声」，还是仍只写节奏？<br />
+        <strong>3. 本周看见：</strong>V2 只一行数字，还是顺带轻列表？
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

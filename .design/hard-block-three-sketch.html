@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>硬挡 · 三种事实</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf-text: #9fd4a8; --sand: #c4a35a; --line: rgba(232,237,230,.12); --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 36px; }
+    header { max-width: 640px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 46em; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 860px) { .row3 { grid-template-columns: 1fr; justify-items: center; } }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 260px; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: var(--ink); border: 1px solid rgba(255,255,255,.08);
+      padding: 22px 26px 20px; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+    .door-tag { font-size: 11px; color: var(--mist); }
+    .stage {
+      flex: 1; display: flex; flex-direction: column; justify-content: center;
+      text-align: left;
+    }
+    .title {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 26px; font-weight: 500; line-height: 1.35; min-height: 2.7em;
+    }
+    .hero {
+      margin-top: 28px; min-height: 52px;
+      display: flex; align-items: flex-end;
+      font-weight: 300; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .hero.range { font-size: 28px; letter-spacing: -0.02em; }
+    .hero.frac { font-size: 48px; }
+    .unit { margin-top: 8px; min-height: 18px; font-size: 13px; color: var(--fog); }
+    .when {
+      margin-top: 16px; min-height: 40px;
+      font-size: 13px; color: var(--fog); line-height: 1.55;
+    }
+    .when .extra { color: var(--mist); }
+    .quote {
+      margin-bottom: 18px; font-size: 11px; font-style: italic; line-height: 1.5;
+      color: rgba(92,101,94,.78); letter-spacing: .02em;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .leave { font-size: 16px; color: var(--leaf-text); padding-bottom: 6px; }
+    .note {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Hard Block · Three Facts</div>
+      <h1>同一扇关着的门。中间只换那一件事实。</h1>
+      <p>
+        时段、日限、次数都是硬挡：不能进，只有离开。差别不在按钮，在用户心里的问题不一样。<br />
+        时段问的是「为什么是现在」。日限问的是「时间花完了没有」。次数问的是「我明明没刷多久」。
+        页上回答这一句，并写清何时再开。不写器械名，不留破例。时段锁可有一句脚注级格言；日限与次数仍不写寄语。
+      </p>
+    </header>
+
+    <p class="sec">主形态 · <strong>一句原因，一个事实，何时再开</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>时段锁</h3>
+          <p>事实是时间窗，不是用量。脚注格言不抢事实。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">抖音</div>
+          <div class="stage">
+            <div class="title">这段时间<br />先不进去</div>
+            <div class="hero range">23:00–07:00</div>
+            <div class="unit"></div>
+            <div class="when">每天 · 07:00 打开</div>
+          </div>
+          <div class="quote">真正的休息是给大脑留白，而非换个刺激。</div>
+          <div class="leave">离开</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>日限额</h3>
+          <p>分数是额度。超出就写超出，不收成刚好满。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">小红书</div>
+          <div class="stage">
+            <div class="title">今天的时间<br />用完了</div>
+            <div class="hero frac">32 / 30</div>
+            <div class="unit">分</div>
+            <div class="when">明天再开</div>
+          </div>
+          <div class="leave">离开</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>打开次数</h3>
+          <p>挡住的是再打开。时长还在，就写出来。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">微信</div>
+          <div class="stage">
+            <div class="title">今天的次数<br />用完了</div>
+            <div class="hero frac">8 / 8</div>
+            <div class="unit">次</div>
+            <div class="when"><span class="extra">时长还剩 18 分</span><br />明天再开</div>
+          </div>
+          <div class="leave">离开</div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">同一骨架 · <strong>只改事实，不改版式</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>快结束</h3>
+          <p>不到一小时，恢复行写成还要多久。不放秒针。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">王者荣耀</div>
+          <div class="stage">
+            <div class="title">这段时间<br />先不进去</div>
+            <div class="hero range">22:00–23:00</div>
+            <div class="unit"></div>
+            <div class="when">12 分后打开</div>
+          </div>
+          <div class="quote">慢下来，才能看见更多。</div>
+          <div class="leave">离开</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>全天</h3>
+          <p>没有「这段」。句子改成今天。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">抖音</div>
+          <div class="stage">
+            <div class="title">今天<br />先不进去</div>
+            <div class="hero range">全天</div>
+            <div class="unit"></div>
+            <div class="when">明天 0 点打开</div>
+          </div>
+          <div class="quote">每一次打开手机，都是一次主动的选择。</div>
+          <div class="leave">离开</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>次数尽，时间也尽</h3>
+          <p>不写「还剩 0」。这一页不出，改出日限页。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">抖音</div>
+          <div class="stage">
+            <div class="title">今天的时间<br />用完了</div>
+            <div class="hero frac">30 / 30</div>
+            <div class="unit">分</div>
+            <div class="when">明天再开</div>
+          </div>
+          <div class="leave">离开</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>骨架：</strong>顶上只有 App 名。中间一句原因、一个事实、一行何时再开。底下只有「离开」，字色，无按钮底。三页垂直位置对齐，扫过去只看见事实变了。<br />
+      <strong>时段：</strong>英雄是时间窗。超过一小时写钟点（每天 · 07:00 打开 / 工作日 · 18:00 打开）；不足一小时写「N 分后打开」，随分钟变，不倒计时。不展示剩余时长或次数，避免讨价还价。离开上方可有一句脚注格言（雾色斜体、最多两行），按小时槽稳定，不抢 title / hero。<br />
+      <strong>日限：</strong>英雄是已用 / 限额。刚好满写 30 / 30，会话收尾超出写 32 / 30。恢复一律「明天再开」，不倒计时到午夜。无格言。<br />
+      <strong>次数：</strong>英雄是 8 / 8。设了日限且还剩时间，雾色加一行「时长还剩 N 分」，说明挡住的是打开。未设日限，或时长已尽，不加这行。无格言。<br />
+      <strong>同时命中：</strong>时段最前，只出时段页。次数尽且时长未尽，出次数页。次数尽且时长也尽，出日限页。不叠成一页仪表盘。<br />
+      <strong>不进框：</strong>器械名、「离开就是守住」、描边大按钮、「还有必须完成的事」。日限与次数不写寄语。要放宽，回方案改数字。跳去多的 App 不放在这三页上。
+    </div>
+  </div>
+</body>
+</html>

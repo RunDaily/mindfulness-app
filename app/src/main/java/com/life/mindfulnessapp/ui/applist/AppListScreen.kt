@@ -32,7 +32,7 @@ import com.life.mindfulnessapp.data.AppPreferences
 import com.life.mindfulnessapp.domain.model.AppInfo
 import com.life.mindfulnessapp.ui.theme.LogoGreen
 import com.life.mindfulnessapp.ui.theme.MindfulGreen40
-import com.life.mindfulnessapp.ui.vip.VipUpgradeDialog
+import com.life.mindfulnessapp.ui.vip.AccessGateDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +47,6 @@ fun AppListScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val focusManager = LocalFocusManager.current
     val isAtFreeLimit by viewModel.isAtFreeLimit.collectAsState()
-    val showVipUpgradeDialog by viewModel.showVipUpgradeDialog.collectAsState()
     val vipLevel by viewModel.vipLevel.collectAsState()
     val monitoredCount by viewModel.monitoredCount.collectAsState()
 
@@ -180,7 +179,7 @@ fun AppListScreen(
                             letterSpacing = 0.8.sp
                         )
                     }
-                    items(candidates, key = { it.packageName }) { app ->
+                    items(candidates, key = { it.listKey }) { app ->
                         AddAppListItem(
                             appInfo = app,
                             cs = cs,
@@ -192,19 +191,30 @@ fun AppListScreen(
         }
     }
 
-    if (showVipUpgradeDialog) {
-        VipUpgradeDialog(
-            isDarkTheme = isDark,
+    val accessGate by viewModel.accessGate.collectAsState()
+    if (accessGate.visible || accessGate.unlockToast != null) {
+        AccessGateDialog(
+            state = accessGate,
             cardColor = cs.surface,
             textPrimary = cs.onSurface,
             textSecondary = cs.onSurfaceVariant,
             borderColor = cs.outline,
             accentGreen = LogoGreen,
             onDismiss = { viewModel.dismissVipUpgradeDialog() },
-            onUpgrade = {
+            onCodeChange = viewModel::onAccessCodeChange,
+            onRedeem = viewModel::redeemAccessCode,
+            onOpenClaim = viewModel::openAccessClaimStep,
+            onOpenRedeem = viewModel::openAccessRedeemStep,
+            onClaimChannelChange = viewModel::onAccessClaimChannelChange,
+            onClaimContactChange = viewModel::onAccessClaimContactChange,
+            onSubmitClaim = viewModel::submitAccessClaim,
+            onRedeemIssued = viewModel::redeemIssuedAccessCode,
+            onViewMembership = {
                 viewModel.dismissVipUpgradeDialog()
                 onNavigateToVip()
-            }
+            },
+            onBackToGate = viewModel::backToAccessGate,
+            onConsumeUnlockToast = viewModel::consumeAccessUnlockToast
         )
     }
 }
@@ -227,14 +237,37 @@ private fun AddAppListItem(
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         AppIcon(drawable = appInfo.icon, modifier = Modifier.size(44.dp))
-        Text(
-            text = appInfo.appName,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Medium,
-            color = cs.onSurface,
-            maxLines = 1,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = appInfo.appName,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = cs.onSurface,
+                maxLines = 1
+            )
+            if (appInfo.isSystemDualRow) {
+                Text(
+                    text = "疑似分身",
+                    fontSize = 11.sp,
+                    color = cs.onSurface.copy(alpha = 0.42f),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            } else if (appInfo.hasSystemDualInstance) {
+                Text(
+                    text = "已开启系统分身，将一并锁定",
+                    fontSize = 11.sp,
+                    color = LogoGreen.copy(alpha = 0.85f),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            } else if (appInfo.suspectedClonePackages.isNotEmpty()) {
+                Text(
+                    text = "含 ${appInfo.suspectedClonePackages.size} 个疑似分身，将一并锁定",
+                    fontSize = 11.sp,
+                    color = LogoGreen.copy(alpha = 0.85f),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))

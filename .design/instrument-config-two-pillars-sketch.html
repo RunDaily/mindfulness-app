@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>配置 · 两大约束</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --line: rgba(232,237,230,.12);
+      --sand: #c4a35a; --page: #0c0d0c; --warn: #c47a72;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 40px 18px 90px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 40px; }
+    header { max-width: 640px; }
+    .eyebrow { font-size: 11px; letter-spacing: .2em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 46em; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 7px 12px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.32);
+      font-size: 12px; color: #b7d4be;
+    }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; justify-items: center; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; justify-items: center; }
+    @media (max-width: 820px) {
+      .row2, .row3 { grid-template-columns: 1fr; }
+    }
+    .col { display: grid; gap: 10px; justify-items: center; width: 100%; }
+    .col-head { text-align: center; max-width: 280px; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.5; }
+    .phone {
+      width: min(286px, 100%); aspect-ratio: 9 / 19.4; border-radius: 28px;
+      background: var(--ink); border: 1px solid rgba(255,255,255,.08);
+      padding: 18px 20px 16px; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45); position: relative;
+    }
+    .back { font-size: 12px; color: var(--mist); }
+    .brand {
+      margin-top: 10px;
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 22px; font-weight: 500;
+    }
+    .sub { margin-top: 4px; font-size: 11px; color: var(--mist); }
+    .block { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .block:first-of-type { margin-top: 14px; }
+    .sec-title { font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+    .row {
+      margin-top: 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    }
+    .row.subrow {
+      margin-top: 8px; padding-left: 2px;
+    }
+    .k { font-size: 13px; color: var(--fog); }
+    .k.branch {
+      color: var(--mist); font-variant-numeric: tabular-nums;
+      display: flex; gap: 6px; align-items: baseline;
+    }
+    .k.branch .pipe { color: rgba(232,237,230,.28); font-size: 12px; }
+    .v {
+      font-size: 15px; font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+      color: var(--paper);
+    }
+    .v.leaf { color: var(--leaf-text); }
+    .v.muted { color: var(--mist); font-size: 13px; }
+    .v.soft { color: var(--fog); }
+    .add { margin-top: 10px; font-size: 12px; color: var(--leaf-text); }
+    .soft {
+      margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .soft .name { font-size: 13px; color: var(--fog); }
+    .sw {
+      width: 34px; height: 19px; border-radius: 999px; position: relative; flex: none;
+      background: rgba(61,122,74,.85);
+    }
+    .sw i {
+      position: absolute; top: 2px; left: 17px; width: 15px; height: 15px;
+      border-radius: 50%; background: var(--paper);
+    }
+    .sw.off { background: rgba(232,237,230,.16); }
+    .sw.off i { left: 2px; }
+    .exit {
+      margin-top: auto; padding-top: 22px;
+      font-size: 12px; color: var(--mist); letter-spacing: .02em;
+    }
+    .foot {
+      margin-top: auto; padding-top: 16px;
+      display: flex; justify-content: flex-end; align-items: baseline;
+    }
+    .exit + .foot { margin-top: 14px; padding-top: 0; }
+    .cta { font-size: 15px; color: var(--leaf-text); }
+    .sheet .warn { font-size: 13px; color: var(--warn); }
+
+    .toast {
+      position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%);
+      padding: 8px 14px; border-radius: 8px;
+      background: rgba(232,237,230,.12); border: 1px solid rgba(232,237,230,.16);
+      font-size: 12px; color: var(--paper); white-space: nowrap;
+    }
+    .sheet {
+      position: absolute; left: 12px; right: 12px; bottom: 14px;
+      padding: 14px 14px 12px; border-radius: 12px;
+      background: #121412; border: 1px solid rgba(232,237,230,.14);
+    }
+    .sheet .q { font-size: 14px; line-height: 1.4; }
+    .sheet .acts {
+      margin-top: 14px; display: flex; justify-content: flex-end; gap: 18px;
+    }
+    .sheet .dim { font-size: 13px; color: var(--mist); }
+    .sheet .go { font-size: 13px; color: var(--leaf-text); }
+
+    .old-row {
+      margin-top: 2px; padding: 11px 0; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .old-row .t { font-size: 14px; }
+    .old-row .s { font-size: 12px; color: var(--fog); margin-top: 2px; }
+    .old-row.soft-row .t { font-size: 13px; color: var(--fog); }
+    .old-sw {
+      width: 34px; height: 19px; border-radius: 999px; position: relative; flex: none;
+      background: rgba(61,122,74,.85);
+    }
+    .old-sw i {
+      position: absolute; top: 2px; left: 17px; width: 15px; height: 15px;
+      border-radius: 50%; background: var(--paper);
+    }
+    .old-sw.off { background: rgba(232,237,230,.16); }
+    .old-sw.off i { left: 2px; }
+    .xout { color: var(--warn); text-decoration: line-through; opacity: .7; }
+
+    .note {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+    .note ul { margin: 8px 0 0 1.1em; }
+    .note li { margin: 3px 0; }
+    table.diff {
+      width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;
+    }
+    table.diff th, table.diff td {
+      text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    table.diff th { color: var(--mist); font-weight: 500; }
+    .ok { color: var(--leaf-text); }
+    .no { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Plan · Two Pillars</div>
+      <h1>方案配置只留两大约束</h1>
+      <p>
+        日限额管「今天能花多少」；时段锁管「哪些钟点根本不让进」。
+        搜索直达不是限额，沉成门口能力开关。次数去掉；单次时长在随意浏览当场选。
+      </p>
+      <div class="thesis">配置 = 日限额（总 ⊃ 随意浏览）+ 时段锁 · 搜索直达次级</div>
+    </header>
+
+    <div class="sec"><strong>对照</strong> · 旧总览 vs 新总览</div>
+    <div class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>现在（旧）</h3>
+          <p>四行开关墙：日限 / 次数 / 时段 / 搜索直达</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 方案</div>
+          <div class="brand">小红书</div>
+          <div class="sub">开着的，门口会执行</div>
+
+          <div class="old-row">
+            <div>
+              <div class="t">日限</div>
+              <div class="s">30 分</div>
+            </div>
+            <div class="old-sw"><i></i></div>
+          </div>
+          <div class="old-row">
+            <div>
+              <div class="t xout">次数</div>
+              <div class="s xout">≤8 次</div>
+            </div>
+            <div class="old-sw"><i></i></div>
+          </div>
+          <div class="old-row">
+            <div>
+              <div class="t">时段</div>
+              <div class="s">未开</div>
+            </div>
+            <div class="old-sw off"><i></i></div>
+          </div>
+          <div class="old-row soft-row">
+            <div>
+              <div class="t">搜索直达</div>
+            </div>
+            <div class="old-sw"><i></i></div>
+          </div>
+
+          <div class="foot"><span class="cta">保存</span></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>改后</h3>
+          <p>随意浏览缩进挂在总限额下；跨日写次日</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 方案</div>
+          <div class="brand">小红书</div>
+
+          <div class="block">
+            <div class="sec-title">日限额</div>
+            <div class="row">
+              <span class="k">总限额</span>
+              <span class="v leaf">30 分</span>
+            </div>
+            <div class="row subrow">
+              <span class="k branch"><span class="pipe">└</span>随意浏览</span>
+              <span class="v soft">20 分</span>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="sec-title">时段锁</div>
+            <div class="row">
+              <span class="k">夜间</span>
+              <span class="v">23:00 — 次日 07:00</span>
+            </div>
+            <div class="add">＋ 添加时段</div>
+          </div>
+
+          <div class="soft">
+            <div class="name">搜索直达</div>
+            <div class="sw"><i></i></div>
+          </div>
+
+          <div class="exit">移出方案</div>
+          <div class="foot"><span class="cta">保存</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec"><strong>状态</strong> · 关时段 / 无搜索目录 / 改数子页</div>
+    <div class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>时段未开</h3>
+          <p>块还在，直接「＋ 添加时段」</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 方案</div>
+          <div class="brand">哔哩哔哩</div>
+
+          <div class="block">
+            <div class="sec-title">日限额</div>
+            <div class="row">
+              <span class="k">总限额</span>
+              <span class="v leaf">45 分</span>
+            </div>
+            <div class="row subrow">
+              <span class="k branch"><span class="pipe">└</span>随意浏览</span>
+              <span class="v soft">15 分</span>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="sec-title">时段锁</div>
+            <div class="add">＋ 添加时段</div>
+          </div>
+
+          <div class="soft">
+            <div class="name">搜索直达</div>
+            <div class="sw"><i></i></div>
+          </div>
+
+          <div class="exit">移出方案</div>
+          <div class="foot"><span class="cta">保存</span></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>目录无可靠链</h3>
+          <p>不假装；搜索直达整行不出现</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 方案</div>
+          <div class="brand">某游戏</div>
+
+          <div class="block">
+            <div class="sec-title">日限额</div>
+            <div class="row">
+              <span class="k">总限额</span>
+              <span class="v leaf">60 分</span>
+            </div>
+            <div class="row subrow">
+              <span class="k branch"><span class="pipe">└</span>随意浏览</span>
+              <span class="v muted">不限</span>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="sec-title">时段锁</div>
+            <div class="row">
+              <span class="k">夜间</span>
+              <span class="v">22:30 — 次日 08:00</span>
+            </div>
+            <div class="add">＋ 添加时段</div>
+          </div>
+
+          <div class="exit">移出方案</div>
+          <div class="foot"><span class="cta">保存</span></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>点改日限额</h3>
+          <p>子页同样用 └ 层级；无解释句</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 小红书</div>
+          <div class="brand">日限额</div>
+
+          <div class="block" style="border-top:none;padding-top:4px;margin-top:18px;">
+            <div class="row" style="margin-top:0;">
+              <span class="k">总限额</span>
+              <span class="v leaf" style="font-size:28px;">30</span>
+            </div>
+            <div style="margin-top:4px;font-size:10px;color:var(--mist);">分</div>
+          </div>
+
+          <div class="block">
+            <div class="row" style="margin-top:0;">
+              <span class="k branch"><span class="pipe">└</span>随意浏览</span>
+              <span class="v soft" style="font-size:28px;">20</span>
+            </div>
+            <div style="margin-top:4px;font-size:10px;color:var(--mist);">分</div>
+          </div>
+
+          <div class="foot"><span class="cta">确认</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec"><strong>保存</strong> · 有反馈；未保存返回要问</div>
+    <div class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>点保存</h3>
+          <p>Toast「已保存」，再回方案</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 方案</div>
+          <div class="brand">小红书</div>
+
+          <div class="block">
+            <div class="sec-title">日限额</div>
+            <div class="row">
+              <span class="k">总限额</span>
+              <span class="v leaf">30 分</span>
+            </div>
+            <div class="row subrow">
+              <span class="k branch"><span class="pipe">└</span>随意浏览</span>
+              <span class="v soft">20 分</span>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="sec-title">时段锁</div>
+            <div class="row">
+              <span class="k">夜间</span>
+              <span class="v">23:00 — 次日 07:00</span>
+            </div>
+            <div class="add">＋ 添加时段</div>
+          </div>
+
+          <div class="exit">移出方案</div>
+          <div class="foot"><span class="cta">保存</span></div>
+          <div class="toast">已保存</div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>改了却点 ‹ 方案</h3>
+          <p>没改过直接回；有改动再问</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 方案</div>
+          <div class="brand">小红书</div>
+
+          <div class="block">
+            <div class="sec-title">日限额</div>
+            <div class="row">
+              <span class="k">总限额</span>
+              <span class="v leaf">35 分</span>
+            </div>
+            <div class="row subrow">
+              <span class="k branch"><span class="pipe">└</span>随意浏览</span>
+              <span class="v soft">20 分</span>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="sec-title">时段锁</div>
+            <div class="row">
+              <span class="k">夜间</span>
+              <span class="v">23:00 — 次日 07:00</span>
+            </div>
+          </div>
+
+          <div class="exit">移出方案</div>
+          <div class="foot"><span class="cta">保存</span></div>
+          <div class="sheet">
+            <div class="q">有未保存的修改</div>
+            <div class="acts">
+              <span class="dim">丢弃</span>
+              <span class="go">继续编辑</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec"><strong>移出</strong> · 沉底淡字 → 确认半屏（详见移出草图）</div>
+    <div class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>点「移出方案」</h3>
+          <p>红只出现在确认那一拍</p>
+        </div>
+        <div class="phone">
+          <div class="back">‹ 方案</div>
+          <div class="brand">小红书</div>
+
+          <div class="block">
+            <div class="sec-title">日限额</div>
+            <div class="row">
+              <span class="k">总限额</span>
+              <span class="v leaf">30 分</span>
+            </div>
+            <div class="row subrow">
+              <span class="k branch"><span class="pipe">└</span>随意浏览</span>
+              <span class="v soft">20 分</span>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="sec-title">时段锁</div>
+            <div class="row">
+              <span class="k">夜间</span>
+              <span class="v">23:00 — 次日 07:00</span>
+            </div>
+          </div>
+
+          <div class="exit">移出方案</div>
+          <div class="foot"><span class="cta">保存</span></div>
+          <div class="sheet">
+            <div class="q">把小红书移出方案？</div>
+            <div class="acts" style="justify-content:space-between;">
+              <span class="dim">取消</span>
+              <span class="warn">移出</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>骨架</h3>
+          <p>与移出专页同一套</p>
+        </div>
+        <div class="phone" style="justify-content:center;gap:14px;padding:28px 22px;">
+          <div style="font-size:12px;color:var(--fog);line-height:1.7;">
+            器械区<br />
+            <span style="color:var(--mist);">移出方案</span>（淡字）<br />
+            <span style="color:var(--leaf-text);">保存</span>（右对齐）
+          </div>
+          <div style="font-size:11px;color:var(--mist);line-height:1.65;border-top:1px solid var(--line);padding-top:14px;">
+            不并排双 CTA<br />
+            不顶栏 ⋯<br />
+            未确认不常驻红色
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>框外说明（不进手机）</strong>
+      <table class="diff">
+        <thead>
+          <tr><th>配置项</th><th>原来</th><th>现在</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>日限</td><td class="ok">✓</td><td class="ok">✓ 总限额 · └ 随意浏览</td></tr>
+          <tr><td>快捷</td><td class="ok">✓</td><td class="no">融入单次（门口选）</td></tr>
+          <tr><td>次数</td><td class="ok">✓</td><td class="no">去掉</td></tr>
+          <tr><td>时段</td><td class="ok">✓</td><td class="ok">时段锁；跨日写「次日」</td></tr>
+          <tr><td>搜索直达</td><td class="ok">✓ 同级</td><td>次级开关</td></tr>
+          <tr><td>单次时长</td><td>隐含</td><td>随意浏览入口当场选</td></tr>
+          <tr><td>移出</td><td class="no">与保存并排红色</td><td class="ok">内容末淡字 → 确认半屏</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>去掉解释句：「总预算包住随意浏览」「落在窗口内硬挡」「门口可带词跳搜」都不进界面；层级用 └ 表达。时段未开不写「窗口」。</li>
+        <li>跨日时段：<code>23:00 — 次日 07:00</code>；同日仍写 <code>09:00 — 18:00</code>。</li>
+        <li>保存：点保存 → Toast「已保存」；‹ 返回：无改动直接回，有改动提示「有未保存的修改」。</li>
+        <li>移出：见 <code>instrument-config-remove-sketch.html</code>。底栏只保存；移出沉在约束之后，确认才变红。</li>
+        <li>随意浏览 ≤ 总限额；「不限」时只受总限额约束。</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

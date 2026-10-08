@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心锚 · 门与 App 结构草图</title>
+  <style>
+    :root {
+      --bg: #000;
+      --surface: #1c1c1e;
+      --line: #3a3a3c;
+      --text: #fff;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --green: #34c759;
+      --green-dim: rgba(52, 199, 89, 0.16);
+      --amber: #ffd60a;
+      --amber-dim: rgba(255, 214, 10, 0.12);
+      --blue: #64d2ff;
+      --blue-dim: rgba(100, 210, 255, 0.12);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 20% 0%, #142018 0%, transparent 42%),
+        radial-gradient(ellipse at 80% 8%, #121820 0%, transparent 40%),
+        #050506;
+      color: var(--text);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 64px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 28px; }
+
+    .hero { text-align: center; max-width: 560px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: .12em;
+      color: var(--green); text-transform: uppercase; margin-bottom: 10px;
+    }
+    .hero h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+    .hero p {
+      margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.6;
+    }
+    .hero .thesis {
+      margin-top: 16px; display: inline-block;
+      padding: 10px 16px; border-radius: 999px;
+      background: var(--green-dim); border: 1px solid rgba(52,199,89,.28);
+      color: #b7f0c4; font-size: 13px; line-height: 1.45;
+    }
+
+    /* 双环关系 */
+    .loops {
+      display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch;
+    }
+    @media (max-width: 720px) {
+      .loops { grid-template-columns: 1fr; }
+      .loops .arrow { transform: rotate(90deg); justify-self: center; }
+    }
+    .loop-card {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 16px;
+      padding: 16px 16px 14px;
+    }
+    .loop-card .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      padding: 3px 8px; border-radius: 999px; margin-bottom: 10px;
+    }
+    .loop-card.os .tag { color: var(--green); background: var(--green-dim); border: 1px solid rgba(52,199,89,.3); }
+    .loop-card.app .tag { color: var(--blue); background: var(--blue-dim); border: 1px solid rgba(100,210,255,.28); }
+    .loop-card h2 { font-size: 16px; font-weight: 650; margin-bottom: 6px; }
+    .loop-card .role { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
+    .loop-card ol {
+      list-style: none; display: grid; gap: 6px; font-size: 12px; color: #d1d1d6;
+    }
+    .loop-card ol li {
+      display: flex; gap: 8px; align-items: baseline;
+      padding: 7px 10px; border-radius: 10px; background: #0c0c0e; border: 1px solid #222;
+    }
+    .loop-card ol li span { color: var(--dim); font-variant-numeric: tabular-nums; font-size: 11px; }
+    .arrow {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: var(--dim); font-size: 11px; gap: 4px; min-width: 56px;
+    }
+    .arrow .sym { color: var(--amber); font-size: 18px; }
+
+    /* 两机并排 */
+    .phones {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;
+    }
+    @media (max-width: 780px) { .phones { grid-template-columns: 1fr; } }
+
+    .col-head { text-align: center; margin-bottom: 12px; }
+    .col-head h3 { font-size: 14px; font-weight: 650; }
+    .col-head p { font-size: 12px; color: var(--dim); margin-top: 4px; line-height: 1.45; }
+
+    .phone {
+      width: 100%; max-width: 390px; margin: 0 auto;
+      background: var(--bg);
+      border: 1px solid #2a2a2c; border-radius: 36px;
+      padding: 12px 12px 18px;
+      box-shadow: 0 0 0 1px #111, 0 24px 80px rgba(0,0,0,.55);
+      display: flex; flex-direction: column; gap: 12px;
+      position: relative; overflow: hidden;
+    }
+    .status-bar {
+      height: 24px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px; font-size: 11px; font-weight: 600; color: #aeaeb2;
+    }
+    .region {
+      background: var(--surface); border: 1px solid #2a2a2c;
+      border-radius: var(--radius); padding: 14px; position: relative;
+    }
+    .region-tag {
+      position: absolute; top: -9px; left: 12px;
+      font-size: 10px; font-weight: 650; letter-spacing: .05em;
+      border-radius: 999px; padding: 2px 8px;
+    }
+    .tag-green { color: var(--green); background: #0d1a10; border: 1px solid rgba(52,199,89,.35); }
+    .tag-blue { color: var(--blue); background: #0c1820; border: 1px solid rgba(100,210,255,.35); }
+    .tag-amber { color: #ffe08a; background: #1a1608; border: 1px solid rgba(255,214,10,.3); }
+
+    /* —— 门 —— */
+    .gate-top {
+      display: grid; grid-template-columns: 1fr auto; gap: 10px;
+      align-items: center; min-height: 84px; padding-top: 8px;
+      background: transparent !important; border: 0 !important; border-radius: 0 !important;
+    }
+    .app-meta { display: flex; align-items: center; gap: 10px; }
+    .app-icon {
+      width: 42px; height: 42px; border-radius: 11px;
+      background: linear-gradient(145deg, #ff5a6a, #c9184a);
+      display: grid; place-items: center; font-size: 11px; font-weight: 700;
+    }
+    .app-name { font-size: 15px; font-weight: 650; }
+    .app-sub { margin-top: 3px; font-size: 11px; color: var(--muted); }
+    .clock {
+      width: 72px; height: 72px; border-radius: 50%;
+      border: 1.5px dashed #4a4a4e;
+      background: radial-gradient(circle at 50% 50%, #242426 0%, #161618 70%);
+      position: relative;
+    }
+    .clock::before, .clock::after {
+      content: ""; position: absolute; left: 50%; top: 50%;
+      background: #aeaeb2; border-radius: 2px; transform-origin: bottom center;
+    }
+    .clock::before {
+      width: 2px; height: 18px; margin-left: -1px; margin-top: -18px; transform: rotate(20deg);
+    }
+    .clock::after {
+      width: 1.5px; height: 24px; margin-left: -.75px; margin-top: -24px;
+      transform: rotate(110deg); background: #8e8e93;
+    }
+    .clock-dot {
+      position: absolute; left: 50%; top: 50%; width: 5px; height: 5px;
+      margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--green);
+    }
+
+    .gate-mid { padding-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+    .ask { font-size: 16px; font-weight: 650; line-height: 1.35; }
+    .mode-switch {
+      display: inline-flex; align-self: flex-start;
+      background: #0e0e10; border: 1px solid var(--line);
+      border-radius: 999px; padding: 3px;
+    }
+    .mode-switch span {
+      font-size: 11px; font-weight: 650; padding: 5px 10px; border-radius: 999px; color: var(--muted);
+    }
+    .mode-switch span.on { background: #2c2c2e; color: #fff; }
+    .search-row {
+      display: flex; align-items: center; gap: 8px;
+      background: #0e0e10; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px;
+    }
+    .search-row .ph { flex: 1; font-size: 13px; color: #636366; }
+    .search-go {
+      font-size: 12px; font-weight: 700; color: #003a12;
+      background: var(--green); border-radius: 999px; padding: 6px 12px;
+    }
+    .hint { font-size: 11px; color: #48484a; }
+    .leave {
+      text-align: center; font-size: 14px; font-weight: 600; color: var(--green);
+      padding: 10px 0 4px;
+    }
+
+    .gate-bot { padding-top: 18px; }
+    .bot-title {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 12px; color: var(--muted); margin-bottom: 12px;
+    }
+    .bot-title::before, .bot-title::after {
+      content: ""; flex: 1; height: 1px; background: #2c2c2e;
+    }
+    .exit-list { display: grid; gap: 8px; }
+    .exit {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+      padding: 10px 12px; border-radius: 14px;
+      background: #0e0e10; border: 1px solid #2a2a2c;
+    }
+    .exit-ico {
+      width: 30px; height: 30px; border-radius: 9px;
+      display: grid; place-items: center; font-size: 13px;
+    }
+    .exit:nth-child(1) .exit-ico { background: var(--green-dim); color: var(--green); }
+    .exit:nth-child(2) .exit-ico { background: var(--amber-dim); color: var(--amber); }
+    .exit:nth-child(3) .exit-ico { background: var(--blue-dim); color: var(--blue); }
+    .exit-name { font-size: 13px; font-weight: 650; }
+    .exit-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+    .exit-preview {
+      font-size: 10px; color: #aeaeb2; max-width: 96px; text-align: right; line-height: 1.3;
+    }
+    .bot-note {
+      margin-top: 10px; text-align: center; font-size: 10px; color: #48484a; line-height: 1.4;
+    }
+    .strike {
+      margin-top: 8px; padding: 8px 10px; border-radius: 10px;
+      background: #1a1010; border: 1px dashed #4a2a2a;
+      font-size: 10px; color: #9a6a6a; text-align: center; line-height: 1.4;
+    }
+    .strike s { color: #7a5050; }
+
+    /* —— App —— */
+    .app-pulse {
+      padding-top: 16px; display: grid; gap: 10px;
+    }
+    .pulse-title { font-size: 15px; font-weight: 650; }
+    .pulse-sub { font-size: 11px; color: var(--muted); }
+    .metrics {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 4px;
+    }
+    .metric {
+      background: #0e0e10; border: 1px solid #2a2a2c; border-radius: 12px;
+      padding: 10px 8px; text-align: center;
+    }
+    .metric .n { font-size: 18px; font-weight: 700; color: var(--green); }
+    .metric .l { font-size: 10px; color: var(--dim); margin-top: 2px; }
+
+    .timeline {
+      display: grid; gap: 6px;
+    }
+    .tl-row {
+      display: flex; gap: 8px; align-items: center;
+      padding: 8px 10px; border-radius: 12px; background: #0e0e10; border: 1px solid #222;
+      font-size: 11px; color: #d1d1d6;
+    }
+    .tl-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0;
+    }
+    .tl-dot.leave { background: var(--amber); }
+    .tl-time { color: var(--dim); width: 36px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+    .pits {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-top: 16px;
+    }
+    .pit {
+      aspect-ratio: 1; border-radius: 14px; background: #0e0e10; border: 1px solid #2a2a2c;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    }
+    .pit-ico {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: linear-gradient(145deg, #5ac8fa, #007aff);
+    }
+    .pit:nth-child(2) .pit-ico { background: linear-gradient(145deg, #ff5a6a, #c9184a); }
+    .pit:nth-child(3) .pit-ico { background: linear-gradient(145deg, #30d158, #0a8f3c); }
+    .pit:nth-child(4) .pit-ico { background: #2c2c2e; border: 1px dashed #48484a; }
+    .pit-name { font-size: 9px; color: var(--dim); }
+
+    .workshop { padding-top: 16px; display: grid; gap: 8px; }
+    .workshop-title { font-size: 12px; font-weight: 650; color: var(--muted); margin-bottom: 2px; }
+    .cap-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; border-radius: 12px; background: #0e0e10; border: 1px solid #222;
+      font-size: 12px;
+    }
+    .cap-row .left { display: flex; align-items: center; gap: 8px; }
+    .cap-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .cap-row:nth-child(2) .cap-dot { background: var(--blue); }
+    .cap-row:nth-child(3) .cap-dot { background: var(--green); }
+    .cap-row:nth-child(4) .cap-dot { background: var(--amber); }
+    .cap-row:nth-child(5) .cap-dot { background: #bf5af2; }
+    .cap-n { font-size: 11px; color: var(--dim); }
+
+    .anchors { padding-top: 16px; display: grid; gap: 6px; }
+    .anchor-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      padding: 9px 12px; border-radius: 12px; background: #0e0e10; border: 1px solid #222;
+      font-size: 12px;
+    }
+    .anchor-row .sub { font-size: 10px; color: var(--dim); margin-top: 2px; }
+    .anchor-row .feed {
+      font-size: 10px; color: var(--green); background: var(--green-dim);
+      border-radius: 999px; padding: 3px 8px; white-space: nowrap;
+    }
+
+    .tabbar {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;
+      margin-top: 2px; padding: 8px 6px 4px;
+      border-top: 1px solid #1c1c1e;
+    }
+    .tab {
+      text-align: center; font-size: 10px; color: var(--dim); padding: 6px 0; border-radius: 10px;
+    }
+    .tab.on { color: var(--green); background: var(--green-dim); font-weight: 650; }
+
+    /* 对照表 */
+    .map {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 16px;
+      padding: 16px; overflow-x: auto;
+    }
+    .map h3 { font-size: 14px; font-weight: 650; margin-bottom: 4px; }
+    .map .sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; line-height: 1.45; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      text-align: left; padding: 10px 12px; border-bottom: 1px solid #222;
+      vertical-align: top; line-height: 1.45;
+    }
+    th { color: var(--dim); font-weight: 650; font-size: 11px; letter-spacing: .04em; }
+    td strong { color: #e8e8ed; font-weight: 650; }
+    td .mute { color: var(--dim); }
+    tr:last-child td { border-bottom: 0; }
+    .do { color: var(--green); }
+    .dont { color: #ff6b6b; }
+
+    .principles {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    @media (max-width: 720px) { .principles { grid-template-columns: 1fr; } }
+    .principle {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 14px; padding: 14px;
+    }
+    .principle h4 { font-size: 13px; font-weight: 650; margin-bottom: 6px; }
+    .principle p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    .footer-note {
+      text-align: center; font-size: 11px; color: #48484a; line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Structure Sketch · v1 → 细节见 positive-exit 草图</div>
+      <h1>门是舞台 · App 是镜子与工坊</h1>
+      <p>
+        价值发生在打开第三方 App 的瞬间；心锚本体不负责「管理人生」，
+        只负责把锚点配置好，并让人看见自己怎样进出。
+      </p>
+      <div class="thesis">主轴：打开前停一下 · 带着意图进出 · 离开也是胜利</div>
+    </header>
+
+    <section class="loops" aria-label="双环关系">
+      <div class="loop-card os">
+        <div class="tag">OS 环 · 主舞台</div>
+        <h2>门（意图门）</h2>
+        <p class="role">干预发生处。用户几乎不「打开心锚」，而是被门托住。</p>
+        <ol>
+          <li><span>1</span>打开被监控 App</li>
+          <li><span>2</span>停一下 · 写意图 / 搜索</li>
+          <li><span>3</span>进入 · 或离开守住</li>
+          <li><span>4</span>也可去做：此刻的事 / 计划 / 地方</li>
+          <li><span>5</span>胶囊专注 → 结束对照</li>
+        </ol>
+      </div>
+      <div class="arrow">
+        <div class="sym">⇄</div>
+        <div>喂给 / 回写</div>
+      </div>
+      <div class="loop-card app">
+        <div class="tag">App 环 · 镜子与工坊</div>
+        <h2>心锚 App</h2>
+        <p class="role">配置锚点、看见一天。轻打开，不为效率打卡。</p>
+        <ol>
+          <li><span>1</span>今日：带着意图 / 守住</li>
+          <li><span>2</span>能力：给 App 系锚</li>
+          <li><span>3</span>锚点库：事 · 计划 · 地方</li>
+          <li><span>4</span>回顾：周/日镜像</li>
+          <li><span>5</span>我：会员 · 设置 · 保活</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="phones">
+      <!-- 门 -->
+      <div>
+        <div class="col-head">
+          <h3>门 · 三区结构</h3>
+          <p>中区决策为主 · 下区正向出口收敛为心锚词汇</p>
+        </div>
+        <div class="phone">
+          <div class="status-bar"><span>9:41</span><span>门</span></div>
+
+          <section class="region gate-top">
+            <div class="region-tag tag-green">上区 · 语境</div>
+            <div class="app-meta">
+              <div class="app-icon">红</div>
+              <div>
+                <div class="app-name">小红书</div>
+                <div class="app-sub">今日第 3 次 · 打开前先停一下</div>
+              </div>
+            </div>
+            <div class="clock"><div class="clock-dot"></div></div>
+          </section>
+
+          <section class="region gate-mid">
+            <div class="region-tag tag-green">中区 · 决策</div>
+            <div class="mode-switch">
+              <span class="on">搜索直达</span>
+              <span>写意图</span>
+            </div>
+            <div class="search-row">
+              <span class="ph">输入内容，直达搜索</span>
+              <span class="search-go">进入</span>
+            </div>
+          </section>
+          <div class="leave">不进去了</div>
+
+          <section class="region gate-bot">
+            <div class="region-tag tag-amber">下区 · 正向出口</div>
+            <div class="bot-title">也可以去做</div>
+            <div class="exit-list">
+              <div class="exit">
+                <div class="exit-ico">◎</div>
+                <div>
+                  <div class="exit-name">此刻可做</div>
+                  <div class="exit-sub">短、轻、立刻离开</div>
+                </div>
+                <div class="exit-preview">走走 · 喝水 · 拉伸</div>
+              </div>
+              <div class="exit">
+                <div class="exit-ico">▤</div>
+                <div>
+                  <div class="exit-name">守计划</div>
+                  <div class="exit-sub">练习吉他 · 为了学吉他</div>
+                </div>
+                <div class="exit-preview">目标场景</div>
+              </div>
+              <div class="exit">
+                <div class="exit-ico">→</div>
+                <div>
+                  <div class="exit-name">想去的地方</div>
+                  <div class="exit-sub">换一个更值得的 App</div>
+                </div>
+                <div class="exit-preview">备忘录 · 音乐</div>
+              </div>
+            </div>
+            <div class="bot-note">三条都是「离开这条门」的出口 · 不是进门的捷径</div>
+            <div class="strike">不再用：<s>我的目标 / 我的待办 / 我的习惯</s></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- App -->
+      <div>
+        <div class="col-head">
+          <h3>App · 三层形态</h3>
+          <p>镜子看见 · 工坊系锚 · 锚点库喂门</p>
+        </div>
+        <div class="phone">
+          <div class="status-bar"><span>9:41</span><span>心锚</span></div>
+
+          <section class="region app-pulse">
+            <div class="region-tag tag-blue">① 镜子 · 今日</div>
+            <div class="pulse-title">今天</div>
+            <div class="pulse-sub">看见进出，不管理人生</div>
+            <div class="metrics">
+              <div class="metric"><div class="n">7</div><div class="l">带着意图</div></div>
+              <div class="metric"><div class="n">4</div><div class="l">守住</div></div>
+              <div class="metric"><div class="n">2</div><div class="l">去做了</div></div>
+            </div>
+            <div class="timeline" style="margin-top:8px;">
+              <div class="tl-row"><span class="tl-time">14:09</span><span class="tl-dot leave"></span>小红书 → 去做 · 出去走走</div>
+              <div class="tl-row"><span class="tl-time">13:40</span><span class="tl-dot leave"></span>抖音 · 守住离开</div>
+              <div class="tl-row"><span class="tl-time">12:18</span><span class="tl-dot"></span>微信 · 回消息 · 8 分</div>
+            </div>
+          </section>
+
+          <section class="region">
+            <div class="region-tag tag-blue">坑位 · 被系锚的 App</div>
+            <div class="pits">
+              <div class="pit"><div class="pit-ico"></div><div class="pit-name">抖音</div></div>
+              <div class="pit"><div class="pit-ico"></div><div class="pit-name">小红书</div></div>
+              <div class="pit"><div class="pit-ico"></div><div class="pit-name">微信</div></div>
+              <div class="pit"><div class="pit-ico"></div><div class="pit-name">+</div></div>
+            </div>
+          </section>
+
+          <section class="region workshop">
+            <div class="region-tag tag-blue">② 工坊 · 能力</div>
+            <div class="workshop-title">给值得守护的 App 系上锚</div>
+            <div class="cap-row"><div class="left"><span class="cap-dot"></span>时间感知</div><span class="cap-n">镜子</span></div>
+            <div class="cap-row"><div class="left"><span class="cap-dot"></span>意图门</div><span class="cap-n">门槛 · 3</span></div>
+            <div class="cap-row"><div class="left"><span class="cap-dot"></span>时长锁</div><span class="cap-n">边界 · 2</span></div>
+            <div class="cap-row"><div class="left"><span class="cap-dot"></span>时段锁</div><span class="cap-n">主权 · 1</span></div>
+          </section>
+
+          <section class="region anchors">
+            <div class="region-tag tag-amber">③ 锚点库 · 喂给门</div>
+            <div class="anchor-row">
+              <div>有意义的事<div class="sub">维护「此刻可做」清单</div></div>
+              <span class="feed">→ 门·下区</span>
+            </div>
+            <div class="anchor-row">
+              <div>守计划<div class="sub">时间块 · 可标目标/习惯场景</div></div>
+              <span class="feed">→ 门·下区</span>
+            </div>
+            <div class="anchor-row">
+              <div>想去的地方<div class="sub">离开后露出的正向 App</div></div>
+              <span class="feed">→ 门·离开</span>
+            </div>
+          </section>
+
+          <div class="tabbar">
+            <div class="tab on">今日</div>
+            <div class="tab">能力</div>
+            <div class="tab">我</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="map">
+      <h3>对照：谁在前台 · 谁在后台</h3>
+      <p class="sub">同一套能力，只在「门」里被体验，在「App」里被配置与回看。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>能力 / 概念</th>
+            <th>门上（体验）</th>
+            <th>App 里（形态）</th>
+            <th>原则</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>意图</strong></td>
+            <td>搜索直达 / 写意图 / 常用意图</td>
+            <td>常用意图管理 · 意图池统计</td>
+            <td class="do">门上写 · App 里整理</td>
+          </tr>
+          <tr>
+            <td><strong>离开 / 守住</strong></td>
+            <td>「不进去了」+ 肯定语（中区卡片外）</td>
+            <td>今日计数 · 时间轴事件</td>
+            <td class="do">门上发生 · App 里看见</td>
+          </tr>
+          <tr>
+            <td><strong>此刻可做</strong></td>
+            <td>下区第一条 · 立刻可点</td>
+            <td>锚点库「有意义的事」</td>
+            <td class="do">清单喂门，不做成习惯 App</td>
+          </tr>
+          <tr>
+            <td><strong>守计划</strong></td>
+            <td>下区第二条 · 可带「为了 · 目标/习惯」</td>
+            <td>计划块 + 场景标签（目标/习惯/生活）</td>
+            <td class="do">场景是标签，不是平级入口</td>
+          </tr>
+          <tr>
+            <td><strong>去做了</strong></td>
+            <td>点正向出口 → 轻条肯定</td>
+            <td>今日计数 + 时间轴事件</td>
+            <td class="do">记选择；不做打卡 streak</td>
+          </tr>
+          <tr>
+            <td><strong>想去的地方</strong></td>
+            <td>离开后 / 下区第三条</td>
+            <td>正向目的地多选配置</td>
+            <td class="do">换轨，不是再开一个效率面</td>
+          </tr>
+          <tr>
+            <td><strong>目标 / 待办 / 习惯</strong></td>
+            <td class="mute">不下沉到门</td>
+            <td class="mute">不做独立产品线</td>
+            <td class="dont">避免半套 GTD</td>
+          </tr>
+          <tr>
+            <td><strong>时长 / 时段锁</strong></td>
+            <td>到达边界时另一层门</td>
+            <td>能力配置 · VIP</td>
+            <td class="do">边界服务门槛，不抢主叙事</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="principles">
+      <div class="principle">
+        <h4>1. 一门一问</h4>
+        <p>中区只问「这一次做什么」。时长后置，正向出口不抢决策主位。</p>
+      </div>
+      <div class="principle">
+        <h4>2. 离开优先</h4>
+        <p>下区三条都是离开门的路。进门只有一条：带着意图确认进入。</p>
+      </div>
+      <div class="principle">
+        <h4>3. App 不争戏</h4>
+        <p>底部仍可「今日 | 能力 | 我」。探索能力收敛进锚点库，少做独立玩法堆叠。</p>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      草图定位：信息架构校准 · 非最终视觉稿<br />
+      相对现网：保留三区门结构与三 Tab App；替换下区 GTD 占位；把探索里的正向能力明确标成「喂给门的锚点库」。
+    </p>
+  </div>
+</body>
+</html>

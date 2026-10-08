@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>觉察日记为主 · 事上 / 身上 · 草图</title>
+  <style>
+    :root {
+      --ink: #e8ede6;
+      --mist: #5c655e;
+      --fog: #8b938c;
+      --paper: #e8ede6;
+      --leaf: #3d7a4a;
+      --leaf-text: #9fd4a8;
+      --leaf-soft: rgba(61,122,74,.16);
+      --line: rgba(232,237,230,.12);
+      --warm: #c4a35a;
+      --warm-soft: rgba(196,163,90,.12);
+      --warm-text: #e0c98a;
+      --body: #7a9bb8;
+      --body-text: #a8c4d8;
+      --body-soft: rgba(122,155,184,.14);
+      --browse: #c47a9a;
+      --heavy: #c47a9a;
+      --heavy-text: #e0b4c8;
+      --bg: #070908;
+      --door: #0a0c0b;
+      --bar: rgba(18,22,20,.94);
+      --paper-room: #12140f;
+      --paper-ink: #e6e2d6;
+      --paper-mute: #8a8678;
+      --paper-rule: rgba(230,226,214,.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background:
+        radial-gradient(ellipse at 30% -10%, #1a2420 0%, transparent 48%),
+        radial-gradient(ellipse at 88% 6%, rgba(122,155,184,.06), transparent 36%),
+        var(--bg);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 100px;
+    }
+    .wrap { max-width: 1140px; margin: 0 auto; }
+
+    .hero { text-align: center; max-width: 680px; margin: 0 auto 40px; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf-text);
+      font-weight: 600; margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 12px; font-size: 14px; color: var(--fog); line-height: 1.75; }
+    .thesis {
+      margin-top: 14px; display: inline-block;
+      padding: 8px 14px; border-radius: 999px;
+      background: var(--leaf-soft); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be; line-height: 1.45;
+    }
+
+    .section { margin-bottom: 58px; }
+    .sec-head { text-align: center; margin-bottom: 18px; }
+    .sec-head h2 { font-size: 15px; font-weight: 650; }
+    .sec-head p {
+      margin-top: 8px; font-size: 13px; color: var(--fog);
+      line-height: 1.65; max-width: 600px; margin-left: auto; margin-right: auto;
+    }
+
+    .note {
+      max-width: 720px; margin: 0 auto 20px;
+      padding: 14px 16px;
+      border-left: 2px solid var(--leaf);
+      background: rgba(255,255,255,.02);
+      border-radius: 0 10px 10px 0;
+      font-size: 13px; color: var(--fog); line-height: 1.7;
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+    .note.warm { border-left-color: var(--warm); }
+    .note.body { border-left-color: var(--body); }
+    .note.dim { border-left-color: var(--mist); }
+
+    /* 主从图 */
+    .orbit {
+      max-width: 640px; margin: 0 auto 22px;
+      padding: 22px 20px 18px;
+      border: 1px solid var(--line); border-radius: 18px;
+      background: rgba(255,255,255,.02);
+      text-align: center;
+    }
+    .orbit .core {
+      display: inline-block;
+      padding: 14px 28px; border-radius: 16px;
+      border: 1px solid rgba(61,122,74,.4);
+      background: var(--leaf-soft);
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 18px; font-weight: 500; color: var(--paper);
+      margin-bottom: 16px;
+    }
+    .orbit .core span {
+      display: block; font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 11px; color: var(--leaf-text); margin-top: 4px;
+      letter-spacing: .06em; font-weight: 600;
+    }
+    .orbit .feeds {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      max-width: 480px; margin: 0 auto 12px;
+    }
+    .orbit .feed {
+      padding: 12px 12px; border-radius: 12px;
+      border: 1px solid var(--line); font-size: 12px; color: var(--fog);
+      line-height: 1.5; text-align: left;
+    }
+    .orbit .feed.task { border-color: rgba(196,163,90,.35); }
+    .orbit .feed.self { border-color: rgba(122,155,184,.4); }
+    .orbit .feed .k {
+      font-size: 11px; font-weight: 650; letter-spacing: .04em; margin-bottom: 4px;
+    }
+    .orbit .feed.task .k { color: var(--warm-text); }
+    .orbit .feed.self .k { color: var(--body-text); }
+    .orbit .aux {
+      font-size: 12px; color: var(--mist); line-height: 1.55;
+    }
+    .orbit .aux strong { color: var(--leaf-text); font-weight: 600; }
+
+    .flow {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+      gap: 8px; max-width: 900px; margin: 0 auto 8px; font-size: 13px; color: var(--fog);
+    }
+    .flow .chip {
+      padding: 8px 12px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--paper); font-weight: 500;
+      background: rgba(255,255,255,.02);
+    }
+    .flow .chip.diary {
+      border-color: rgba(61,122,74,.45); color: var(--leaf-text);
+      background: var(--leaf-soft);
+    }
+    .flow .chip.task { border-color: rgba(196,163,90,.45); color: var(--warm-text); }
+    .flow .chip.self { border-color: rgba(122,155,184,.45); color: var(--body-text); }
+    .flow .chip.q {
+      border-style: dashed; opacity: .85; font-size: 12px;
+    }
+    .flow .chip.heavy { border-color: rgba(196,122,154,.4); color: var(--heavy-text); }
+    .flow .arrow { color: var(--mist); font-size: 12px; }
+
+    .stack {
+      max-width: 600px; margin: 0 auto 8px;
+      display: grid; gap: 8px;
+    }
+    .stack-row {
+      display: flex; align-items: baseline; gap: 12px;
+      padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+      font-size: 13px; color: var(--fog);
+    }
+    .stack-row .n {
+      flex: none; width: 64px; font-size: 11px; font-weight: 650;
+      letter-spacing: .04em;
+    }
+    .stack-row.diary .n { color: var(--leaf-text); }
+    .stack-row.task .n { color: var(--warm-text); }
+    .stack-row.self .n { color: var(--body-text); }
+    .stack-row.q .n { color: var(--mist); }
+    .stack-row strong { color: var(--paper); font-weight: 600; }
+
+    .compare {
+      max-width: 720px; margin: 0 auto 8px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    @media (max-width: 700px) { .compare { grid-template-columns: 1fr; } }
+    .compare .card {
+      padding: 16px 16px 14px; border-radius: 14px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.02);
+    }
+    .compare .card.task { border-color: rgba(196,163,90,.35); }
+    .compare .card.self { border-color: rgba(122,155,184,.4); }
+    .compare .card h3 {
+      font-size: 14px; font-weight: 650; margin-bottom: 6px;
+    }
+    .compare .card.task h3 { color: var(--warm-text); }
+    .compare .card.self h3 { color: var(--body-text); }
+    .compare .card .sub {
+      font-size: 11px; color: var(--mist); margin-bottom: 12px; line-height: 1.45;
+    }
+    .compare .card ul {
+      list-style: none; font-size: 12px; color: var(--fog); line-height: 1.7;
+    }
+    .compare .card ul li::before {
+      content: "·"; margin-right: 6px; color: var(--mist);
+    }
+    .compare .card ul strong { color: var(--paper); font-weight: 600; }
+
+    .row2, .row3 {
+      display: grid; gap: 22px; align-items: start; justify-content: center;
+    }
+    .row2 { grid-template-columns: repeat(2, minmax(0, 280px)); }
+    .row3 { grid-template-columns: repeat(3, minmax(0, 270px)); }
+    @media (max-width: 900px) {
+      .row2, .row3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 280px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; font-weight: 650; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+    .col-head .tag {
+      display: inline-block; margin-top: 6px; font-size: 11px;
+      padding: 2px 8px; border-radius: 999px;
+    }
+    .col-head .tag.task {
+      color: var(--warm-text); border: 1px solid rgba(196,163,90,.4);
+    }
+    .col-head .tag.self {
+      color: var(--body-text); border: 1px solid rgba(122,155,184,.4);
+    }
+    .col-head .tag.diary {
+      color: var(--leaf-text); border: 1px solid rgba(61,122,74,.4);
+    }
+    .col-head .tag.heavy {
+      color: var(--heavy-text); border: 1px solid rgba(196,122,154,.4);
+    }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9/17.8;
+      border-radius: 30px; border: 1px solid rgba(255,255,255,.1);
+      background: var(--door); overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0,0,0,.45);
+      display: flex; flex-direction: column; margin: 0 auto;
+      position: relative;
+    }
+    .phone.tall { aspect-ratio: 9/19.2; }
+    .phone.short { aspect-ratio: 9/15.2; }
+    .phone.paper-room {
+      background: var(--paper-room);
+      border-color: rgba(230,226,214,.12);
+    }
+    .statusbar {
+      height: 26px; padding: 10px 16px 0;
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex: none;
+    }
+    .phone.paper-room .statusbar { color: rgba(230,226,214,.35); }
+    .body-pad {
+      flex: 1; padding: 4px 16px 14px;
+      display: flex; flex-direction: column; min-height: 0;
+    }
+
+    .blur-app {
+      position: absolute; inset: 26px 0 0; opacity: .22;
+      padding: 12px 18px; pointer-events: none;
+      font-size: 11px; color: var(--fog);
+    }
+    .blur-app .fake-feed { margin-top: 10px; display: grid; gap: 8px; }
+    .blur-app .card {
+      height: 48px; border-radius: 10px; background: rgba(255,255,255,.06);
+    }
+
+    .panel {
+      margin-top: auto;
+      background: var(--bar);
+      border: 1px solid var(--line);
+      border-radius: 18px 18px 14px 14px;
+      padding: 14px 14px 12px;
+    }
+    .panel .app-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; color: var(--mist); margin-bottom: 10px;
+    }
+    .panel .app-row .left { display: flex; align-items: center; gap: 8px; }
+    .panel .dot {
+      width: 18px; height: 18px; border-radius: 5px;
+      background: linear-gradient(135deg, #3a4a3e, #1e2822);
+    }
+    .panel .time { font-variant-numeric: tabular-nums; color: var(--fog); }
+    .panel .intent { font-size: 13px; color: var(--paper); margin-bottom: 10px; }
+
+    .island {
+      margin: 8px 0 10px; padding: 12px 12px 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(196,163,90,.3);
+      background: var(--warm-soft);
+    }
+    .island .q { font-size: 13px; color: var(--paper); line-height: 1.4; }
+    .island .hint {
+      margin-top: 4px; font-size: 10px; color: var(--warm-text); letter-spacing: .04em;
+    }
+    .island .acts {
+      margin-top: 10px; display: flex; gap: 16px; font-size: 13px;
+    }
+    .island .acts .y { color: var(--warm-text); }
+    .island .acts .n { color: var(--fog); }
+
+    .dual-cta {
+      border-top: 1px solid var(--line); padding-top: 10px;
+      display: grid; gap: 8px;
+    }
+    .dual-cta .row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 0;
+    }
+    .dual-cta .t { font-size: 13px; }
+    .dual-cta .t.task { color: var(--warm-text); }
+    .dual-cta .t.self { color: var(--body-text); }
+    .dual-cta .sub { font-size: 11px; color: var(--mist); margin-top: 2px; }
+
+    .mark-entry { border-top: 1px solid var(--line); padding-top: 12px; }
+    .mark-entry .lab {
+      font-size: 11px; font-weight: 600; letter-spacing: .04em; margin-bottom: 8px;
+    }
+    .mark-entry.task .lab { color: var(--warm-text); }
+    .mark-entry.self .lab { color: var(--body-text); }
+    .mark-entry .val {
+      font-size: 14px; color: var(--paper);
+      border-bottom: 1px solid rgba(232,237,230,.22);
+      padding-bottom: 8px;
+    }
+    .mark-entry .hint-line {
+      font-size: 14px; color: var(--mist);
+      border-bottom: 1px solid rgba(232,237,230,.14);
+      padding-bottom: 8px;
+    }
+    .mark-chips {
+      margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .mark-chips span {
+      font-size: 11px; padding: 5px 9px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--fog);
+    }
+    .mark-chips.task span.on {
+      border-color: rgba(196,163,90,.45); color: var(--warm-text);
+      background: var(--warm-soft);
+    }
+    .mark-chips.self span.on {
+      border-color: rgba(122,155,184,.5); color: var(--body-text);
+      background: var(--body-soft);
+    }
+    .mark-foot {
+      margin-top: 12px; display: flex; justify-content: space-between;
+      font-size: 13px;
+    }
+    .mark-foot .ghost { color: var(--mist); }
+    .mark-foot .go.task { color: var(--warm-text); }
+    .mark-foot .go.self { color: var(--body-text); }
+
+    .leave-pad { padding: 8px 4px 0; display: flex; flex-direction: column; height: 100%; }
+    .leave-pad .app { font-size: 11px; color: var(--mist); }
+    .leave-pad .title {
+      margin-top: 14px;
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500; line-height: 1.3;
+    }
+    .leave-pad .meta { margin-top: 8px; font-size: 13px; color: var(--fog); }
+    .leave-pad .block { margin-top: 16px; }
+    .leave-pad .block .h {
+      font-size: 11px; font-weight: 600; letter-spacing: .04em; margin-bottom: 8px;
+    }
+    .leave-pad .block .h.task { color: var(--warm-text); }
+    .leave-pad .block .h.self { color: var(--body-text); }
+    .leave-pad .block .h.q { color: var(--leaf-text); }
+    .marks-list { display: grid; gap: 6px; }
+    .marks-list .m {
+      font-size: 12px; color: var(--fog);
+      padding: 7px 10px; border-radius: 10px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(232,237,230,.06);
+    }
+    .marks-list .m em {
+      font-style: normal; font-size: 10px; margin-right: 6px; color: var(--mist);
+    }
+    .marks-list .m.task strong { color: var(--warm-text); font-weight: 500; }
+    .marks-list .m.self strong { color: var(--body-text); font-weight: 500; }
+    .ask-card {
+      margin-top: 8px; padding: 12px 12px 10px;
+      border-radius: 12px; border: 1px solid rgba(61,122,74,.28);
+      background: var(--leaf-soft);
+    }
+    .ask-card .role {
+      font-size: 10px; color: var(--leaf-text); letter-spacing: .04em;
+      margin-bottom: 6px; font-weight: 600;
+    }
+    .ask-card .q { font-size: 14px; color: var(--paper); line-height: 1.45; }
+    .ask-card .acts { margin-top: 12px; display: flex; gap: 18px; font-size: 13px; }
+    .ask-card .acts span { color: var(--leaf-text); }
+    .ask-card .acts .sec { color: var(--fog); }
+    .leave-actions {
+      margin-top: auto; padding-top: 16px;
+      display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    }
+    .leave-actions .pri { font-size: 15px; color: var(--leaf-text); }
+    .leave-actions .heavy-link { font-size: 13px; color: var(--heavy-text); }
+    .leave-actions .skip { font-size: 13px; color: var(--mist); }
+
+    .write-room {
+      padding: 4px 2px 0; display: flex; flex-direction: column; height: 100%;
+      color: var(--paper-ink);
+    }
+    .write-room .crumb { font-size: 11px; color: var(--paper-mute); margin-bottom: 12px; }
+    .write-room .seed {
+      font-size: 12px; padding: 8px 10px; border-radius: 10px;
+      margin-bottom: 14px; line-height: 1.45;
+    }
+    .write-room .seed.task {
+      color: var(--warm-text);
+      background: rgba(196,163,90,.1);
+      border: 1px solid rgba(196,163,90,.22);
+    }
+    .write-room .seed.self {
+      color: var(--body-text);
+      background: var(--body-soft);
+      border: 1px solid rgba(122,155,184,.3);
+    }
+    .write-room .seed em {
+      font-style: normal; color: var(--paper-mute); font-size: 10px;
+      display: block; margin-bottom: 4px; letter-spacing: .04em;
+    }
+    .write-room .title-field {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 20px; font-weight: 500; margin-bottom: 6px;
+    }
+    .write-room .ctx { font-size: 11px; color: var(--paper-mute); margin-bottom: 16px; }
+    .write-room .body-field {
+      flex: 1;
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 15px; line-height: 1.75; color: rgba(230,226,214,.88);
+    }
+    .write-room .foot {
+      margin-top: 12px; padding-top: 10px;
+      border-top: 1px solid var(--paper-rule);
+      display: flex; justify-content: space-between; font-size: 13px;
+    }
+    .write-room .foot .back { color: var(--paper-mute); }
+    .write-room .foot .save { color: #d4b8c4; }
+
+    .diary {
+      padding: 6px 2px 0; display: flex; flex-direction: column; height: 100%;
+    }
+    .diary .day {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 20px; font-weight: 500;
+    }
+    .diary .sum { margin-top: 6px; font-size: 12px; color: var(--fog); }
+    .diary .entries { margin-top: 14px; display: grid; gap: 14px; flex: 1; }
+    .diary .entry { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .diary .entry:last-child { border-bottom: none; }
+    .diary .when { font-size: 11px; color: var(--mist); margin-bottom: 6px; }
+    .diary .line {
+      font-size: 13px; line-height: 1.45;
+      padding-left: 8px; margin: 4px 0;
+    }
+    .diary .line.task {
+      color: var(--paper);
+      border-left: 2px solid rgba(196,163,90,.5);
+    }
+    .diary .line.self {
+      color: var(--paper);
+      border-left: 2px solid rgba(122,155,184,.55);
+    }
+    .diary .line.q {
+      font-size: 12px; color: var(--leaf-text);
+      border-left: 2px solid rgba(61,122,74,.4);
+    }
+    .diary .line .kind {
+      font-size: 10px; font-weight: 650; letter-spacing: .04em;
+      margin-right: 6px;
+    }
+    .diary .line.task .kind { color: var(--warm-text); }
+    .diary .line.self .kind { color: var(--body-text); }
+    .diary .expand {
+      font-size: 11px; color: var(--heavy-text); margin: 4px 0 0 10px;
+    }
+    .diary .foot {
+      margin-top: auto; font-size: 11px; color: var(--mist);
+      text-align: center; padding-top: 8px;
+    }
+
+    .grow-steps {
+      max-width: 560px; margin: 0 auto; display: grid;
+    }
+    .grow-steps .step {
+      display: grid; grid-template-columns: 28px 1fr; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--line);
+      font-size: 13px; color: var(--fog); line-height: 1.55;
+    }
+    .grow-steps .step:last-child { border-bottom: none; }
+    .grow-steps .num {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 650;
+      border: 1px solid var(--line); color: var(--mist);
+    }
+    .grow-steps .step.now .num {
+      border-color: rgba(61,122,74,.5); color: var(--leaf-text);
+      background: var(--leaf-soft);
+    }
+    .grow-steps .step.later .num { opacity: .55; }
+    .grow-steps .step strong { color: var(--paper); font-weight: 600; }
+    .grow-steps .step .when {
+      display: block; font-size: 11px; color: var(--mist); margin-top: 2px;
+    }
+
+    .table-wrap { max-width: 740px; margin: 0 auto; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      text-align: left; padding: 10px 12px;
+      border-bottom: 1px solid var(--line); vertical-align: top;
+    }
+    th { color: var(--mist); font-weight: 600; font-size: 11px; }
+    td { color: var(--fog); line-height: 1.5; }
+    td strong { color: var(--paper); font-weight: 600; }
+    td .ok { color: var(--leaf-text); }
+    td .cut { color: #c47a6a; text-decoration: line-through; opacity: .7; }
+
+    .footer-rule {
+      max-width: 680px; margin: 0 auto; text-align: center;
+      font-size: 13px; color: var(--fog); line-height: 1.75;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">DIARY FIRST · TASK / SELF · NOURISH</div>
+      <h1>觉察日记为主 · 事上与身上</h1>
+      <p>
+        日记是主。觉察问题只为滋养日记——补一句、落一条，不自成一套。
+        轻记分两类：事上的，围着当下意图，稍被动地被问题托住；
+        身上的，围着想法 / 身体 / 情绪，主动伸手去记。
+      </p>
+      <div class="thesis">日记为主 · 问题滋养 · 事上稍被动 · 身上主动 · 可展开成重</div>
+    </header>
+
+    <!-- 主从 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>一 · 主从关系</h2>
+        <p>日记在中心；两类轻记喂进来；问题只是事上那一支的辅料。</p>
+      </div>
+      <div class="orbit">
+        <div class="core">
+          觉察日记
+          <span>主 · 有则成篇 · 无则空着</span>
+        </div>
+        <div class="feeds">
+          <div class="feed task">
+            <div class="k">事上轻记</div>
+            围着这场意图 / 当下在做的事。<br />
+            问题轻轻递过来 → 答完落进日记。
+          </div>
+          <div class="feed self">
+            <div class="k">身上轻记</div>
+            想法 · 身体 · 情绪。<br />
+            自己伸手记 → 直接落进日记。
+          </div>
+        </div>
+        <div class="aux">
+          <strong>觉察问题</strong> = 滋养物，不是主菜。
+          服务「事上」与离开收束；不脱离日记独自成体系。
+        </div>
+      </div>
+      <div class="flow" style="margin-bottom: 14px;">
+        <span class="chip task">事上轻记</span>
+        <span class="chip q">← 问题滋养</span>
+        <span class="arrow">↘</span>
+        <span class="chip diary">觉察日记</span>
+        <span class="arrow">↙</span>
+        <span class="chip self">身上轻记</span>
+        <span class="arrow">→</span>
+        <span class="chip heavy">可选展开</span>
+      </div>
+      <div class="stack">
+        <div class="stack-row diary">
+          <span class="n">主</span>
+          <span><strong>日记</strong>可以没有问题，也可以只有轻记；问题不能没有日记可去</span>
+        </div>
+        <div class="stack-row q">
+          <span class="n">辅</span>
+          <span><strong>问题</strong>补养分：到点递一句，答完写成日记里的一行</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 两类轻记 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>二 · 轻记两类</h2>
+        <p>一条线补「事」，一条线补「人」。都进同一本日记。</p>
+      </div>
+      <div class="compare">
+        <div class="card task">
+          <h3>事上 · 稍被动</h3>
+          <div class="sub">有意图地使用 App 期间 · 围着当下做的事</div>
+          <ul>
+            <li>锚点：这场<strong>意图 / 正在做的事</strong></li>
+            <li>姿态：问题<strong>轻轻递来</strong>，你补一句</li>
+            <li>例子：「还在回消息吗？」「偏到哪了？」</li>
+            <li>进日记：挂在<strong>事线</strong>旁</li>
+            <li>随意浏览：中途少问；离开可问「待得有数吗」</li>
+          </ul>
+        </div>
+        <div class="card self">
+          <h3>身上 · 主动</h3>
+          <div class="sub">不绑意图完备 · 围着此刻的人</div>
+          <ul>
+            <li>锚点：<strong>想法 / 身体 / 情绪</strong></li>
+            <li>姿态：自己<strong>伸手去记</strong></li>
+            <li>例子：「心里有点赶」「肩紧」「忽然想逃」</li>
+            <li>进日记：自成一条<strong>人线</strong></li>
+            <li>使用中 / 离开后 / 日记里都可记</li>
+          </ul>
+        </div>
+      </div>
+      <div class="note" style="margin-top: 18px;">
+        <strong>「稍微被动」</strong>不是审讯，是围着正在做的事递一句，
+        帮你把走神、偏离、刚想到的事写进日记——问题是工具，日记才是收纳。
+      </div>
+    </section>
+
+    <!-- 事上：问题滋养 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>三 · 事上 · 问题滋养轻记</h2>
+        <p>练习开着时，轻问落在面板/岛上；答完 = 一条事上轻记进日记。</p>
+      </div>
+      <div class="note warm">
+        <strong>答即记。</strong>点「还在 / 偏了」不只是关掉问题，而是往日记里落一行。
+        也可在答之后补半句：「偏了 · 去看朋友圈了」。
+      </div>
+      <div class="row3">
+        <div>
+          <div class="col-head">
+            <h3>问题递来</h3>
+            <p>围着意图</p>
+            <span class="tag task">稍被动</span>
+          </div>
+          <div class="phone short">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="blur-app">
+              <div>微信</div>
+              <div class="fake-feed"><div class="card"></div><div class="card"></div></div>
+            </div>
+            <div class="body-pad" style="justify-content:flex-end; position:relative; z-index:1;">
+              <div class="panel">
+                <div class="app-row">
+                  <div class="left"><span class="dot"></span>微信</div>
+                  <span class="time">6:12</span>
+                </div>
+                <div class="intent">回消息</div>
+                <div class="island">
+                  <div class="hint">事上 · 问题滋养</div>
+                  <div class="q">还在做「回消息」吗？</div>
+                  <div class="acts">
+                    <span class="y">还在</span>
+                    <span class="n">已经偏了</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>答完可补半句</h3>
+            <p>仍轻 · 落日记</p>
+            <span class="tag task">事上轻记</span>
+          </div>
+          <div class="phone short">
+            <div class="statusbar"><span>9:41</span><span>●●</span></div>
+            <div class="body-pad" style="justify-content:flex-end;">
+              <div class="panel">
+                <div class="mark-entry task">
+                  <div class="lab">事上 · 补一句</div>
+                  <div class="val">已经偏了 · 去看朋友圈了</div>
+                  <div class="mark-chips task">
+                    <span>还在</span>
+                    <span class="on">偏了</span>
+                    <span>刚想到别的事</span>
+                  </div>
+                  <div class="mark-foot">
+                    <span class="ghost">就这样</span>
+                    <span class="go task">记下</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>面板也可主动补事</h3>
+            <p>不等问题</p>
+            <span class="tag task">可选</span>
+          </div>
+          <div class="phone short">
+            <div class="statusbar"><span>9:44</span><span>●●</span></div>
+            <div class="body-pad" style="justify-content:flex-end;">
+              <div class="panel">
+                <div class="app-row">
+                  <div class="left"><span class="dot"></span>微信</div>
+                  <span class="time">8:40</span>
+                </div>
+                <div class="intent">回消息</div>
+                <div class="dual-cta">
+                  <div class="row">
+                    <div>
+                      <div class="t task">补事上</div>
+                      <div class="sub">围着「回消息」记一笔</div>
+                    </div>
+                    <span style="color:var(--mist)">›</span>
+                  </div>
+                  <div class="row">
+                    <div>
+                      <div class="t self">记身上</div>
+                      <div class="sub">想法 · 身体 · 情绪</div>
+                    </div>
+                    <span style="color:var(--mist)">›</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 身上：主动 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>四 · 身上 · 主动伸手</h2>
+        <p>不靠问题催。芯片偏内感；可在使用中、离开后、日记里记。</p>
+      </div>
+      <div class="note body">
+        <strong>人线独立。</strong>哪怕这场没有意图命名、或随意浏览，
+        仍可记下「肩紧 / 想逃 / 忽然空一下」——日记因此有温度，不只有效率。
+      </div>
+      <div class="row2">
+        <div>
+          <div class="col-head">
+            <h3>记身上</h3>
+            <p>想法 / 身体 / 情绪</p>
+            <span class="tag self">主动</span>
+          </div>
+          <div class="phone short">
+            <div class="statusbar"><span>9:45</span><span>●●</span></div>
+            <div class="body-pad" style="justify-content:flex-end;">
+              <div class="panel">
+                <div class="mark-entry self">
+                  <div class="lab">身上 · 此刻</div>
+                  <div class="val">肩有点紧 · 心里赶</div>
+                  <div class="mark-chips self">
+                    <span class="on">身体</span>
+                    <span class="on">情绪</span>
+                    <span>想法</span>
+                    <span>想逃</span>
+                    <span>空一下</span>
+                  </div>
+                  <div class="mark-foot">
+                    <span class="ghost">取消</span>
+                    <span class="go self">记下</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>不绑 App 也可</h3>
+            <p>日记里直接记身上</p>
+            <span class="tag self">人线</span>
+          </div>
+          <div class="phone short">
+            <div class="statusbar"><span>22:00</span><span>●●</span></div>
+            <div class="body-pad">
+              <div class="diary" style="padding-top:8px;">
+                <div class="day">此刻</div>
+                <div class="sum">不挂某场 · 只记人</div>
+                <div style="margin-top:20px;" class="mark-entry self">
+                  <div class="lab">身上</div>
+                  <div class="hint-line">这一刻的身体或心情…</div>
+                  <div class="mark-chips self">
+                    <span>平静</span>
+                    <span>烦</span>
+                    <span>累</span>
+                    <span>轻快</span>
+                  </div>
+                  <div class="mark-foot">
+                    <span class="ghost">取消</span>
+                    <span class="go self">记下</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 离开：两类痕迹 + 问题滋养 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>五 · 离开 · 回看两类痕迹</h2>
+        <p>问题仍可再滋养一句；「写长一点」展开成重。</p>
+      </div>
+      <div class="row2">
+        <div>
+          <div class="col-head">
+            <h3>事线 + 人线</h3>
+            <p>分色呈现</p>
+            <span class="tag diary">先回看</span>
+          </div>
+          <div class="phone tall">
+            <div class="statusbar"><span>9:48</span><span>●●</span></div>
+            <div class="body-pad">
+              <div class="leave-pad">
+                <div class="app">微信 · 回消息 · 12 分</div>
+                <div class="title">这一次</div>
+                <div class="meta">事上 1 · 身上 1</div>
+                <div class="block">
+                  <div class="h task">事上</div>
+                  <div class="marks-list">
+                    <div class="m task"><em>6:18</em><strong>偏了 · 去看朋友圈了</strong></div>
+                  </div>
+                </div>
+                <div class="block">
+                  <div class="h self">身上</div>
+                  <div class="marks-list">
+                    <div class="m self"><em>7:02</em><strong>肩紧 · 心里赶</strong></div>
+                  </div>
+                </div>
+                <div class="block">
+                  <div class="h q">再滋养一句？</div>
+                  <div class="ask-card">
+                    <div class="role">问题 · 辅</div>
+                    <div class="q">和进门比，这一次有没有跑偏？</div>
+                    <div class="acts">
+                      <span>没跑偏</span>
+                      <span class="sec">跑偏了</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="leave-actions">
+                  <span class="pri">离开</span>
+                  <span class="heavy-link">写长一点</span>
+                  <span class="skip">跳过</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>从种子展开</h3>
+            <p>事上或身上都可进书写室</p>
+            <span class="tag heavy">重 · 可选</span>
+          </div>
+          <div class="phone tall paper-room">
+            <div class="statusbar"><span>9:50</span><span>●●</span></div>
+            <div class="body-pad">
+              <div class="write-room">
+                <div class="crumb">日记 · 写长一点</div>
+                <div class="seed task">
+                  <em>事上种子</em>
+                  偏了 · 去看朋友圈了
+                </div>
+                <div class="seed self">
+                  <em>身上种子</em>
+                  肩紧 · 心里赶
+                </div>
+                <div class="title-field">朋友圈滑远了</div>
+                <div class="ctx">两粒种子可写进同一篇</div>
+                <div class="body-field">
+                  肩已经紧了还在滑。回来时消息还躺着……<span style="opacity:.35;">|</span>
+                </div>
+                <div class="foot">
+                  <span class="back">返回</span>
+                  <span class="save">收下 · 进日记</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 日记长成 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>六 · 日记长成</h2>
+        <p>事线 / 人线 / 问题答句，同页可读；轻可展成重。</p>
+      </div>
+      <div class="row2">
+        <div>
+          <div class="col-head">
+            <h3>今日</h3>
+            <p>养分都看得见</p>
+            <span class="tag diary">主</span>
+          </div>
+          <div class="phone tall">
+            <div class="statusbar"><span>22:10</span><span>●●</span></div>
+            <div class="body-pad">
+              <div class="diary">
+                <div class="day">10 月 8 日</div>
+                <div class="sum">事上 2 · 身上 2 · 问题滋养 2 · 展开 1</div>
+                <div class="entries">
+                  <div class="entry">
+                    <div class="when">上午 9:36 · 微信 · 回消息 · 12 分</div>
+                    <div class="line task"><span class="kind">事</span>偏了 · 去看朋友圈了</div>
+                    <div class="line self"><span class="kind">身</span>肩紧 · 心里赶</div>
+                    <div class="line q">问题 · 跑偏了</div>
+                    <div class="expand">已写长 · 朋友圈滑远了 ›</div>
+                  </div>
+                  <div class="entry">
+                    <div class="when">午后 14:18 · 抖音 · 随意浏览 · 10 分</div>
+                    <div class="line self"><span class="kind">身</span>有点空 · 还想滑</div>
+                    <div class="line q">问题 · 待得有点久</div>
+                    <div class="expand">写长一点 ›</div>
+                  </div>
+                  <div class="entry">
+                    <div class="when">晚 21:40 · 不挂场</div>
+                    <div class="line self"><span class="kind">身</span>今天肩都紧着</div>
+                  </div>
+                </div>
+                <div class="foot">问题是养分 · 日记是土壤</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>生长</h3>
+            <p>大楼是结果</p>
+          </div>
+          <div class="grow-steps" style="margin-top:8px;">
+            <div class="step now">
+              <div class="num">1</div>
+              <div>
+                <strong>日记壳 + 两类轻记可落</strong>
+                <span class="when">事上答即记 · 身上可主动记</span>
+              </div>
+            </div>
+            <div class="step now">
+              <div class="num">2</div>
+              <div>
+                <strong>问题只作滋养</strong>
+                <span class="when">轻问 / 离开一问 → 写入日记</span>
+              </div>
+            </div>
+            <div class="step now">
+              <div class="num">3</div>
+              <div>
+                <strong>日聚合可读 · 可展开成篇</strong>
+                <span class="when">重书写仍邀请</span>
+              </div>
+            </div>
+            <div class="step later">
+              <div class="num">4</div>
+              <div>
+                <strong>周 / 主题 / 检索</strong>
+                <span class="when">事线与人线可分开回看</span>
+              </div>
+            </div>
+            <div class="step later">
+              <div class="num">5</div>
+              <div>
+                <strong>庞大日记系统</strong>
+                <span class="when">远景 · 不进 V1 验收</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 边界 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>七 · 边界</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>项</th><th>取</th><th>弃</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>主从</strong></td>
+              <td class="ok">日记为主；问题滋养事上与离开</td>
+              <td class="cut">问题自成练习主线、日记当附属</td>
+            </tr>
+            <tr>
+              <td><strong>事上</strong></td>
+              <td class="ok">围着意图；稍被动；答即记</td>
+              <td class="cut">审讯式连问、不落日记的空回答</td>
+            </tr>
+            <tr>
+              <td><strong>身上</strong></td>
+              <td class="ok">想法/身体/情绪；主动；可不挂场</td>
+              <td class="cut">必须先开 App / 必须有意图才能记</td>
+            </tr>
+            <tr>
+              <td><strong>弹性</strong></td>
+              <td class="ok">轻默认；重从种子展开</td>
+              <td class="cut">中途塞正式长文</td>
+            </tr>
+            <tr>
+              <td><strong>两线</strong></td>
+              <td class="ok">同页分色；可合写成一篇重文</td>
+              <td class="cut">拆成两本互不相干的本子</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="footer-rule">
+      日记是土壤，问题是养分，轻记是种子。<br />
+      事上稍被动——围着做的事被问一句；身上主动——围着想法身体情绪伸手记。<br />
+      愿意时再展开成重。成功条件是到场进日记，不是答对问题。
+    </p>
+  </div>
+</body>
+</html>

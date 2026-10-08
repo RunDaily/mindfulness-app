@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>意图门 · 时长与常用意图联动</title>
+  <style>
+    :root {
+      --bg: #000; --surface: #1c1c1e; --line: #3a3a3c;
+      --text: #fff; --muted: #8e8e93; --green: #34c759;
+      --green-dim: rgba(52,199,89,.18); --green-ink: #003a12;
+      --tick: #48484a; --tick-major: #8e8e93; --fade: #0e0e10;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, #1a1a1c 0%, #0a0a0a 45%, #000 100%);
+      color: var(--text);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 24px 16px 56px; gap: 14px;
+      -webkit-user-select: none; user-select: none;
+    }
+    .page-title { text-align: center; max-width: 420px; }
+    .page-title h1 { font-size: 15px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .page-title p { font-size: 13px; color: #636366; line-height: 1.5; }
+    .phone {
+      width: min(390px, 100%); background: var(--bg);
+      border: 1px solid #2a2a2c; border-radius: 36px;
+      padding: 14px 12px 22px; position: relative;
+      box-shadow: 0 0 0 1px #111, 0 24px 80px rgba(0,0,0,.65);
+      display: flex; flex-direction: column; gap: 12px; min-height: 680px;
+    }
+    .status-bar {
+      height: 28px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 18px 4px; font-size: 12px; font-weight: 600; color: #aeaeb2;
+    }
+    .region { position: relative; }
+    .region.top {
+      background: transparent; border: 0; border-radius: 0; padding: 8px 4px 4px;
+    }
+    .region.mid {
+      background: var(--surface); border: 1px solid #2a2a2c;
+      border-radius: 20px; padding: 16px;
+    }
+    .region-tag {
+      position: absolute; top: -9px; left: 14px;
+      font-size: 10px; font-weight: 600; letter-spacing: .06em;
+      color: var(--green); background: #0d1a10;
+      border: 1px solid rgba(52,199,89,.35);
+      border-radius: 999px; padding: 2px 8px;
+    }
+    .top {
+      display: grid; grid-template-columns: 1fr auto; gap: 12px;
+      align-items: center; min-height: 64px; padding-top: 14px;
+    }
+    .app-meta { display: flex; align-items: center; gap: 12px; }
+    .app-icon {
+      width: 40px; height: 40px; border-radius: 11px;
+      background: linear-gradient(145deg, #ff5a6a, #c9184a);
+      display: grid; place-items: center; font-size: 11px; font-weight: 700;
+    }
+    .app-name { font-size: 15px; font-weight: 600; }
+    .app-sub { margin-top: 2px; font-size: 11px; color: var(--muted); }
+    .clock-ph {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 1.5px dashed #4a4a4e;
+      background: radial-gradient(circle at 50% 50%, #242426 0%, #161618 70%);
+    }
+    .mid { padding-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+    .ask { font-size: 17px; font-weight: 600; }
+    .shell {
+      background: #0e0e10; border: 1px solid var(--line);
+      border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .intent-row {
+      display: flex; gap: 8px; align-items: center;
+      border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px;
+      background: rgba(255,255,255,.02);
+    }
+    .intent-row input {
+      flex: 1; border: 0; outline: 0; background: transparent;
+      color: var(--text); font-size: 15px; font-family: inherit;
+    }
+    .intent-row input::placeholder { color: #636366; }
+    .go {
+      border: 0; background: var(--green); color: var(--green-ink);
+      font-size: 13px; font-weight: 700; padding: 8px 12px;
+      border-radius: 10px; cursor: pointer; font-family: inherit;
+    }
+    .go:disabled { background: #2c2c2e; color: #636366; }
+
+    .common h4 {
+      font-size: 12px; font-weight: 500; color: #636366; margin-bottom: 8px;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      border: 1px solid var(--line); background: transparent; color: #aeaeb2;
+      font-size: 13px; padding: 8px 12px; border-radius: 12px;
+      cursor: pointer; font-family: inherit;
+    }
+    .chip.on { border-color: rgba(52,199,89,.5); background: var(--green-dim); color: var(--green); }
+    .common.hide { display: none; }
+
+    /* 有意图后出现：轻外圈包住时长选择 */
+    .dur-block { display: none; }
+    .dur-block.show {
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,.03);
+      padding: 10px 12px;
+    }
+    .dur-block.show.open { border-color: rgba(52,199,89,.42); }
+    .dur-label {
+      display: flex; align-items: center; gap: 6px; width: 100%;
+      border: 0; background: transparent; cursor: pointer; font-family: inherit;
+      padding: 2px 0; color: #8e8e93; font-size: 13px; font-weight: 600;
+    }
+    .dur-label .val { font-weight: 600; color: #aeaeb2; }
+    .dur-label.limited .val { color: var(--green); }
+    .dur-label.open, .dur-label.open .val { color: var(--green); }
+    .dur-label .chev { margin-left: auto; font-size: 10px; }
+
+    .picker {
+      display: none; margin-top: 10px; padding: 0;
+      border-radius: 0; background: transparent; border: 0;
+    }
+    .picker.show { display: block; }
+    .picks { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .pick {
+      border: 1px solid var(--line); background: transparent; color: #aeaeb2;
+      font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 999px;
+      cursor: pointer; font-family: inherit;
+    }
+    .pick.on { border-color: rgba(52,199,89,.5); background: var(--green-dim); color: var(--green); }
+
+    .big { text-align: center; margin: 4px 0 2px; }
+    .big .num {
+      font-size: 36px; font-weight: 200; letter-spacing: -1px; color: var(--green);
+      font-variant-numeric: tabular-nums; min-height: 42px;
+    }
+    .big .num.empty { color: #636366; font-size: 28px; font-weight: 300; }
+    .big .unit { font-size: 11px; color: var(--muted); min-height: 14px; }
+
+    .ruler {
+      position: relative; height: 72px; margin: 0 -4px; touch-action: none; cursor: grab;
+    }
+    .ruler-fade {
+      position: absolute; inset: 0; z-index: 2; pointer-events: none;
+      background: linear-gradient(90deg, var(--fade) 0%, transparent 14%, transparent 86%, var(--fade) 100%);
+    }
+    .ruler-center {
+      position: absolute; left: 50%; top: 6px; bottom: 18px; width: 2px; margin-left: -1px;
+      background: var(--green); border-radius: 2px; z-index: 3; pointer-events: none;
+    }
+    .ruler-track { position: absolute; inset: 0; display: flex; align-items: flex-start; }
+    .tick { flex: 0 0 auto; width: 28px; height: 48px; position: relative; display: flex; justify-content: center; }
+    .tick::before {
+      content: ""; position: absolute; top: 12px; width: 1.5px; height: 14px;
+      background: var(--tick); border-radius: 1px;
+    }
+    .tick.major::before { height: 24px; top: 6px; width: 2px; background: var(--tick-major); }
+    .tick .lab {
+      position: absolute; bottom: 0; font-size: 10px; color: #636366;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .leave { text-align: center; color: var(--green); font-weight: 600; font-size: 14px; padding: 8px; }
+    .bot {
+      margin-top: auto; padding: 14px; border: 1px dashed #2a2a2c; border-radius: 16px;
+      color: #48484a; font-size: 11px; text-align: center;
+    }
+    .notes {
+      width: min(390px, 100%); background: #121214; border: 1px solid #2a2a2c;
+      border-radius: 14px; padding: 12px 14px; font-size: 12px; color: #aeaeb2; line-height: 1.6;
+    }
+    .notes b { color: var(--green); }
+    .notes strong { color: #d1d1d6; }
+  </style>
+</head>
+<body>
+  <div class="page-title">
+    <h1>时长 × 常用意图联动</h1>
+    <p>有意图后出时长入口 · 点开藏常用 · 档位 5/10/15/20 + 横滑 · 无「不限」文案</p>
+  </div>
+
+  <div class="phone">
+    <div class="status-bar"><span>9:41</span><span>●●●</span></div>
+    <section class="region top">
+      <div class="region-tag">上区</div>
+      <div class="app-meta">
+        <div class="app-icon">红</div>
+        <div>
+          <div class="app-name">小红书</div>
+          <div class="app-sub">今日第 3 次</div>
+        </div>
+      </div>
+      <div class="clock-ph"></div>
+    </section>
+
+    <section class="region mid">
+      <div class="region-tag">中区</div>
+      <div class="shell">
+        <div class="intent-row">
+          <input id="intent" placeholder="要做什么 / 搜索…" />
+          <button type="button" class="go" id="enter" disabled>进入</button>
+        </div>
+
+        <!-- 有意图后出现；未选时长时不写「不限」 -->
+        <div class="dur-block" id="durBlock">
+          <button type="button" class="dur-label" id="durLabel">
+            <span>时长选择</span>
+            <span class="val" id="durVal"></span>
+            <span class="chev" id="chev">▾</span>
+          </button>
+          <div class="picker" id="picker">
+            <div class="picks" id="picks">
+              <button type="button" class="pick" data-m="5">5′</button>
+              <button type="button" class="pick" data-m="10">10′</button>
+              <button type="button" class="pick" data-m="15">15′</button>
+              <button type="button" class="pick" data-m="20">20′</button>
+            </div>
+            <div class="big">
+              <div class="num empty" id="num">—</div>
+              <div class="unit" id="unit"></div>
+            </div>
+            <div class="ruler" id="ruler">
+              <div class="ruler-fade"></div>
+              <div class="ruler-center"></div>
+              <div class="ruler-track" id="track"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="common" id="common">
+          <h4>常用意图</h4>
+          <div class="chips" id="chips">
+            <button type="button" class="chip" data-label="回消息" data-m="5">回消息 5′</button>
+            <button type="button" class="chip" data-label="逛商城" data-m="0">逛商城</button>
+            <button type="button" class="chip" data-label="随便刷刷" data-m="15">随便刷刷 15′</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="leave">不进去了</div>
+    <div class="bot">下区 · 示意</div>
+  </div>
+
+  <div class="notes">
+    <strong>1. 联动</strong>：写好/点选意图后出现 <b>时长选择</b> 外圈；点开后 <b>常用意图整区隐掉</b>，把空间留给档位+横滑；收起后常用再回来。<br />
+    <strong>2. 档位</strong>：只有 5 / 10 / 15 / 20，<b>不出现「不限」</b>。未选或滑到 0 时标签只显示「时长选择」，语义仍是不限。<br />
+    <strong>3. 横滑</strong>：细调任意分钟；点档位是快选。再点已选档可取消 → 回到不限。
+  </div>
+
+  <script>
+    const MIN = 0, MAX = 48, TICK_W = 28;
+    let minutes = 0; // 0 = 不限（不展示该词）
+    let open = false;
+    let offsetX = 0, dragging = false, startX = 0, startOffset = 0;
+
+    const intent = document.getElementById("intent");
+    const enter = document.getElementById("enter");
+    const durBlock = document.getElementById("durBlock");
+    const durLabel = document.getElementById("durLabel");
+    const durVal = document.getElementById("durVal");
+    const chev = document.getElementById("chev");
+    const picker = document.getElementById("picker");
+    const common = document.getElementById("common");
+    const num = document.getElementById("num");
+    const unit = document.getElementById("unit");
+    const track = document.getElementById("track");
+    const ruler = document.getElementById("ruler");
+
+    for (let m = MIN; m <= MAX; m++) {
+      const d = document.createElement("div");
+      d.className = "tick" + (m % 5 === 0 ? " major" : "");
+      if (m % 5 === 0 && m > 0) {
+        const lab = document.createElement("span");
+        lab.className = "lab";
+        lab.textContent = String(m);
+        d.appendChild(lab);
+      }
+      track.appendChild(d);
+    }
+
+    function centerOffset(m) {
+      const c = ruler.clientWidth / 2;
+      return c - (m * TICK_W + TICK_W / 2);
+    }
+    function minutesFromOffset(ox) {
+      const c = ruler.clientWidth / 2;
+      return Math.max(MIN, Math.min(MAX, Math.round((c - ox - TICK_W / 2) / TICK_W)));
+    }
+    function applyOx(ox, animate) {
+      offsetX = ox;
+      track.style.transition = animate ? "transform .18s cubic-bezier(.2,.8,.2,1)" : "none";
+      track.style.transform = `translate3d(${ox}px,0,0)`;
+    }
+
+    function paint() {
+      const has = intent.value.trim().length > 0;
+      durBlock.classList.toggle("show", has);
+      enter.disabled = !has;
+      enter.textContent = minutes > 0 ? `进入 · ${minutes} 分` : "进入";
+
+      if (!has) {
+        open = false;
+        minutes = 0;
+      }
+
+      common.classList.toggle("hide", open && has);
+      picker.classList.toggle("show", open && has);
+      durBlock.classList.toggle("open", open && has);
+      durLabel.classList.toggle("open", open);
+      durLabel.classList.toggle("limited", minutes > 0);
+      chev.textContent = open ? "▴" : "▾";
+
+      // 不写「不限」：无值时 val 为空，只留「时长选择」
+      durVal.textContent = minutes > 0 ? `${minutes}′` : "";
+
+      if (minutes > 0) {
+        num.textContent = String(minutes);
+        num.classList.remove("empty");
+        unit.textContent = "分钟";
+      } else {
+        num.textContent = "—";
+        num.classList.add("empty");
+        unit.textContent = "";
+      }
+
+      document.querySelectorAll(".pick").forEach(b => {
+        b.classList.toggle("on", Number(b.dataset.m) === minutes);
+      });
+
+      if (open && has) requestAnimationFrame(() => applyOx(centerOffset(minutes), false));
+    }
+
+    intent.addEventListener("input", paint);
+
+    durLabel.addEventListener("click", () => {
+      if (!intent.value.trim()) return;
+      open = !open;
+      paint();
+    });
+
+    document.getElementById("picks").addEventListener("click", (e) => {
+      const b = e.target.closest(".pick");
+      if (!b) return;
+      const m = Number(b.dataset.m);
+      minutes = (minutes === m) ? 0 : m; // 再点取消 → 不限
+      paint();
+    });
+
+    document.getElementById("chips").addEventListener("click", (e) => {
+      const c = e.target.closest(".chip");
+      if (!c) return;
+      document.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === c));
+      intent.value = c.dataset.label;
+      minutes = Number(c.dataset.m) || 0;
+      open = false;
+      paint();
+    });
+
+    // drag
+    function onDown(e) {
+      dragging = true; startX = e.clientX ?? e.touches[0].clientX; startOffset = offsetX;
+      track.style.transition = "none"; e.preventDefault();
+    }
+    function onMove(e) {
+      if (!dragging) return;
+      const x = e.clientX ?? e.touches?.[0]?.clientX; if (x == null) return;
+      const next = startOffset + (x - startX);
+      applyOx(Math.max(centerOffset(MAX) - 36, Math.min(centerOffset(MIN) + 36, next)), false);
+      minutes = minutesFromOffset(offsetX);
+      paint();
+    }
+    function onUp() {
+      if (!dragging) return;
+      dragging = false;
+      minutes = minutesFromOffset(offsetX);
+      applyOx(centerOffset(minutes), true);
+      paint();
+    }
+    ruler.addEventListener("mousedown", onDown);
+    ruler.addEventListener("touchstart", onDown, { passive: false });
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchend", onUp);
+
+    paint();
+  </script>
+</body>
+</html>

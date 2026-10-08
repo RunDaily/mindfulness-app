@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>门口 · 5分 ×3 · 贴进入</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --line: rgba(232,237,230,.12);
+      --sand: #c4a35a; --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 36px; }
+    header { max-width: 560px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 42em; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 860px) { .row3 { grid-template-columns: 1fr; justify-items: center; } }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 280px; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: var(--ink); border: 1px solid rgba(255,255,255,.08);
+      display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+      position: relative; overflow: hidden;
+    }
+    .phone .behind {
+      position: absolute; inset: 0; opacity: .1; pointer-events: none;
+      background:
+        linear-gradient(180deg, transparent 42%, #050605 92%),
+        repeating-linear-gradient(0deg, transparent, transparent 47px, rgba(255,255,255,.035) 48px),
+        repeating-linear-gradient(90deg, transparent, transparent 47px, rgba(255,255,255,.035) 48px);
+    }
+    .aura {
+      position: absolute; left: 50%; top: 34%; width: 220px; height: 220px;
+      margin: -110px 0 0 -110px; border-radius: 50%; pointer-events: none; z-index: 0;
+      background: radial-gradient(circle at 50% 50%,
+        rgba(232,237,230,.1) 0%,
+        rgba(61,122,74,.07) 40%,
+        transparent 70%);
+      filter: blur(2px); opacity: .2;
+    }
+    .phone.breathing .aura {
+      animation: aura 4.8s cubic-bezier(.45,0,.55,1) infinite alternate;
+    }
+    @keyframes aura {
+      from { opacity: .18; transform: scale(.9); }
+      to   { opacity: .7; transform: scale(1.06); }
+    }
+    .breath-line {
+      position: absolute; left: 26px; right: 26px; bottom: 0; height: 1px;
+      background: rgba(232,237,230,.1); z-index: 4; overflow: hidden; opacity: 0;
+    }
+    .phone.breathing .breath-line { opacity: 1; }
+    .breath-line i {
+      display: block; height: 100%; width: 0; background: rgba(159,212,168,.55);
+    }
+    .phone.breathing .breath-line i { animation: line-grow 8s linear forwards; }
+    @keyframes line-grow { from { width: 0; } to { width: 100%; } }
+
+    .body {
+      flex: 1; display: flex; flex-direction: column;
+      padding: 22px 26px 0; position: relative; z-index: 1; min-height: 0;
+    }
+    .door-tag { font-size: 11px; color: var(--mist); }
+    .stage {
+      flex: 1; display: flex; flex-direction: column; justify-content: center;
+      text-align: left; min-height: 0; padding-bottom: 12px;
+    }
+    .title {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 26px; font-weight: 500; line-height: 1.35;
+    }
+    .meta {
+      margin-top: 10px; font-size: 13px; color: var(--fog);
+      font-variant-numeric: tabular-nums; line-height: 1.45;
+    }
+    .input-row {
+      margin-top: 28px; display: flex; align-items: center; gap: 10px;
+    }
+    .field {
+      flex: 1; min-width: 0; border: none; background: transparent;
+      border-bottom: 1px solid rgba(232,237,230,.22);
+      color: var(--paper); font-size: 16px; padding: 6px 0 8px;
+      font-family: inherit;
+    }
+    .field::placeholder { color: rgba(139,147,140,.55); }
+    .outline-btn {
+      flex: none; font-size: 12px; color: var(--fog);
+      border: 1px solid rgba(232,237,230,.28);
+      border-radius: 6px; padding: 5px 8px; line-height: 1.2; white-space: nowrap;
+    }
+    .outline-btn.on {
+      color: var(--leaf-text);
+      border-color: rgba(159,212,168,.65);
+      background: rgba(61,122,74,.12);
+    }
+    .mins {
+      margin-top: 18px; display: flex; gap: 16px;
+      font-variant-numeric: tabular-nums; font-size: 14px; color: var(--mist);
+    }
+    .mins .on { color: var(--leaf-text); font-size: 15px; }
+
+    /*
+      dock：快捷必须贴在「进入」正上方、右对齐。
+      与进入同右缘，间距要紧（约 10–12px），读作进入的免写旁路。
+    */
+    .dock {
+      position: relative; z-index: 2;
+      padding: 0 26px 18px;
+      display: flex; flex-direction: column; align-items: stretch;
+      background: linear-gradient(180deg, transparent, rgba(5,6,5,.92) 28%);
+    }
+    .bar-stack {
+      display: flex; flex-direction: column; align-items: stretch;
+    }
+    /* 右栏：快捷 + 进入 叠成一条右脊；左栏只有离开 */
+    .bar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      column-gap: 16px;
+    }
+    .leave {
+      font-size: 16px; color: var(--leaf-text);
+      align-self: end; padding-bottom: 1px;
+    }
+    .right-rail {
+      display: flex; flex-direction: column; align-items: flex-end;
+      gap: 10px;
+    }
+    .quick {
+      display: inline-flex; align-items: baseline; gap: 8px;
+      padding: 0; border: none; background: none;
+    }
+    .quick .dur {
+      font-size: 15px; color: var(--leaf-text);
+      border-bottom: 1px solid rgba(159,212,168,.8);
+      padding-bottom: 1px; line-height: 1.15;
+      font-variant-numeric: tabular-nums;
+    }
+    .quick .left {
+      font-size: 12px; color: var(--mist);
+      font-variant-numeric: tabular-nums;
+    }
+    .quick.gone { opacity: .32; }
+    .quick.gone .dur {
+      color: var(--mist); border-bottom-color: rgba(232,237,230,.22);
+    }
+    .enter { font-size: 16px; color: var(--leaf-text); line-height: 1.2; }
+    .enter.off { color: var(--mist); }
+
+    .ime {
+      height: 0; background: #121412; position: relative; z-index: 3;
+      border-top: 1px solid rgba(255,255,255,.06);
+      overflow: hidden;
+    }
+    .phone.kb .ime { height: 34%; }
+    .ime-inner {
+      height: 100%; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: var(--mist); letter-spacing: .12em;
+    }
+    .phone.kb .stage { justify-content: flex-start; padding-top: 8px; }
+    .phone.kb .aura { top: 28%; }
+
+    .guide {
+      position: absolute; right: 26px; bottom: 18px; left: 26px;
+      pointer-events: none; z-index: 5; opacity: 0;
+    }
+    .phone.show-guide .guide { opacity: 1; }
+    .guide .rail {
+      margin-left: auto; width: 52px; border-right: 1px dashed rgba(196,163,90,.45);
+      height: 52px; position: relative;
+    }
+    .guide .cap {
+      position: absolute; right: 0; top: -18px; font-size: 10px; color: var(--sand);
+      white-space: nowrap; letter-spacing: .04em;
+    }
+
+    .note {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Door · 5′ × N</div>
+      <h1>只留「5分 ×3」。<br />贴死在进入正上方。</h1>
+      <p>
+        去掉「快捷」标。带底线的分钟是可点核心，×3 中性色跟旁边。
+        和「进入」同右缘、间距一指宽——读作进入的免写旁路，不漂在中间。
+      </p>
+    </header>
+
+    <p class="sec">位置 · <strong>右脊：5分×3 → 进入</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>呼吸中</h3>
+          <p>进入灰 · 5分仍可点</p>
+        </div>
+        <div class="phone breathing">
+          <div class="behind"></div>
+          <div class="aura"></div>
+          <div class="body">
+            <div class="door-tag">小红书</div>
+            <div class="stage">
+              <div class="title">做什么</div>
+              <div class="meta">今日已用 22 · 还剩 23 分</div>
+              <div class="input-row">
+                <input class="field" placeholder="写下来…" readonly />
+                <span class="outline-btn">搜索直达</span>
+              </div>
+              <div class="mins"><span>5</span><span class="on">10</span><span>15</span><span>20</span></div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <span class="leave">离开</span>
+              <div class="right-rail">
+                <div class="quick">
+                  <span class="dur">5分</span>
+                  <span class="left">×3</span>
+                </div>
+                <span class="enter off">进入</span>
+              </div>
+            </div>
+          </div>
+          <div class="breath-line"><i></i></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>呼吸完</h3>
+          <p>右脊两级都亮</p>
+        </div>
+        <div class="phone">
+          <div class="behind"></div>
+          <div class="aura" style="opacity:.14"></div>
+          <div class="body">
+            <div class="door-tag">小红书</div>
+            <div class="stage">
+              <div class="title">做什么</div>
+              <div class="meta">今日已用 22 · 还剩 23 分</div>
+              <div class="input-row">
+                <input class="field" value="回个消息" readonly />
+                <span class="outline-btn">搜索直达</span>
+              </div>
+              <div class="mins"><span>5</span><span class="on">10</span><span>15</span><span>20</span></div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <span class="leave">离开</span>
+              <div class="right-rail">
+                <div class="quick">
+                  <span class="dur">5分</span>
+                  <span class="left">×3</span>
+                </div>
+                <span class="enter">进入</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>键盘顶起</h3>
+          <p>整条右脊跟着上</p>
+        </div>
+        <div class="phone breathing kb">
+          <div class="behind"></div>
+          <div class="aura"></div>
+          <div class="body">
+            <div class="door-tag">小红书</div>
+            <div class="stage">
+              <div class="title">做什么</div>
+              <div class="input-row">
+                <input class="field" value="回" readonly />
+                <span class="outline-btn">搜索直达</span>
+              </div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <span class="leave">离开</span>
+              <div class="right-rail">
+                <div class="quick">
+                  <span class="dur">5分</span>
+                  <span class="left">×3</span>
+                </div>
+                <span class="enter off">进入</span>
+              </div>
+            </div>
+          </div>
+          <div class="ime"><div class="ime-inner">软键盘</div></div>
+          <div class="breath-line" style="bottom:34%"><i></i></div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">位置对照 · <strong>贴进入才对</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>推荐</h3>
+          <p>同右缘 · 距进入约 10px</p>
+        </div>
+        <div class="phone show-guide">
+          <div class="behind"></div>
+          <div class="body">
+            <div class="door-tag">小红书</div>
+            <div class="stage">
+              <div class="title">做什么</div>
+              <div class="meta">还剩 23 分</div>
+              <div class="input-row">
+                <input class="field" placeholder="写下来…" readonly />
+                <span class="outline-btn">搜索直达</span>
+              </div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <span class="leave">离开</span>
+              <div class="right-rail">
+                <div class="quick">
+                  <span class="dur">5分</span>
+                  <span class="left">×3</span>
+                </div>
+                <span class="enter">进入</span>
+              </div>
+            </div>
+          </div>
+          <div class="guide"><div class="rail"><span class="cap">右脊</span></div></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>日限裁短 / ×0</h3>
+          <p>数字改口 · 或熄灭</p>
+        </div>
+        <div class="phone">
+          <div class="behind"></div>
+          <div class="body">
+            <div class="door-tag">小红书</div>
+            <div class="stage">
+              <div class="title">做什么</div>
+              <div class="meta">日限还剩 3 分</div>
+              <div class="input-row">
+                <input class="field" placeholder="写下来…" readonly />
+                <span class="outline-btn">搜索直达</span>
+              </div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <span class="leave">离开</span>
+              <div class="right-rail">
+                <div class="quick">
+                  <span class="dur">3分</span>
+                  <span class="left">×2</span>
+                </div>
+                <span class="enter">进入</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>不好</h3>
+          <p>漂在中间 / 带描边标</p>
+        </div>
+        <div class="phone">
+          <div class="behind"></div>
+          <div class="body">
+            <div class="door-tag">小红书</div>
+            <div class="stage">
+              <div class="title">做什么</div>
+              <div class="input-row">
+                <input class="field" placeholder="写下来…" readonly />
+                <span class="outline-btn">搜索直达</span>
+              </div>
+            </div>
+          </div>
+          <div class="dock">
+            <div style="display:flex;justify-content:center;margin-bottom:14px;opacity:.45">
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                <span style="font-size:10px;border:1px solid rgba(232,237,230,.28);border-radius:3px;padding:1px 5px;color:var(--fog)">快捷</span>
+                <div style="display:flex;gap:8px;align-items:baseline">
+                  <span style="font-size:15px;color:var(--leaf-text);border-bottom:1px solid rgba(159,212,168,.7)">5分</span>
+                  <span style="font-size:12px;color:var(--mist)">×3</span>
+                </div>
+              </div>
+            </div>
+            <div class="bar">
+              <span class="leave">离开</span>
+              <span class="enter">进入</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>形态</strong>：只有 <code>5分</code>（绿 + 底线，可点）和 <code>×3</code>（中性色）。无「快捷」标、无胶囊。<br />
+      <strong>位置</strong>：与「进入」同右缘，叠在正上方约 10px——和进入组成右脊；「离开」独自在左。不要居中，不要离开进入中间。<br />
+      <strong>呼吸</strong>：雾光 + 底边细线 8s；线未完「进入」不可点，有余次时「5分」可点。键盘顶起时整条右脊（5分×3 + 进入）与离开一起上移。
+    </div>
+  </div>
+</body>
+</html>

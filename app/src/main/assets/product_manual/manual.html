@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>产品说明书</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="HA.closeDrawer()"></div>
+<aside class="drawer" id="drawer" aria-label="目录">
+  <div class="drawer-title">目录</div>
+  <div class="drawer-sub">产品说明书</div>
+  <div class="drawer-item" data-id="ch01" onclick="HA.show('ch01')">
+    <span class="num">1</span>
+    <span><div class="t">心锚是什么</div><div class="d">减少无意识打开与超时使用</div></span>
+  </div>
+  <div class="drawer-item" data-id="ch02" onclick="HA.show('ch02')">
+    <span class="num">2</span>
+    <span><div class="t">开始使用</div><div class="d">权限与最短路径</div></span>
+  </div>
+  <div class="drawer-item" data-id="ch03" onclick="HA.show('ch03')">
+    <span class="num">3</span>
+    <span><div class="t">方案</div><div class="d">添加应用并设定规则</div></span>
+  </div>
+  <div class="drawer-item" data-id="ch04" onclick="HA.show('ch04')">
+    <span class="num">4</span>
+    <span><div class="t">打开应用时</div><div class="d">拦截页上能做什么</div></span>
+  </div>
+  <div class="drawer-item" data-id="ch05" onclick="HA.show('ch05')">
+    <span class="num">5</span>
+    <span><div class="t">今日</div><div class="d">查看使用情况</div></span>
+  </div>
+  <div class="drawer-item" data-id="ch06" onclick="HA.show('ch06')">
+    <span class="num">6</span>
+    <span><div class="t">日程锁</div><div class="d">按时间表锁定一批应用</div></span>
+  </div>
+  <div class="drawer-item" data-id="ch07" onclick="HA.show('ch07')">
+    <span class="num">7</span>
+    <span><div class="t">权限与后台保活</div><div class="d">拦不住时先查这里</div></span>
+  </div>
+  <div class="drawer-item faint" data-id="ch08">
+    <span class="num">8</span>
+    <span><div class="t">会员与数据</div><div class="d">修订中</div></span>
+  </div>
+  <div class="drawer-item faint" data-id="ch09">
+    <span class="num">9</span>
+    <span><div class="t">修订记录</div><div class="d">修订中</div></span>
+  </div>
+</aside>
+
+<section class="chapter" id="ch01">
+<div class="kicker">第 1 章</div>
+  <h1>心锚是什么</h1>
+  <p>心锚用来减少某些应用的无意识打开与超时使用。</p>
+  <p>你在「方案」里选出要管的应用，并为它们设定规则。之后每次打开这些应用，心锚会在进入前先停下，让你确认这一次是否真的要进、要用多久。</p>
+  <p>「今日」用来查看今天的使用情况，以及加入方案前后的变化。</p>
+  <p>心锚不替代系统自带的屏幕使用时间；它侧重的是：<strong>打开前多一步确认，并按你设的规则拦住。</strong></p>
+<div class="chap-nav"><span></span><a class="next" href="javascript:void(0)" onclick="HA.show('ch02')">开始使用 ›</a></div>
+</section>
+<section class="chapter" id="ch02" hidden>
+<div class="kicker">第 2 章</div>
+  <h1>开始使用</h1>
+
+  <h2>你需要先完成的设置</h2>
+  <p>心锚要正常工作，至少需要下面两项权限：</p>
+  <table>
+    <tr><th>用量访问</th><td>统计各应用使用时长与打开次数</td></tr>
+    <tr><th>悬浮窗</th><td>在其它应用上方显示拦截页</td></tr>
+  </table>
+  <p>建议同时开启：</p>
+  <table>
+    <tr><th>无障碍</th><td>在拦截页出现时，避免用 Home、最近任务等直接绕过</td></tr>
+  </table>
+  <p>以上入口都在「我」页。未齐时，「我」页会提示有几项需处理。</p>
+  <figure class="slot">
+    <div class="label">图 ·「我」页权限列表<br/>用量访问 / 悬浮窗 / 无障碍</div>
+    <figcaption>实机截图位 · 对照「需开启 / 正常」</figcaption>
+  </figure>
+
+  <h2>最短路径</h2>
+  <ol>
+    <li><span class="i">1</span><span>打开「我」，完成用量访问与悬浮窗（建议再开无障碍）</span></li>
+    <li><span class="i">2</span><span>打开「方案」，添加一个你想少用的应用</span></li>
+    <li><span class="i">3</span><span>为它设定规则（例如：每天最多用 30 分钟）</span></li>
+    <li><span class="i">4</span><span>回到桌面，再打开该应用，确认会出现拦截页</span></li>
+  </ol>
+  <p>做到第 4 步，说明基本链路已通。</p>
+  <figure class="slot">
+    <div class="label">图 · 拦截页实拍</div>
+    <figcaption>通了的样子 · 一张即可</figcaption>
+  </figure>
+
+  <h2>常见卡点</h2>
+  <ul>
+    <li><span><strong>打开应用没有拦截：</strong>先回「我」看权限是否齐全；再确认该应用已在「方案」里且规则已开启。</span></li>
+    <li><span><strong>权限都开了仍不稳定：</strong>部分手机厂商会清理后台，见「权限与后台保活」。</span></li>
+  </ul>
+<div class="chap-nav"><a class="prev" href="javascript:void(0)" onclick="HA.show('ch01')">‹ 心锚是什么</a><a class="next" href="javascript:void(0)" onclick="HA.show('ch03')">方案 ›</a></div>
+</section>
+<section class="chapter" id="ch03" hidden>
+<div class="kicker">第 3 章</div>
+  <h1>方案</h1>
+  <p>「方案」是你管理规则的地方：哪些应用要管、每条规则怎么设。</p>
+
+  <h2>添加应用</h2>
+  <ol>
+    <li><span class="i">1</span><span>打开底栏「方案」</span></li>
+    <li><span class="i">2</span><span>选择添加应用</span></li>
+    <li><span class="i">3</span><span>从列表中选出要管的应用（列表可参考近 7 日的使用情况）</span></li>
+    <li><span class="i">4</span><span>保存后，该应用会出现在方案中</span></li>
+  </ol>
+  <p>一个应用同一时间只应放在一侧用途里：要么作为「要少用的」，要么作为「想多用的」，不要重复添加。</p>
+  <p>微信不适合加入需要拦截的名单；选择时会有提示。</p>
+  <figure class="slot">
+    <div class="label">图 · 空态添加 → 选 App → 已加入</div>
+    <figcaption>标注点击热区即可</figcaption>
+  </figure>
+
+  <h2>可以设定的规则</h2>
+  <table>
+    <tr><th>日限额</th><td>当天使用达到设定分钟数后，再打开会被拦住</td></tr>
+    <tr><th>打开次数</th><td>当天打开次数用完后，再打开会被拦住</td></tr>
+    <tr><th>打开前等待</th><td>未触达上面两项上限时，打开前先倒数几秒，再决定是否进入</td></tr>
+    <tr><th>时段锁</th><td>在设定的时间段内不允许进入</td></tr>
+  </table>
+  <p>你不必一次全开。多数情况先设「日限额」，跑通几天后再按需要加其它规则。</p>
+  <figure class="slot">
+    <div class="label">图 · 单应用配置页</div>
+    <figcaption>圈出日限额、时段锁等区块</figcaption>
+  </figure>
+
+  <h2>从方案里移出</h2>
+  <p>在该应用的配置中选择移出方案后，心锚不再拦截它。历史记录仍可能保留在「今日」或详情中供查看，但不会再挡打开。</p>
+
+  <h2>名额</h2>
+  <p>要少用的应用、想多用的应用，各有数量上限（当前各最多 3 个）。满了需要先移出一个，再添加新的。不必第一天就填满。</p>
+<div class="chap-nav"><a class="prev" href="javascript:void(0)" onclick="HA.show('ch02')">‹ 开始使用</a><a class="next" href="javascript:void(0)" onclick="HA.show('ch04')">打开应用时 ›</a></div>
+</section>
+<section class="chapter" id="ch04" hidden>
+<div class="kicker">第 4 章</div>
+  <h1>打开应用时</h1>
+  <p>当某个应用已在方案中且规则生效时，从桌面或其它应用再次打开它，会先看到拦截页，而不是直接进入。</p>
+
+  <h2>拦截页上你可以做什么</h2>
+  <p>取决于当前规则与应用类型，拦截页通常提供这些选择（措辞以实机为准）：</p>
+  <ul>
+    <li><span><strong>先等几秒再决定</strong>（若开启了打开前等待）</span></li>
+    <li><span><strong>不进去了 / 离开：</strong>关闭拦截，不进入该应用</span></li>
+    <li><span><strong>搜索后直达</strong>（部分应用支持）：输入关键词后跳到应用内搜索结果，适合「只查一件事」</span></li>
+    <li><span><strong>写下要做什么并选择时长后进入：</strong>只给这一次使用设一个时限</span></li>
+    <li><span><strong>确认有事再进入</strong>（部分应用）：先劝离，再选一个较短的本次时长</span></li>
+  </ul>
+  <p>触达「日限额」或「打开次数」上限后，拦截页会明确提示今日已用完，此时通常只能离开，不能再进入。</p>
+  <figure class="slot">
+    <div class="label">图 · 可继续进入</div>
+    <figcaption>打开前等待 / 确认态</figcaption>
+  </figure>
+  <figure class="slot">
+    <div class="label">图 · 今日已用完</div>
+    <figcaption>硬拦态 · 与上图对照</figcaption>
+  </figure>
+
+  <h2>关于系统返回键与 Home</h2>
+  <p>拦截页出现期间，用 Home、最近任务或返回键，一般不会真正关掉拦截；心锚会把你拉回拦截页。</p>
+  <p>若希望这项行为稳定，请开启「无障碍」。</p>
+  <p>离开拦截的正常方式，是点页面上的离开类按钮，而不是靠系统手势「躲过去」。</p>
+
+  <h2>你怎么判断规则生效了</h2>
+  <ul>
+    <li><span>规则写「每天 30 分钟」，今天已用满 → 再打开应看到时长用尽的提示，且不能进入。</span></li>
+    <li><span>规则写了打开前等待 → 未用满时，应先看到倒数，倒数结束前不能直接进入。</span></li>
+    <li><span>规则写了某时段锁定 → 在该时段内打开，应被拦住。</span></li>
+  </ul>
+  <p>若与上述不符，优先检查权限与该应用是否仍在方案中。</p>
+<div class="chap-nav"><a class="prev" href="javascript:void(0)" onclick="HA.show('ch03')">‹ 方案</a><a class="next" href="javascript:void(0)" onclick="HA.show('ch05')">今日 ›</a></div>
+</section>
+<section class="chapter" id="ch05" hidden>
+<div class="kicker">第 5 章</div>
+  <h1>今日</h1>
+  <p>「今日」用来看效果，不负责改规则。改数字请回「方案」。</p>
+
+  <h2>还没有加入任何应用时</h2>
+  <p>「今日」会展示这台手机近 7 日用得较多的应用（需要已开启用量访问）。点某一行可查看概况；底部可点「去方案添加」，把想管的应用加入方案。</p>
+  <p>若尚未授权用量访问，页面会提示先授权，否则看不到近 7 日列表。</p>
+  <figure class="slot">
+    <div class="label">图 · 无规则时的近 7 日列表</div>
+    <figcaption>含「去方案添加」</figcaption>
+  </figure>
+
+  <h2>已有规则时</h2>
+  <p>「今日」主列表变为方案中的应用，每行大致显示：</p>
+  <ul>
+    <li><span>应用名称</span></li>
+    <li><span>今日已用时长（若设了日限额，会显示「已用 / 限额」）</span></li>
+    <li><span>今日打开次数（若设了次数上限，会显示「打开 a / b」；用尽时会标出）</span></li>
+  </ul>
+  <p>点某一行进入该应用的详情。下方可能还有一条「今天」摘要入口，用于回看今天在拦截页上的选择，不是改规则的地方。</p>
+  <figure class="slot">
+    <div class="label">图 · 有规则列表</div>
+    <figcaption>圈出「已用 / 限额」与「打开 a / b」</figcaption>
+  </figure>
+
+  <h2>单个应用详情</h2>
+  <table>
+    <tr><th>今天</th><td>今日已用、与限额 / 打开次数的关系</td></tr>
+    <tr><th>时长（日均）</th><td>加入前与加入后的对照，以及近期走势</td></tr>
+    <tr><th>打开（日均）</th><td>同上，看打开次数是否下来</td></tr>
+    <tr><th>一周节奏等</th><td>更细的分布（若页面提供入口）</td></tr>
+  </table>
+  <p>详情底部一般有「去改规则」，会回到该应用在「方案」里的配置页。</p>
+  <p>页面上若出现一行淡字说明计量方式，大意是：</p>
+  <ul>
+    <li><span><strong>加入前：</strong>按系统用量统计</span></li>
+    <li><span><strong>加入后：</strong>按心锚实际放行后的使用计时；停在拦截页等待、或选择离开而未进入，<strong>不计为使用时间</strong></span></li>
+  </ul>
+
+  <h2>「今日」不做的事</h2>
+  <ul>
+    <li><span>不在这里开关规则、改日限额数字（回方案）</span></li>
+    <li><span>不是完整的系统「屏幕使用时间」替代品；未加入方案的应用，加入后不再占用今日主列表</span></li>
+  </ul>
+<div class="chap-nav"><a class="prev" href="javascript:void(0)" onclick="HA.show('ch04')">‹ 打开应用时</a><a class="next" href="javascript:void(0)" onclick="HA.show('ch06')">日程锁 ›</a></div>
+</section>
+<section class="chapter" id="ch06" hidden>
+<div class="kicker">第 6 章</div>
+  <h1>日程锁</h1>
+  <p>日程锁用来按<strong>时间表</strong>锁定一批应用：到了设定时段，这些应用打开时会被拦住。</p>
+  <p>入口：底栏「发现」→「日程锁」。</p>
+  <p>它和「方案」里单个应用的「时段锁」不同：</p>
+  <table>
+    <tr><th>方案 · 时段锁</th><td>某一个应用 · 在该应用配置页设置 · 适合「这个 App 晚上别碰」</td></tr>
+    <tr><th>发现 · 日程锁</th><td>一批应用 · 发现 → 日程锁 · 适合「工作日上午别刷这几个」</td></tr>
+  </table>
+  <figure class="slot">
+    <div class="label">图 · 日程锁空态</div>
+    <figcaption>「还没有时段锁」+「＋ 添加时段」</figcaption>
+  </figure>
+
+  <h2>添加一条日程锁</h2>
+  <ol>
+    <li><span class="i">1</span><span>打开「发现」→「日程锁」</span></li>
+    <li><span class="i">2</span><span>点「＋ 添加时段」</span></li>
+    <li><span class="i">3</span><span>填写名称、开始 / 结束、重复、锁定范围后保存</span></li>
+  </ol>
+  <table>
+    <tr><th>名称</th><td>如「工作专注」（便于自己辨认）</td></tr>
+    <tr><th>开始 / 结束</th><td>锁定的时间段</td></tr>
+    <tr><th>重复</th><td>每天、工作日，或自定义星期</td></tr>
+    <tr><th>锁定范围</th><td>是否跟随方案里已在监控的应用；也可「另选 App」补充</td></tr>
+  </table>
+  <p>保存后，列表中会出现该时段。当前正在生效的条目，界面会标出进行中状态。到点后，范围内的应用再打开会被拦住，直到该时段结束。</p>
+  <figure class="slot">
+    <div class="label">图 · 添加时段表单</div>
+    <figcaption>名称 · 起止 · 重复 · 锁定范围</figcaption>
+  </figure>
+
+  <h2>编辑与关闭</h2>
+  <p>点列表中的某一条可编辑。若不需要，在编辑页删除或关闭（以实机选项为准）。</p>
+  <p>正在生效时若做削弱性改动，可能会多一步确认，避免误改正在执行的时段。</p>
+
+  <h2>使用注意</h2>
+  <ul>
+    <li><span>方案里还没有任何应用、又未「另选 App」时，这条日程锁没有可锁对象，页面会提示先去方案添加或另选。</span></li>
+    <li><span>日程锁与方案中的日限额、打开次数可以同时存在；到点锁定时，以「此刻不能进」为准。</span></li>
+  </ul>
+<div class="chap-nav"><a class="prev" href="javascript:void(0)" onclick="HA.show('ch05')">‹ 今日</a><a class="next" href="javascript:void(0)" onclick="HA.show('ch07')">权限与后台保活 ›</a></div>
+</section>
+<section class="chapter" id="ch07" hidden>
+<div class="kicker">第 7 章</div>
+  <h1>权限与后台保活</h1>
+
+  <h2>权限分别做什么</h2>
+  <table>
+    <tr><th>用量访问</th><td>看不到近 7 日用量；日限额等依赖时长的规则无法可靠工作</td></tr>
+    <tr><th>悬浮窗</th><td>无法在其它应用上方显示拦截页</td></tr>
+    <tr><th>无障碍</th><td>拦截页期间更容易被 Home / 最近任务绕过</td></tr>
+  </table>
+  <p>入口都在「我」。缺项时会直接提示有几项需处理；全部正常时显示「监控正常」。</p>
+
+  <h2>为什么有时「规则在，却拦不住」</h2>
+  <p>常见原因不是规则写错，而是系统把心锚清出了后台，或限制了自启动。不同手机品牌的设置名称不同（如自启动、后台耗电、电池优化等）。</p>
+  <ol>
+    <li><span class="i">1</span><span>打开「我」，看权限是否仍齐全</span></li>
+    <li><span class="i">2</span><span>若提示与电池 / 后台相关，按页内指引进入保活指南</span></li>
+    <li><span class="i">3</span><span>按清单逐项打开后，再试打开一个方案中的应用，确认拦截页仍会出现</span></li>
+  </ol>
+  <p>说明书不在此罗列各品牌逐步路径；以 App 内保活指南为准。</p>
+  <figure class="slot">
+    <div class="label">图 ·「我」缺项提示 + 保活指南列表</div>
+    <figcaption>品牌逐步截图在保活指南内维护</figcaption>
+  </figure>
+
+  <h2>建议的检查顺序</h2>
+  <ol>
+    <li><span class="i">1</span><span>用量访问、悬浮窗是否开启</span></li>
+    <li><span class="i">2</span><span>无障碍是否开启</span></li>
+    <li><span class="i">3</span><span>电池优化 / 后台限制是否放过心锚</span></li>
+    <li><span class="i">4</span><span>再测：桌面打开方案中的应用 → 应出现拦截页</span></li>
+  </ol>
+<div class="chap-nav"><a class="prev" href="javascript:void(0)" onclick="HA.show('ch06')">‹ 日程锁</a><span></span></div>
+</section>
+
+<script>
+window.HA = {
+  titles: {
+    "ch01": "心锚是什么",
+    "ch02": "开始使用",
+    "ch03": "方案",
+    "ch04": "打开应用时",
+    "ch05": "今日",
+    "ch06": "日程锁",
+    "ch07": "权限与后台保活"
+  },
+  current: "ch01",
+  drawerOpen: false,
+  _notifyDrawer: function(open) {
+    this.drawerOpen = open;
+    if (window.ManualBridge && window.ManualBridge.onDrawer) {
+      window.ManualBridge.onDrawer(open);
+    }
+  },
+  openDrawer: function() {
+    var d = document.getElementById("drawer");
+    var b = document.getElementById("drawerBackdrop");
+    if (!d || !b) return;
+    d.classList.add("open");
+    b.classList.add("open");
+    document.body.classList.add("drawer-lock");
+    this._syncActive();
+    this._notifyDrawer(true);
+  },
+  closeDrawer: function() {
+    var d = document.getElementById("drawer");
+    var b = document.getElementById("drawerBackdrop");
+    if (!d || !b) return;
+    d.classList.remove("open");
+    b.classList.remove("open");
+    document.body.classList.remove("drawer-lock");
+    this._notifyDrawer(false);
+  },
+  _syncActive: function() {
+    var items = document.querySelectorAll(".drawer-item[data-id]");
+    for (var i = 0; i < items.length; i++) {
+      var el = items[i];
+      if (el.getAttribute("data-id") === this.current) el.classList.add("on");
+      else el.classList.remove("on");
+    }
+  },
+  show: function(id) {
+    if (!this.titles[id]) return;
+    var sections = document.querySelectorAll(".chapter");
+    for (var i = 0; i < sections.length; i++) {
+      sections[i].hidden = sections[i].id !== id;
+    }
+    this.current = id;
+    window.scrollTo(0, 0);
+    var title = this.titles[id];
+    document.title = title;
+    this._syncActive();
+    this.closeDrawer();
+    if (window.ManualBridge && window.ManualBridge.onChapter) {
+      window.ManualBridge.onChapter(id, title);
+    }
+  }
+};
+
+(function() {
+  var startX = 0, startY = 0, tracking = false;
+  document.addEventListener("touchstart", function(e) {
+    if (!e.touches || !e.touches.length) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    tracking = startX <= 28 && !HA.drawerOpen;
+  }, { passive: true });
+  document.addEventListener("touchend", function(e) {
+    if (!tracking || !e.changedTouches || !e.changedTouches.length) {
+      tracking = false;
+      return;
+    }
+    var dx = e.changedTouches[0].clientX - startX;
+    var dy = Math.abs(e.changedTouches[0].clientY - startY);
+    tracking = false;
+    if (dx > 56 && dy < 48) HA.openDrawer();
+  }, { passive: true });
+})();
+</script>
+
+</body>
+</html>

@@ -10,6 +10,12 @@
     <string name="permission_usage_desc">用于检测当前正在使用哪个 App，这是核心功能所必需的</string>
     <string name="permission_battery_title">忽略电池优化（推荐）</string>
     <string name="permission_battery_desc">防止系统在后台杀掉监控服务，确保提醒功能正常工作</string>
+    <string name="permission_accessibility_title">无障碍保活（推荐）</string>
+    <string name="permission_accessibility_desc">系统绑定保活，有助于监控服务在后台稳定运行。不会代替你点击其他应用</string>
+    <string name="keep_alive_accessibility_label">心锚后台保活</string>
+    <string name="keep_alive_accessibility_description">用于保持监控服务稳定运行。不会代替你点击或操作其他应用。可随时在系统设置中关闭。</string>
+    <string name="keep_alive_wallpaper_label">心锚壁纸</string>
+    <string name="keep_alive_wallpaper_description">发现页制作的桌面壁纸。设为桌面后同时守护监控，减轻一键清理误杀。</string>
     <string name="permission_grant">去开启</string>
     <string name="permission_granted">已开启 ✓</string>
     <string name="permission_skip">暂时跳过</string>

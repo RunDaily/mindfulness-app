@@ -34,17 +34,15 @@ import com.life.mindfulnessapp.ui.theme.CapabilityMark
 import com.life.mindfulnessapp.ui.theme.LogoGreen
 
 /**
- * 时段管理子页：多段叠加、子开关、编辑/删除。
- * 生效中关闭/删除会走解锁门槛。状态由父页持有，返回即带回。
+ * 时段管理子页：多段、子开关、编辑/删除。
+ * 寄语在各时段编辑中填写；已生效时关闭/删除会走解锁门槛。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PeriodWindowsManageScreen(
     windows: List<PeriodWindow>,
     onWindowsChange: (List<PeriodWindow>) -> Unit,
-    commitment: String,
-    onBack: () -> Unit,
-    onCommitmentChange: ((String) -> Unit)? = null
+    onBack: () -> Unit
 ) {
     val cs = MaterialTheme.colorScheme
     val policy = PeriodLockPolicy
@@ -62,7 +60,7 @@ fun PeriodWindowsManageScreen(
                             fontSize = 17.sp
                         )
                         Text(
-                            "可叠加多段，每段独立开关",
+                            "可设多段，互不重叠；每段独立开关与寄语",
                             fontSize = 12.sp,
                             color = cs.onSurface.copy(alpha = 0.42f)
                         )
@@ -92,41 +90,31 @@ fun PeriodWindowsManageScreen(
                 .padding(top = 12.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(ConfigGroupGap)
         ) {
-            if (commitment.isNotBlank()) {
-                Text(
-                    text = "守护「$commitment」· 生效中关闭需过解锁门槛",
-                    fontSize = 13.sp,
-                    color = cs.onSurface.copy(alpha = 0.45f),
-                    lineHeight = 18.sp,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
-
             SettingsSection(
                 header = "锁定时段",
                 headerIcon = {
                     CapabilityMark(
                         kind = CapabilityKind.PeriodLock,
                         form = CapabilityForm.Standard,
-                        tint = LogoGreen.copy(alpha = 0.75f),
                         size = 15.dp
                     )
                 },
                 footer = when {
                     windows.isEmpty() -> "添加至少一段后，时段锁才会生效。"
                     windows.none { it.enabled } -> "所有时段都已关闭，当前不会硬挡。"
-                    else -> "开启的时段会叠加生效；列表中标「生效中」的段此刻正在锁定。"
+                    else -> "各时段互不重叠；列表中标「生效中」的段此刻正在锁定。"
                 }
             ) {
                 PeriodWindowSettings(
                     windows = windows,
                     onWindowsChange = onWindowsChange,
+                    lockIsLive = true,
                     onRequestDisableWindow = { id ->
                         pendingDisable = PeriodManagePending.WindowOff(id)
                     },
                     onRequestDeleteWindow = { id ->
                         val w = windows.find { it.id == id } ?: return@PeriodWindowSettings
-                        if (w.enabled && policy.wouldBeActiveNow(w)) {
+                        if (w.enabled) {
                             pendingDisable = PeriodManagePending.DeleteWindow(id)
                         } else {
                             onWindowsChange(windows.filter { it.id != id })
@@ -134,30 +122,19 @@ fun PeriodWindowsManageScreen(
                     }
                 )
             }
-
-            if (onCommitmentChange != null) {
-                SettingsSection(
-                    header = "承诺",
-                    footer = "拦截页与解锁门槛会回显这句话。"
-                ) {
-                    PeriodCommitmentField(
-                        value = commitment,
-                        onValueChange = onCommitmentChange
-                    )
-                }
-            }
         }
     }
 
     pendingDisable?.let { pending ->
+        val target = when (pending) {
+            is PeriodManagePending.WindowOff ->
+                windows.find { it.id == pending.id }
+            is PeriodManagePending.DeleteWindow ->
+                windows.find { it.id == pending.id }
+        }
         PeriodLockDisableGateDialog(
-            commitment = commitment,
-            windowLabel = when (pending) {
-                is PeriodManagePending.WindowOff ->
-                    windows.find { it.id == pending.id }?.label()
-                is PeriodManagePending.DeleteWindow ->
-                    windows.find { it.id == pending.id }?.label()
-            },
+            commitment = target?.message.orEmpty(),
+            windowLabel = target?.label(),
             title = when (pending) {
                 is PeriodManagePending.WindowOff -> "关闭此时段？"
                 is PeriodManagePending.DeleteWindow -> "删除此时段？"
@@ -166,6 +143,7 @@ fun PeriodWindowsManageScreen(
                 is PeriodManagePending.DeleteWindow -> "确认删除"
                 else -> "确认关闭"
             },
+            breathReason = com.life.mindfulnessapp.data.analytics.HaEvents.BreathReason.PERIOD_WINDOW,
             onConfirm = {
                 when (pending) {
                     is PeriodManagePending.WindowOff -> {

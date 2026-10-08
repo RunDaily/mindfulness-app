@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI · 配置辅助与完整对话</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --line: rgba(232,237,230,.12);
+      --sand: #c4a35a; --blue: #7eb8c9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 80px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 40px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .eyebrow { font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px; }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+    .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .row4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 980px) { .row, .row4 { grid-template-columns: 1fr; justify-items: center; } }
+    .col-head { text-align: center; margin-bottom: 8px; max-width: 300px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; }
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9/17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4);
+    }
+    .bar {
+      height: 34px; padding: 12px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600;
+    }
+    .body { flex: 1; padding: 2px 16px 14px; display: flex; flex-direction: column; gap: 6px; }
+    .brand { font-family: "Iowan Old Style", "Songti SC", Georgia, serif; font-size: 18px; font-weight: 500; }
+    .sub { font-size: 11px; color: var(--fog); line-height: 1.45; }
+    .back { font-size: 12px; color: var(--mist); }
+    .hint { font-size: 10px; color: var(--mist); }
+    .rowi {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px;
+    }
+    .rowi .n { font-size: 13px; }
+    .rowi .m { font-size: 10px; color: var(--mist); margin-top: 2px; }
+    .cta { font-size: 14px; color: var(--leaf-text); }
+    .dim { font-size: 12px; color: var(--mist); }
+    .em { color: var(--blue); font-style: normal; }
+    .suggest {
+      border: 1px solid rgba(61,122,74,.35); background: rgba(61,122,74,.1);
+      border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: #c5d0c6;
+    }
+    .suggest .acts { display: flex; gap: 14px; margin-top: 8px; }
+    .diff {
+      border-left: 2px solid rgba(61,122,74,.5); padding: 6px 0 6px 10px;
+      font-size: 12px; color: #c5d0c6; line-height: 1.55;
+    }
+    .bubble {
+      font-size: 13px; line-height: 1.5; padding: 6px 0;
+    }
+    .bubble.me { color: var(--paper); }
+    .bubble.ai { color: var(--blue); }
+    .input {
+      margin-top: auto; border-top: 1px solid var(--line); padding-top: 10px;
+      font-size: 12px; color: var(--mist);
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .chip {
+      font-size: 11px; color: #b7d4be; border: 1px solid rgba(61,122,74,.35);
+      border-radius: 999px; padding: 5px 10px;
+    }
+    .sw {
+      width: 32px; height: 18px; border-radius: 999px; background: rgba(61,122,74,.85);
+      position: relative; flex: none;
+    }
+    .sw i { position: absolute; top: 2px; left: 14px; width: 14px; height: 14px; border-radius: 50%; background: var(--paper); }
+    .heat { display: flex; gap: 2px; align-items: flex-end; height: 18px; margin: 4px 0; }
+    .heat i { flex: 1; background: rgba(61,122,74,.45); }
+    .heat i.n { background: rgba(196,163,90,.55); }
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.75; max-width: 760px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); }
+    .map {
+      max-width: 760px; margin: 0 auto; font-size: 12px; color: var(--fog);
+      line-height: 1.7; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">AI · Two Forms</div>
+      <h1>目标在对话里发现 · 配置页只填数</h1>
+      <p>问目标交给方案 Agent，多轮聊到能写目标卡。配置页只读已确认目标，把用量译成开关差异。</p>
+      <div class="thesis">说人话 · 对话发现目标 · 确认前不写库</div>
+    </header>
+
+    <pre class="map">方案 Agent（发现目标）
+  开口 → 追问缺口 → 复述成目标卡 → 人点头 → 再出 diff →「确认改」
+
+配置页 Agent（辅）
+  已有目标：用量热力 → 一行建议 →「按这个调」→ 人保存
+  没有目标：手配，或字链进对话；不在本页做目标问卷</pre>
+
+    <!-- A. Config assist -->
+    <p class="sec">A · <strong>单 App 配置 · 只填数</strong></p>
+    <section class="row4">
+      <div>
+        <div class="col-head"><h3>① 还没有目标</h3><p>不硬推最优配置</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="body">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub">近 7 日 · 日均 48 分 · 打开 11 次</p>
+            <div class="heat">
+              <i style="height:20%"></i><i style="height:15%"></i><i style="height:10%"></i>
+              <i style="height:12%"></i><i style="height:18%"></i><i style="height:30%"></i>
+              <i class="n" style="height:55%"></i><i class="n" style="height:70%"></i>
+              <i class="n" style="height:40%"></i><i style="height:22%"></i><i style="height:14%"></i>
+              <i style="height:10%"></i>
+            </div>
+            <div class="suggest">
+              晚上用得比较多。想先定个方向，再帮你调这些数。
+              <div class="acts"><span class="cta">和 AI 聊聊</span><span class="dim">自己拨</span></div>
+            </div>
+            <div class="rowi"><div><div class="n">呼吸 · 8 秒</div></div><div class="sw"><i></i></div></div>
+            <div class="rowi"><div><div class="n">日限 · 30</div></div><div class="sw"><i></i></div></div>
+            <div style="margin-top:auto;display:flex;justify-content:flex-end"><span class="cta">保存</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>② 已有目标</h3><p>目标 + 用量 → 一句</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="body">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub">目标 · 晚上早睡 · 留口子</p>
+            <div class="heat">
+              <i style="height:20%"></i><i style="height:15%"></i><i style="height:10%"></i>
+              <i style="height:12%"></i><i style="height:18%"></i><i style="height:30%"></i>
+              <i class="n" style="height:55%"></i><i class="n" style="height:70%"></i>
+              <i class="n" style="height:40%"></i><i style="height:22%"></i><i style="height:14%"></i>
+              <i style="height:10%"></i>
+            </div>
+            <div class="suggest">
+              按早睡，23 点后先挡住；日限 30 对你有点紧，改成 45。
+              <div class="acts"><span class="cta">按这个调</span><span class="dim">再说一句</span></div>
+            </div>
+            <div class="rowi"><div><div class="n">日限 · 30</div></div><div class="sw"><i></i></div></div>
+            <div class="rowi"><div><div class="n">时段</div><div class="m">关着</div></div><div class="dim">○</div></div>
+            <div style="margin-top:auto;display:flex;justify-content:flex-end"><span class="cta">保存</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>③ 采纳后</h3><p>开关变了，仍等人保存</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="body">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub">近 7 日 · 日均 48 分 · 打开 11 次</p>
+            <div class="diff">
+              已填上建议（未保存）<br />
+              日限 30 → 45 分<br />
+              时段 关 → 23:00–07:00
+            </div>
+            <div class="rowi"><div><div class="n">呼吸 · 8 秒</div></div><div class="sw"><i></i></div></div>
+            <div class="rowi"><div><div class="n">次数 · 8</div></div><div class="sw"><i></i></div></div>
+            <div class="rowi"><div><div class="n">日限 · 45</div></div><div class="sw"><i></i></div></div>
+            <div class="rowi"><div><div class="n">时段 · 23:00–07:00</div></div><div class="sw"><i></i></div></div>
+            <div style="margin-top:auto;display:flex;justify-content:space-between"><span class="dim">撤销建议</span><span class="cta">保存</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>④ 再说一句</h3><p>只微调本页，不聊目标</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置</span></div>
+          <div class="body">
+            <div class="back">‹ 方案</div>
+            <div class="brand">小红书</div>
+            <p class="sub">目标 · 晚上早睡 · 留口子</p>
+            <div class="rowi"><div><div class="n">日限 · 45</div></div><div class="sw"><i></i></div></div>
+            <div class="rowi"><div><div class="n">时段 · 23:00–07:00</div></div><div class="sw"><i></i></div></div>
+            <div class="diff" style="margin-top:8px">
+              「再紧一点」→ 日限 45→35
+            </div>
+            <div class="input">
+              再紧一点…
+              <div class="chips"><span class="chip">再紧一点</span><span class="chip">只管夜间</span><span class="chip">关掉次数</span></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding-top:8px"><span class="dim">收起</span><span class="cta">填到开关</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- B. Full agent -->
+    <p class="sec">B · <strong>方案 · 对话发现目标</strong></p>
+    <section class="row4">
+      <div>
+        <div class="col-head"><h3>① 开口</h3><p>人用自己的话</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>改目标</span></div>
+          <div class="body">
+            <div class="back">‹ 方案</div>
+            <div class="brand" style="font-size:16px">改目标</div>
+            <div class="bubble ai">最近晚上小红书用得比较多。你更想改哪一块？</div>
+            <div class="bubble me">就是晚上总刷到一两点，白天其实还好</div>
+            <div class="bubble ai">听起来是晚上早点放下。夜里挡到几点比较合适？</div>
+            <div class="chips"><span class="chip">23 点</span><span class="chip">0 点</span><span class="chip">我再说</span></div>
+            <div class="input">再说一句…</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>② 收窄</h3><p>缺哪问哪</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>改目标</span></div>
+          <div class="body">
+            <div class="back">‹ 方案</div>
+            <div class="brand" style="font-size:16px">改目标</div>
+            <div class="bubble me">大概 23 点吧，但别太死，偶尔还想看一眼</div>
+            <div class="bubble ai">那就留口子：夜间挡着，日限略宽一点。要不要先只管小红书和抖音？</div>
+            <div class="bubble me">对，先这两个</div>
+            <div class="chips"><span class="chip">再严一点</span><span class="chip">也管微博</span><span class="chip">就这样</span></div>
+            <div class="input">再说一句…</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>③ 目标卡 + diff</h3><p>聊清再给数</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>改目标</span></div>
+          <div class="body">
+            <div class="back">‹ 方案</div>
+            <div class="brand" style="font-size:16px">改目标</div>
+            <div class="bubble ai">先记成下面这样，对了再改规则。</div>
+            <div class="suggest" style="margin:4px 0">目标 · 晚上早睡 · 留口子 · 小红书、抖音</div>
+            <div class="diff">
+              小红书 · 时段 → 23:00–07:00 · 日限 45→55<br />
+              抖音 · 时段 → 23:00–07:00
+            </div>
+            <div class="chips"><span class="chip">再严一点</span><span class="chip">换说法</span></div>
+            <div style="display:flex;justify-content:space-between;margin-top:auto"><span class="dim">返回</span><span class="cta">确认改</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-head"><h3>④ 入口 / 校准</h3><p>校准要已有目标</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>方案</span></div>
+          <div class="body">
+            <div class="brand">方案</div>
+            <div class="rowi"><div><div class="n">小红书</div><div class="m">呼吸 · ≤8 · 45 分 · 夜间</div></div><div>›</div></div>
+            <div class="rowi"><div><div class="n">抖音</div><div class="m">日限 45 分</div></div><div>›</div></div>
+            <p class="dim" style="margin-top:12px">添加 App · 按用量校准 · <em class="em">和 AI 改目标</em></p>
+            <div style="margin-top:auto;display:flex;justify-content:space-around;padding-top:8px;border-top:1px solid var(--line);font-size:10px;color:var(--mist)">
+              <span>今日</span><span style="color:var(--paper);font-weight:600">方案</span><span>我</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="note">
+      <strong>目标发现：</strong>只在方案对话 Agent。多轮聊到能写目标卡，再出 diff。芯片是对话里的快捷说法，不是配置页问卷。<br />
+      <strong>配置页：</strong>只读已确认目标填数；没有目标则手配或「和 AI 聊聊」。禁止在本页用预置选项代替访谈。<br />
+      <strong>说人话：</strong>建议像看完记录后的一句。<br />
+      <strong>界面不解说自己：</strong>设计取舍只写在框外 note。<br />
+      <strong>禁止：</strong>配置页目标问卷；未确认目标就甩全套数字；AI 直接保存；对话做成第四 Tab。
+    </p>
+  </div>
+</body>
+</html>

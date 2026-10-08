@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心锚 · 日程锁流程</title>
+  <style>
+    :root {
+      --ink: #070908;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --leaf: #3d7a4a;
+      --leaf-text: #9fd4a8;
+      --line: rgba(232,237,230,.12);
+      --sand: #c4a35a;
+      --sand-dim: rgba(196,163,90,.16);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background:
+        radial-gradient(ellipse at 36% -6%, #1a2420 0%, transparent 46%),
+        var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 90px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 40px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf);
+      font-weight: 600; margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .flow {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center;
+      font-size: 12px; color: var(--mist);
+    }
+    .flow span {
+      padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line);
+      background: rgba(255,255,255,.03); color: #c5d0c6;
+    }
+    .flow span.on {
+      border-color: rgba(196,163,90,.4); background: var(--sand-dim); color: #e4d4a4;
+    }
+    .flow i { font-style: normal; color: #3a403c; padding: 0 2px; }
+
+    .sec-title {
+      text-align: center; font-size: 11px; letter-spacing: .12em; color: var(--sand);
+      font-weight: 600;
+    }
+    .sec-title + .phones { margin-top: -8px; }
+
+    .phones {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: start;
+    }
+    .phones3 { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 1100px) {
+      .phones, .phones3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col-head {
+      text-align: center; margin-bottom: 10px; max-width: 260px;
+      margin-left: auto; margin-right: auto;
+    }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.45; }
+
+    .phone {
+      width: min(260px, 100%); aspect-ratio: 9/17.2; border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .bar {
+      height: 32px; padding: 11px 14px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex-shrink: 0;
+    }
+    .body {
+      flex: 1; padding: 2px 14px 0; display: flex; flex-direction: column;
+      min-height: 0; overflow: hidden;
+    }
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 18px; font-weight: 500;
+    }
+    .sub {
+      font-size: 11px; color: var(--fog); margin: 2px 0 10px; line-height: 1.4;
+    }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 6px; }
+
+    .tabs {
+      flex-shrink: 0; height: 50px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+      border-top: 1px solid var(--line); padding: 6px 2px 8px;
+    }
+    .tab {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; font-size: 9px; color: var(--mist);
+    }
+    .tab.on { color: var(--leaf-text); }
+
+    .lock {
+      padding: 11px 0;
+      border-top: 1px solid var(--line);
+    }
+    .lock:first-of-type { border-top: none; padding-top: 2px; }
+    .lock.live .name { color: var(--sand); }
+    .lock .top {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    }
+    .lock .name { font-size: 14px; font-weight: 550; }
+    .lock .state {
+      font-size: 10px; letter-spacing: .06em; color: var(--mist);
+    }
+    .lock.live .state { color: var(--sand); }
+    .lock .time {
+      font-size: 11px; color: var(--fog); margin-top: 3px;
+      font-variant-numeric: tabular-nums;
+    }
+    .lock .scope {
+      font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.4;
+    }
+    .add {
+      margin-top: 10px; padding: 8px 0 4px;
+      font-size: 12px; color: var(--leaf-text);
+    }
+
+    .field {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; gap: 10px;
+    }
+    .field .k { color: var(--mist); font-size: 12px; flex-shrink: 0; width: 52px; }
+    .field .v { color: var(--paper); flex: 1; text-align: left; font-variant-numeric: tabular-nums; }
+    .field .v.dim { color: rgba(139,147,140,.55); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .chip {
+      font-size: 11px; padding: 5px 10px; border-radius: 8px;
+      border: 1px solid var(--line); color: var(--mist);
+    }
+    .chip.on {
+      border-color: rgba(61,122,74,.4); color: var(--leaf-text);
+      background: rgba(61,122,74,.12);
+    }
+    .sec-label {
+      font-size: 10px; letter-spacing: .1em; color: var(--mist);
+      margin: 14px 0 6px;
+    }
+    .acts {
+      display: flex; gap: 16px; margin-top: 16px; font-size: 13px;
+    }
+    .acts .go { color: var(--leaf-text); }
+    .acts .dim { color: var(--mist); }
+
+    .sheet {
+      margin-top: auto; background: #0c0f0d;
+      border: 1px solid rgba(255,255,255,.08); border-radius: 14px 14px 0 0;
+      padding: 12px 14px 16px;
+    }
+    .grip {
+      width: 28px; height: 3px; border-radius: 2px; margin: 0 auto 10px;
+      background: rgba(232,237,230,.18);
+    }
+    .dim-page { opacity: .34; pointer-events: none; }
+
+    .door {
+      flex: 1; display: flex; flex-direction: column; justify-content: center;
+      padding: 8px 4px 20px; gap: 10px;
+    }
+    .door .mark {
+      font-size: 11px; letter-spacing: .14em; color: var(--sand);
+    }
+    .door .title { font-size: 20px; font-weight: 500; line-height: 1.3; }
+    .door .meta { font-size: 12px; color: var(--fog); line-height: 1.5; }
+    .door .leave {
+      margin-top: 18px; font-size: 14px; color: var(--leaf-text);
+    }
+    .door .once {
+      font-size: 12px; color: var(--mist);
+    }
+
+    .hub-line {
+      padding: 8px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 10px;
+    }
+    .hub-line .k { font-size: 10px; letter-spacing: .08em; color: var(--mist); }
+    .hub-line .n { font-size: 14px; margin-top: 3px; }
+    .hub-line .t { font-size: 12px; color: var(--sand); margin-top: 2px; }
+
+    .island {
+      margin: 40px 8px 0; padding: 12px 12px 14px;
+      border: 1px solid var(--line); border-radius: 14px; background: #0c0f0d;
+    }
+    .island .t { font-size: 11px; color: var(--sand); }
+    .island .n { font-size: 14px; margin-top: 4px; }
+    .island .a {
+      display: flex; justify-content: flex-end; gap: 12px;
+      margin-top: 10px; font-size: 12px;
+    }
+    .island .a .go { color: var(--leaf-text); }
+    .island .a .dim { color: var(--mist); }
+
+    .notes {
+      max-width: 760px; margin: 0 auto; display: grid; gap: 8px;
+      padding: 16px 18px; border: 1px solid var(--line); border-radius: 12px;
+      background: rgba(255,255,255,.02);
+    }
+    .notes h2 {
+      font-size: 12px; letter-spacing: .1em; color: var(--sand); font-weight: 600;
+    }
+    .notes ul { padding-left: 16px; font-size: 12.5px; color: var(--fog); line-height: 1.7; }
+    .notes li + li { margin-top: 3px; }
+    .notes strong { color: #c5d0c6; font-weight: 550; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">时段锁 · 日程化</div>
+      <h1>日程锁 · 流程草图</h1>
+      <p>
+        不排人生待办。只编排「何时锁哪些 App」。
+        列表是契约脊线；添加是配锁；到点是硬门；小球只说下一段锁。
+      </p>
+      <div class="thesis">今日看结果 · 方案配已监控 · 日程锁排守时 · 我管基建</div>
+    </header>
+
+    <div class="flow">
+      <span class="on">1 列表</span><i>→</i>
+      <span class="on">2 添加</span><i>→</i>
+      <span class="on">3 锁定谁</span><i>→</i>
+      <span class="on">4 到点硬门</span><i>→</i>
+      <span>5 小球下一锁</span>
+    </div>
+
+    <!-- 主路径 1–4 -->
+    <div class="sec-title">主路径</div>
+    <section class="phones">
+      <div>
+        <div class="col-head">
+          <h3>1 · 日程锁列表</h3>
+          <p>按开始时间排；生效中用芥末金；不是五段空壳</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>●●●</span></div>
+          <div class="body">
+            <div class="brand">日程锁</div>
+            <div class="sub">今天 · 周三</div>
+            <div class="lock">
+              <div class="top">
+                <span class="name">夜间</span>
+                <span class="state">未生效</span>
+              </div>
+              <div class="time">23:00 – 次日 07:00 · 每天</div>
+              <div class="scope">锁 · 监控中的 App</div>
+            </div>
+            <div class="lock live">
+              <div class="top">
+                <span class="name">工作专注</span>
+                <span class="state">生效中</span>
+              </div>
+              <div class="time">09:00 – 12:00 · 工作日</div>
+              <div class="scope">锁 · 抖音、小红书、B站</div>
+            </div>
+            <div class="lock">
+              <div class="top">
+                <span class="name">午休</span>
+                <span class="state">未生效</span>
+              </div>
+              <div class="time">13:00 – 14:00 · 工作日</div>
+              <div class="scope">锁 · 监控中的 App</div>
+            </div>
+            <div class="add">＋ 添加时段</div>
+          </div>
+          <div class="tabs">
+            <div class="tab">今日</div>
+            <div class="tab">方案</div>
+            <div class="tab on">日程锁</div>
+            <div class="tab">我</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>2 · 添加时段</h3>
+          <p>名称 · 起止 · 重复；结束必填（可跨午夜）</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>●●●</span></div>
+          <div class="body">
+            <div class="back">‹ 返回</div>
+            <div class="brand" style="font-size:17px;">添加时段</div>
+            <div class="field"><span class="k">名称</span><span class="v">工作专注</span></div>
+            <div class="field"><span class="k">开始</span><span class="v">09:00</span></div>
+            <div class="field"><span class="k">结束</span><span class="v">12:00</span></div>
+            <div class="sec-label">重复</div>
+            <div class="chips">
+              <span class="chip">每天</span>
+              <span class="chip on">工作日</span>
+              <span class="chip">自定义</span>
+            </div>
+            <div class="sec-label">锁定范围</div>
+            <div class="chips">
+              <span class="chip">监控中的 App</span>
+              <span class="chip on">指定几个</span>
+            </div>
+            <div class="field" style="margin-top:4px;">
+              <span class="k">App</span>
+              <span class="v dim">抖音、小红书、B站 ›</span>
+            </div>
+            <div class="acts">
+              <span class="go">保存</span>
+              <span class="dim">取消</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>3 · 指定几个</h3>
+          <p>从方案里监控中的 App 选；不做默认锁全机</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>●●●</span></div>
+          <div class="body">
+            <div class="back">‹ 返回</div>
+            <div class="brand" style="font-size:17px;">锁定哪些</div>
+            <div class="sub">来自监控中的</div>
+            <div class="field"><span class="k">抖音</span><span class="v" style="text-align:right;color:var(--leaf-text);">已选</span></div>
+            <div class="field"><span class="k">小红书</span><span class="v" style="text-align:right;color:var(--leaf-text);">已选</span></div>
+            <div class="field"><span class="k">B站</span><span class="v" style="text-align:right;color:var(--leaf-text);">已选</span></div>
+            <div class="field"><span class="k">微信</span><span class="v dim" style="text-align:right;">选取</span></div>
+            <div class="acts" style="margin-top:auto;padding-bottom:18px;">
+              <span class="go">完成</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>4 · 到点硬门</h3>
+          <p>范围内 App 进不来；每天可豁免进入 1 次</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>●●●</span></div>
+          <div class="body">
+            <div class="door">
+              <div class="mark">日程锁 · 工作专注</div>
+              <div class="title">现在是专注时间</div>
+              <div class="meta">09:00 – 12:00<br>抖音 暂不可进</div>
+              <div class="leave">离开</div>
+              <div class="once">今日豁免进入 · 还剩 1 次</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 旁路 -->
+    <div class="sec-title">小球与空态</div>
+    <section class="phones phones3">
+      <div>
+        <div class="col-head">
+          <h3>Hub · 下一锁</h3>
+          <p>不是待办下一件；点开进日程锁</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>●●●</span></div>
+          <div class="body" style="padding-top:20px;">
+            <div style="font-size:11px;color:var(--mist);margin-bottom:8px;">桌面心锚面板</div>
+            <div class="hub-line">
+              <div class="k">下一锁</div>
+              <div class="n">午休</div>
+              <div class="t">13:00 · 监控中的 App</div>
+            </div>
+            <div style="font-size:12px;color:var(--fog);">监控  48分</div>
+            <div style="margin-top:8px;height:14px;display:flex;gap:2px;align-items:flex-end;">
+              <i style="flex:1;height:4px;background:rgba(139,147,140,.2);border-radius:1px;display:block;"></i>
+              <i style="flex:1;height:8px;background:rgba(61,122,74,.35);border-radius:1px;display:block;"></i>
+              <i style="flex:1;height:12px;background:rgba(61,122,74,.5);border-radius:1px;display:block;"></i>
+              <i style="flex:1;height:6px;background:rgba(61,122,74,.3);border-radius:1px;display:block;"></i>
+              <i style="flex:1;height:3px;background:rgba(139,147,140,.2);border-radius:1px;display:block;"></i>
+            </div>
+            <div style="margin-top:auto;padding:14px 0 8px;display:flex;justify-content:space-between;font-size:12px;">
+              <span style="color:var(--mist);">日程锁</span>
+              <span style="color:var(--leaf-text);">打开心锚</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>锁将开始</h3>
+          <p>开始前约 5 分钟；完成 = 知道了，不勾待办</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>12:55</span><span>●●●</span></div>
+          <div class="body dim-page" style="padding-top:24px;">
+            <div style="width:36px;height:36px;border-radius:50%;margin:80px auto 0;border:1px solid rgba(196,163,90,.35);background:rgba(196,163,90,.08);"></div>
+          </div>
+          <div class="island">
+            <div class="t">12:55 · 锁将开始</div>
+            <div class="n">午休 · 13:00–14:00</div>
+            <div class="a">
+              <span class="dim">知道了</span>
+              <span class="go">查看</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>空态</h3>
+          <p>一句事实 + 一个动作</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>●●●</span></div>
+          <div class="body">
+            <div class="brand">日程锁</div>
+            <div class="sub">今天 · 周三</div>
+            <div style="margin-top:28px;font-size:13px;color:var(--fog);line-height:1.55;">
+              还没有时段锁
+            </div>
+            <div class="add" style="margin-top:14px;">＋ 添加时段</div>
+          </div>
+          <div class="tabs">
+            <div class="tab">今日</div>
+            <div class="tab">方案</div>
+            <div class="tab on">日程锁</div>
+            <div class="tab">我</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="notes">
+      <h2>框外 · 本草图约定（不进界面）</h2>
+      <ul>
+        <li><strong>定位</strong>：时段锁的日程化；与守计划并表，不另起通用待办。</li>
+        <li><strong>锁定范围</strong>：监控中的 App / 指定几个。不做默认「全部 App」。</li>
+        <li><strong>结束时间</strong>：锁段必填；支持跨午夜。</li>
+        <li><strong>生效中</strong>：时段名与状态用芥末金；动作仍用绿。</li>
+        <li><strong>豁免</strong>：每天 1 次「进入」计次，不拆掉整段锁。</li>
+        <li><strong>优先级</strong>：日程锁硬门 &gt; 日限额剩余（与实现、文案一致）。</li>
+        <li><strong>替换</strong>：现「日程表」Tab 事项/完成勾语义退场；小球「下一件」改为「下一锁」。</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>

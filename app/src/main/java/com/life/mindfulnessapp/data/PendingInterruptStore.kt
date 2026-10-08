@@ -56,11 +56,13 @@ class PendingInterruptStore @Inject constructor(
                 durationSeconds = json.getLong(KEY_DURATION),
                 endedAt = json.getLong(KEY_ENDED_AT)
             )
-            if (interrupt.isExpired()) {
-                clear(packageName)
-                null
-            } else {
-                interrupt
+            when {
+                interrupt.isExpired() || !interrupt.isStrongResumeEligible() -> {
+                    // 过期，或旧快照属随意浏览等不可强续路径 → 清掉，走普通门
+                    clear(packageName)
+                    null
+                }
+                else -> interrupt
             }
         } catch (_: Exception) {
             clear(packageName)

@@ -8,15 +8,50 @@
         tools:ignore="ProtectedPermissions" /> <!-- 前台服务 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" /> <!-- 开机自启 -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" /> <!-- 查询已安装的包 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- AlarmManager 保活兜底（Android 12+ 精确闹钟；未授权时回退 inexact） -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" /> <!-- 查询已安装的包 -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" /> <!-- 震动反馈 -->
-    <uses-permission android:name="android.permission.VIBRATE" /> <!-- 通知权限 (Android 13+) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 拦截页：暂停键无效时把媒体流静音（卸门恢复） -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- 通知权限 (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!-- 忽略电池优化 -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" /> <!-- 网络访问（数据同步） -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- 官网渠道：应用内下载 APK 后请求安装 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 日限额真灰度：写系统色彩校正（需 adb pm grant，用户设置页无法点授） -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- 步行觉察：计步 / 身体活动识别（Android 10+） -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <!-- 试玩 · 静壁纸 -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <uses-feature
+        android:name="android.hardware.sensor.stepcounter"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.sensor.accelerometer"
+        android:required="false" />
+
+    <!-- Android 11+ 需声明才能解析微信 / 浏览器支付跳转 -->
+    <queries>
+        <package android:name="com.tencent.mm" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="weixin" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
 
     <application
         android:name=".MindfulnessApplication"
@@ -32,43 +67,138 @@
         <activity
             android:name=".test_compose.ComposeActivity"
             android:exported="false" />
+        <!-- 能力详情：独立重量级页面 -->
+        <activity
+            android:name=".CapabilityAppsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <!-- 能力入门说明：独立二级页 -->
+        <activity
+            android:name=".CapabilityGuideDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <!-- App 多选网格：独立二级页 -->
+        <activity
+            android:name=".CapabilityBatchPickActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <activity
+            android:name=".PlanAddAppActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <!-- 总览 · 时间线 -->
+        <activity
+            android:name=".DayTimelineActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <!-- 使用日志：一日切换场景 -->
+        <activity
+            android:name=".UsageLogActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <!-- 今天收据：桌面球入口 -->
+        <activity
+            android:name=".TodayReceiptActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <activity
+            android:name=".ScheduleLockEditActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <activity
+            android:name=".InstrumentConfigActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <activity
+            android:name=".PlanBlockListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
+        <activity
+            android:name=".PeriodWindowEditActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MindfulnessApp.CapabilityApps" />
         <!-- 主界面 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:launchMode="singleTop"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.MindfulnessApp">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity> <!-- 核心监控前台服务 -->
+        </activity>
+        // 系统分身 / 拦截焦点托管：全屏底页抢焦点，再叠意图门（避免目标 App 继续累计系统时长）
+        <activity
+            android:name=".DualSpaceGateActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.MindfulnessApp.DualSpaceGate" />
+        <!-- 微信支付结果回调（包名必须为 applicationId.wxapi） -->
+        <activity
+            android:name=".wxapi.WXPayEntryActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <!-- 核心监控前台服务 -->
         <service
             android:name=".service.MonitorForegroundService"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="monitorForegroundApp" />
-        </service> <!-- 加强保活：独立守护前台服务（用户可选开启） -->
+        </service>
+        <!-- 可选系统级保活：无障碍绑定（不读内容、不自动操作） -->
         <service
-            android:name=".service.WatchdogForegroundService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="watchdogService" />
-        </service> <!-- 开机自启 Receiver -->
+            android:name=".service.KeepAliveAccessibilityService"
+            android:exported="true"
+            android:label="@string/keep_alive_accessibility_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/keep_alive_accessibility_config" />
+        </service>
+        <!-- 壁纸守护：独立进程，对抗国产机一键清理误杀主进程 -->
+        <service
+            android:name=".service.KeepAliveWallpaperService"
+            android:exported="true"
+            android:label="@string/keep_alive_wallpaper_label"
+            android:permission="android.permission.BIND_WALLPAPER"
+            android:process=":guardian">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/keep_alive_wallpaper" />
+        </service>
+        <!-- 开机自启 Receiver -->
         <receiver
             android:name=".receiver.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <!-- 部分国产 ROM（含 vivo）快速开机广播 -->
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
+        <!-- AlarmManager 保活唤醒 -->
+        <receiver
+            android:name=".receiver.KeepAliveAlarmReceiver"
+            android:exported="false" />
+        <!-- 定时格言推送（已下线，保留 receiver 类以免旧系统残留崩溃；不再注册） -->
         <!--
             Hilt WorkManager 初始化器：
             禁用 WorkManager 默认的 ContentProvider 自动初始化，改为在 Application 中手动初始化。
@@ -83,6 +213,15 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"
                 tools:node="remove" />
+        </provider>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
         </provider>
     </application>
 

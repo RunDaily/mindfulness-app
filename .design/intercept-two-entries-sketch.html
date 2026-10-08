@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>软门 · 完整流程</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --line: rgba(232,237,230,.12); --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 36px; }
+    header { max-width: 560px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.3;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 40em; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: #c4a35a; letter-spacing: 0; font-size: 13px; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 960px) { .row, .row3 { grid-template-columns: 1fr; justify-items: center; } }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 250px; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: #000; border: 1px solid rgba(255,255,255,.08);
+      padding: 22px 26px 18px; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+    .door-tag { font-size: 11px; color: var(--mist); }
+    .center {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center;
+    }
+    .center.block { align-items: flex-start; text-align: left; justify-content: center; }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--leaf);
+      box-shadow: 0 0 0 7px rgba(61,122,74,.18); margin-bottom: 22px;
+    }
+    .name { font-size: 20px; color: var(--paper); }
+    .hero {
+      font-family: "Songti SC", "Noto Serif SC", serif;
+      font-size: 26px; font-weight: 500; line-height: 1.3;
+    }
+    .meta { margin-top: 8px; font-size: 13px; color: var(--fog); font-variant-numeric: tabular-nums; }
+    .slot { margin-top: 10px; min-height: 22px; font-size: 13px; color: var(--leaf-text); font-variant-numeric: tabular-nums; }
+    .field {
+      margin-top: 10px; width: 100%; max-width: 200px; border: none;
+      border-bottom: 1px solid rgba(232,237,230,.2); background: transparent;
+      color: var(--paper); font-size: 16px; text-align: center; padding: 4px 0 6px;
+      font-family: inherit;
+    }
+    .field::placeholder { color: rgba(139,147,140,.5); }
+    .mins {
+      margin-top: 14px; display: flex; gap: 18px; justify-content: center;
+      font-variant-numeric: tabular-nums; min-height: 22px;
+    }
+    .mins span { font-size: 13px; color: var(--mist); }
+    .mins span.on { color: var(--leaf-text); font-size: 15px; }
+    .switch { margin-top: 14px; font-size: 12px; color: var(--mist); }
+    .acts { display: flex; gap: 28px; align-items: center; padding-bottom: 8px; }
+    .act { font-size: 16px; color: var(--fog); }
+    .act.wait { color: var(--mist); }
+    .act.go { color: var(--leaf-text); }
+    .note {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); }
+    .flow {
+      max-width: 720px; margin: 0 auto; font-size: 13px; line-height: 1.8; color: var(--fog);
+    }
+    .flow b { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Explore Door · Full Flow</div>
+      <h1>刷逛门。先等一下。然后，能搜的去搜；不能搜的，写不写都行。</h1>
+      <p>
+        仅 EXPLORE / CLASSIC。事务门见 soft-door-two-kinds-sketch。<br />
+        硬挡仍在最前。过了硬挡，先看见倒计时，左边是「等一下」，倒计时结束才谈进入。<br />
+        有搜索深链：倒计时后中心变成搜索直达。没有深链：倒计时后就可以打开；「做什么」可点可不点。写下之后才出现时长。
+      </p>
+    </header>
+
+    <p class="flow">
+      <b>顺序</b>　时段 / 次数尽 / 日限尽 → 倒计时 → 有深链则搜（或改写意图）／无深链则可直接打开
+    </p>
+
+    <p class="sec">共同 · <strong>先挡，再等</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head"><h3>① 硬挡</h3><p>次数或日限已尽。只有离开</p></div>
+        <div class="phone">
+          <div class="door-tag">小红书</div>
+          <div class="center block">
+            <div class="hero">今日次数已尽</div>
+            <div class="meta">打开 8 / 8</div>
+          </div>
+          <div class="acts"><span class="act go">离开</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>② 倒计时</h3><p>未触硬界。这一拍不能跳</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <div class="slot">5s</div>
+          </div>
+          <div class="acts">
+            <span class="act wait">等一下</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>②′ 微信也一样</h3><p>倒计时不看有没有深链</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">微信</div>
+            <div class="meta">今日第 2/8 次</div>
+            <div class="slot">3s</div>
+          </div>
+          <div class="acts">
+            <span class="act wait">等一下</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">有深链 · <strong>倒计时结束才出搜索</strong></p>
+    <section class="row">
+      <div class="col">
+        <div class="col-head"><h3>③ 默认可搜</h3><p>去搜还淡。没有时长</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <input class="field" placeholder="⌕ 搜索直达" readonly tabindex="-1" />
+            <div class="switch">或 · 做什么</div>
+          </div>
+          <div class="acts">
+            <span class="act wait">去搜</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>④ 词够了</h3><p>去搜变绿。仍无时长</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <input class="field" value="日式咖喱" readonly tabindex="-1" />
+            <div class="switch">或 · 做什么</div>
+          </div>
+          <div class="acts">
+            <span class="act go">去搜</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>⑤ 改去写</h3><p>有字才出数字。未选不能开</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <input class="field" value="回一条私信" readonly tabindex="-1" />
+            <div class="mins"><span>5</span><span>10</span><span>15</span><span>20</span></div>
+            <div class="switch">去搜</div>
+          </div>
+          <div class="acts">
+            <span class="act wait">打开</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>⑥ 选了</h3><p>打开变绿。时长只这一次</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">小红书</div>
+            <div class="meta">今日第 4/8 次</div>
+            <input class="field" value="回一条私信" readonly tabindex="-1" />
+            <div class="mins"><span>5</span><span class="on">10</span><span>15</span><span>20</span></div>
+            <div class="switch">去搜</div>
+          </div>
+          <div class="acts">
+            <span class="act go">打开</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">无深链 · <strong>做什么，可点可不点</strong></p>
+    <section class="row">
+      <div class="col">
+        <div class="col-head"><h3>⑦ 可以直接进</h3><p>没有搜索。没有时长</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">微信</div>
+            <div class="meta">今日第 2/8 次</div>
+            <div class="switch">做什么</div>
+          </div>
+          <div class="acts">
+            <span class="act go">打开</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>⑧ 还没写</h3><p>输入空着，打开仍可点</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">微信</div>
+            <div class="meta">今日第 2/8 次</div>
+            <input class="field" placeholder="这一次" readonly tabindex="-1" />
+          </div>
+          <div class="acts">
+            <span class="act go">打开</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>⑨ 写下了</h3><p>数字出现。打开转淡</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">微信</div>
+            <div class="meta">今日第 2/8 次</div>
+            <input class="field" value="回老张" readonly tabindex="-1" />
+            <div class="mins"><span>5</span><span>10</span><span>15</span><span>20</span></div>
+          </div>
+          <div class="acts">
+            <span class="act wait">打开</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head"><h3>⑩ 选了再开</h3><p>只约束这一次</p></div>
+        <div class="phone">
+          <div class="door-tag">门</div>
+          <div class="center">
+            <div class="dot"></div>
+            <div class="name">微信</div>
+            <div class="meta">今日第 2/8 次</div>
+            <input class="field" value="回老张" readonly tabindex="-1" />
+            <div class="mins"><span class="on">5</span><span>10</span><span>15</span><span>20</span></div>
+          </div>
+          <div class="acts">
+            <span class="act go">打开</span>
+            <span class="act">不进去了</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>落定：</strong>倒计时是进门前的一步，有没有深链都先走完。倒计时里左边只有「等一下」，中心只有秒数。<br />
+      <strong>有深链：</strong>结束后才出现「⌕ 搜索直达」。至少两个字，「去搜」变绿，不设定本次时长。中间淡字「或」，点「做什么」后才出 5 · 10 · 15 · 20，选了才能打开。<br />
+      <strong>无深链：</strong>没有搜索。结束后「打开」就是绿的。「做什么」可忽略；输入仍空，打开保持可点。一旦写下，才出时长，未选则打开转淡。<br />
+      <strong>不进框：</strong>教学句、设计旁白、纸色块、侧尺子、Tab。深链不可靠的 App 不算有搜索。多的 App 不出这扇门。
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>门口 · 门槛（我认为最好的形态）</title>
+  <style>
+    :root {
+      --page: #090a09;
+      --paper: #e6ebe4;
+      --fog: #8a928a;
+      --mist: #5a635c;
+      --leaf: #3d7a4a;
+      --leaf-text: #a8d4b0;
+      --line: rgba(230,235,228,.14);
+      --sand: #c4a35a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 48px 22px 96px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 42px; }
+    header { max-width: 640px; }
+    .eyebrow { font-size: 11px; letter-spacing: .24em; color: var(--mist); margin-bottom: 14px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(26px, 3.4vw, 36px); font-weight: 500;
+      letter-spacing: .03em; line-height: 1.28;
+    }
+    header .lead {
+      margin-top: 16px; font-size: 14px; line-height: 1.8; color: var(--fog); max-width: 46em;
+    }
+    header .lead b { color: var(--paper); font-weight: 600; }
+    .thesis {
+      max-width: 720px; border-left: 2px solid rgba(168,212,176,.35);
+      padding: 4px 0 4px 18px; font-size: 13px; line-height: 1.85; color: var(--fog);
+    }
+    .thesis strong { color: var(--paper); font-weight: 600; }
+
+    .sec { text-align: center; font-size: 11px; letter-spacing: .12em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+
+    .stage {
+      display: grid; grid-template-columns: minmax(280px, 320px) 1fr;
+      gap: 40px; align-items: start; justify-content: center;
+    }
+    @media (max-width: 860px) {
+      .stage { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    /* —— 手机：门槛，不是表单 —— */
+    .phone {
+      width: min(300px, 100%); aspect-ratio: 9 / 19.5; border-radius: 34px;
+      background: #030403; border: 1px solid rgba(255,255,255,.07);
+      position: relative; overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,.55);
+      display: flex; flex-direction: column;
+      padding: 28px 28px 22px;
+    }
+    .sky {
+      position: absolute; inset: -20% -30% auto -30%; height: 70%;
+      background:
+        radial-gradient(ellipse 55% 45% at 50% 55%,
+          rgba(230,235,228,.11) 0%,
+          rgba(90,130,100,.07) 42%,
+          transparent 72%);
+      pointer-events: none;
+      opacity: .4; transform: scale(.96);
+    }
+    .phone.settling .sky {
+      animation: sky 5.2s cubic-bezier(.4, 0, .2, 1) infinite alternate;
+    }
+    .phone.ready .sky {
+      opacity: .22; transform: scale(1);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+    @keyframes sky {
+      from { opacity: .25; transform: scale(.94) translateY(6px); }
+      to   { opacity: .78; transform: scale(1.04) translateY(-4px); }
+    }
+
+    .top-meta {
+      position: relative; z-index: 1;
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-size: 11px; color: var(--mist); letter-spacing: .04em;
+    }
+    .top-meta .app { color: var(--fog); }
+
+    .mid {
+      position: relative; z-index: 1;
+      flex: 1; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; text-align: center;
+      min-height: 0; padding-bottom: 8px;
+    }
+    .word {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 34px; font-weight: 500; letter-spacing: .18em;
+      color: var(--paper); line-height: 1;
+    }
+    .phone.settling .word {
+      animation: word 5.2s cubic-bezier(.4, 0, .2, 1) infinite alternate;
+    }
+    @keyframes word {
+      from { opacity: .38; letter-spacing: .22em; }
+      to   { opacity: 1; letter-spacing: .14em; }
+    }
+    .phone.ready .word { opacity: .72; letter-spacing: .16em; }
+
+    .line-block {
+      margin-top: 48px; width: 100%; max-width: 220px;
+    }
+    .line {
+      width: 100%; border: none; background: transparent;
+      border-bottom: 1px solid rgba(230,235,228,.18);
+      color: var(--paper); font-size: 16px; text-align: center;
+      padding: 8px 0 10px; font-family: inherit; outline: none;
+      caret-color: var(--leaf-text);
+    }
+    .line::placeholder { color: rgba(138,146,138,.48); font-size: 15px; }
+    .line:focus { border-bottom-color: rgba(230,235,228,.42); }
+
+    .cross {
+      margin-top: 20px; min-height: 44px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px;
+    }
+    .cross-row {
+      display: flex; gap: 28px; align-items: baseline; justify-content: center;
+    }
+    .cross a, .cross span {
+      font-size: 14px; color: var(--mist); text-decoration: none;
+      transition: color .25s ease, opacity .25s ease;
+    }
+    .cross .dim { opacity: .3; }
+    .cross .live { color: var(--leaf-text); opacity: 1; }
+    .cross .soft-live { color: var(--fog); opacity: 1; }
+    .cross .ghost { display: none; }
+
+    .foot {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; gap: 18px;
+      padding-top: 8px;
+    }
+    .leave {
+      font-size: 18px; font-weight: 500; color: var(--leaf-text);
+      letter-spacing: .08em; align-self: flex-start;
+    }
+    /* 时间不是数字英雄：底边一根细线在长 */
+    .edge {
+      height: 1px; width: 100%; background: rgba(230,235,228,.06);
+      position: relative; overflow: hidden; border-radius: 1px;
+    }
+    .edge > i {
+      display: block; height: 100%; width: 0%;
+      background: rgba(168,212,176,.55);
+      transition: none;
+    }
+    .phone.ready .edge > i { width: 100%; opacity: 0; transition: opacity .5s ease; }
+    .hint-out {
+      font-size: 11px; color: var(--mist); text-align: center; min-height: 16px;
+    }
+
+    .aside { display: grid; gap: 22px; max-width: 460px; padding-top: 8px; }
+    .aside h3 {
+      font-size: 12px; letter-spacing: .14em; color: var(--mist); font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .aside p, .aside li {
+      font-size: 13px; line-height: 1.75; color: var(--fog);
+    }
+    .aside ul { padding-left: 1.1em; display: grid; gap: 6px; }
+    .aside b { color: var(--paper); font-weight: 600; }
+
+    .row3 {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+    }
+    @media (max-width: 900px) { .row3 { grid-template-columns: 1fr; justify-items: center; } }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 240px; }
+    .col-head h3 { font-size: 13px; font-weight: 500; color: var(--paper); }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.5; }
+    .phone.sm { width: min(250px, 100%); }
+
+    .alts {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 820px; margin: 0 auto;
+    }
+    @media (max-width: 720px) { .alts { grid-template-columns: 1fr; } }
+    .alt {
+      border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;
+      font-size: 12px; line-height: 1.7; color: var(--fog);
+    }
+    .alt h4 { font-size: 13px; color: var(--paper); font-weight: 500; margin-bottom: 6px; }
+    .alt.no { opacity: .75; }
+    .alt.no h4::after { content: " · 不取"; color: var(--mist); font-weight: 400; }
+
+    .note {
+      max-width: 760px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 16px 18px; font-size: 12px; line-height: 1.8; color: var(--fog);
+    }
+    .note strong { color: var(--paper); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Threshold · Best Form</div>
+      <h1>门口不是表单。是一道短暂的门槛。</h1>
+      <p class="lead">
+        人冲过来时，要的不是控件清单，是<strong>把惯性切断</strong>，再给一条<strong>诚实的过法</strong>。<br />
+        最好的形态：先成一间安静的屋子，再让「想」和「过」从同一条线上长出来。离开是屋子的主出口。
+      </p>
+    </header>
+
+    <div class="thesis">
+      <strong>一句判断：</strong>倒计时不该是主角；绿点不该撑场；「搜索 / 带着意图 / 直接进」不该和「离开」抢同一条工具栏。<br />
+      场用光和字呼吸。时间用底边一根细线长完。输入是唯一的中心物。过法是输入的后果。离开单独沉在下面，始终最重。
+    </div>
+
+    <p class="sec">主提案 · <strong>可写、可等、可走</strong></p>
+    <section class="stage">
+      <div>
+        <div class="phone settling" id="live">
+          <div class="sky"></div>
+          <div class="top-meta">
+            <span class="app" id="appLabel">小红书</span>
+            <span id="countLabel">今日 4/8</span>
+          </div>
+          <div class="mid">
+            <div class="word">停一下</div>
+            <div class="line-block">
+              <input class="line" id="line" type="text" placeholder="这一次，要做什么" autocomplete="off" />
+              <div class="cross" id="cross">
+                <div class="cross-row" id="pair">
+                  <span class="dim" id="search">搜过去</span>
+                  <span class="dim" id="intent">带着这个进去</span>
+                </div>
+                <div class="cross-row ghost" id="solo">
+                  <span class="dim" id="plain">还是进去</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="foot">
+            <span class="leave">离开</span>
+            <div class="edge"><i id="edge"></i></div>
+          </div>
+        </div>
+        <p class="hint-out" id="hint">点输入才会出键盘 · 细线走完才放行</p>
+      </div>
+
+      <aside class="aside">
+        <div>
+          <h3>为什么这是更好的</h3>
+          <ul>
+            <li><b>切断惯性靠场，不靠控件。</b>光和「停一下」同拍起伏；人不需要盯着 5s 才知道自己在等。</li>
+            <li><b>一条线，两种过法。</b>写下的话，要么搜过去（诚实），要么带着这个进去。空着走完，才出现更淡的「还是进去」。</li>
+            <li><b>离开是建筑，不是次按钮。</b>字号、位置、颜色都站在「不必进」一边。</li>
+            <li><b>时间降级为边。</b>底边细线长完 = 可过。需要精确感时，仍可在开发里读秒，用户不必读。</li>
+            <li><b>键盘不抢场。</b>线在，但不自动弹。想写的人自己点进去。</li>
+          </ul>
+        </div>
+        <div>
+          <h3>过法规则（推荐）</h3>
+          <ul>
+            <li>细线未完：过法可见，不可点；离开可点。</li>
+            <li>有字（≥2）且线完：<b>搜过去</b> / <b>带着这个进去</b>。</li>
+            <li>无字且线完：只留 <b>还是进去</b>（比离开更淡）。</li>
+            <li>无深链：不出现「搜过去」。</li>
+          </ul>
+        </div>
+        <div>
+          <h3>文案取舍</h3>
+          <ul>
+            <li>墙上只留「停一下」——命令感短、好呼吸。</li>
+            <li>hint「这一次，要做什么」——问句留给手。</li>
+            <li>「搜过去」比「搜索直达」更像人话；「带着这个进去」指回刚写的字；「还是进去」承认犹豫，不美化空着冲进去。</li>
+          </ul>
+        </div>
+      </aside>
+    </section>
+
+    <p class="sec">同一门槛上的三态 · <strong>空着等 · 写下等 · 写下过</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>空着 · 还在沉</h3>
+          <p>过法淡锁。离开最亮</p>
+        </div>
+        <div class="phone sm settling">
+          <div class="sky"></div>
+          <div class="top-meta"><span class="app">小红书</span><span>今日 4/8</span></div>
+          <div class="mid">
+            <div class="word">停一下</div>
+            <div class="line-block">
+              <input class="line" type="text" placeholder="这一次，要做什么" readonly tabindex="-1" />
+              <div class="cross">
+                <div class="cross-row">
+                  <span class="dim">搜过去</span>
+                  <span class="dim">带着这个进去</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="foot">
+            <span class="leave">离开</span>
+            <div class="edge"><i style="width:35%"></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>写下 · 线还在长</h3>
+          <p>字已在。过法仍锁</p>
+        </div>
+        <div class="phone sm settling">
+          <div class="sky"></div>
+          <div class="top-meta"><span class="app">小红书</span><span>今日 4/8</span></div>
+          <div class="mid">
+            <div class="word">停一下</div>
+            <div class="line-block">
+              <input class="line" type="text" value="周末去哪玩" readonly tabindex="-1" />
+              <div class="cross">
+                <div class="cross-row">
+                  <span class="dim">搜过去</span>
+                  <span class="dim">带着这个进去</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="foot">
+            <span class="leave">离开</span>
+            <div class="edge"><i style="width:70%"></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>写下 · 可以过</h3>
+          <p>场静下来。两条过法亮起</p>
+        </div>
+        <div class="phone sm ready">
+          <div class="sky"></div>
+          <div class="top-meta"><span class="app">小红书</span><span>今日 4/8</span></div>
+          <div class="mid">
+            <div class="word">停一下</div>
+            <div class="line-block">
+              <input class="line" type="text" value="周末去哪玩" readonly tabindex="-1" />
+              <div class="cross">
+                <div class="cross-row">
+                  <span class="live">搜过去</span>
+                  <span class="live">带着这个进去</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="foot">
+            <span class="leave">离开</span>
+            <div class="edge"><i style="width:100%;opacity:0"></i></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">想过但没取的 · <strong>对照一下，为什么不是它们</strong></p>
+    <section class="alts">
+      <div class="alt no">
+        <h4>先空屋，再淡入输入</h4>
+        仪式更纯，但有目的的人被多挡一拍。与「体验为先」冲突。输入应从一开始就在，只是不抢键盘。
+      </div>
+      <div class="alt no">
+        <h4>大呼吸圆 / 粒子 / 强光晕</h4>
+        像冥想 App 皮肤，不像门口。高级感来自克制的在场，不是特效预算。
+      </div>
+      <div class="alt no">
+        <h4>底栏并排：离开 | 搜索 | 进入</h4>
+        三种决策同权重，门口变成工具条。离开应是建筑，过法应是线上长出来的后果。
+      </div>
+      <div class="alt no">
+        <h4>秒数作中心英雄</h4>
+        人会盯表硬扛，场立刻变 low。时间可以存在，但应降成边、成气氛，不成标题。
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>和上一版草图的关系：</strong>你提的结构（停一下 / hint 问句 / 有字双入口 / 空着可直进 / 离开主行动 / 不自动键盘）我都保留，并认作正确。<br />
+      <strong>我往前多走的一步：</strong>把「门控件页」收成「门槛」——去掉绿点与 5s 中心数字；过法文案更像人话；时间改底边细线；事实信息（App、次数）退到顶注。<br />
+      <strong>若只改一件事进真机：</strong>先上「一幕 + 线上下过法 + 离开主出口」；呼吸与细线可以第二拍打磨。
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var DURATION = 5000;
+      var phone = document.getElementById("live");
+      var edge = document.getElementById("edge");
+      var line = document.getElementById("line");
+      var pair = document.getElementById("pair");
+      var solo = document.getElementById("solo");
+      var search = document.getElementById("search");
+      var intent = document.getElementById("intent");
+      var plain = document.getElementById("plain");
+      var hint = document.getElementById("hint");
+      var start = 0;
+      var done = false;
+      var raf = 0;
+      var loopTimer = 0;
+
+      function hasText() {
+        return line.value.trim().replace(/\s/g, "").length >= 2;
+      }
+
+      function paint() {
+        var text = hasText();
+        if (text) {
+          pair.style.display = "flex";
+          solo.classList.add("ghost");
+          solo.style.display = "none";
+          var ok = done;
+          search.className = ok ? "live" : "dim";
+          intent.className = ok ? "live" : "dim";
+        } else if (done) {
+          pair.style.display = "none";
+          solo.classList.remove("ghost");
+          solo.style.display = "flex";
+          plain.className = "soft-live";
+        } else {
+          pair.style.display = "flex";
+          solo.classList.add("ghost");
+          solo.style.display = "none";
+          search.className = "dim";
+          intent.className = "dim";
+        }
+      }
+
+      function tick(now) {
+        if (!start) start = now;
+        var t = Math.min(1, (now - start) / DURATION);
+        edge.style.width = (t * 100) + "%";
+        if (t >= 1) {
+          done = true;
+          phone.classList.remove("settling");
+          phone.classList.add("ready");
+          paint();
+          loopTimer = setTimeout(reset, 2600);
+          return;
+        }
+        raf = requestAnimationFrame(tick);
+      }
+
+      function reset() {
+        done = false;
+        start = 0;
+        line.value = "";
+        edge.style.width = "0%";
+        edge.style.opacity = "1";
+        phone.classList.remove("ready");
+        phone.classList.add("settling");
+        paint();
+        raf = requestAnimationFrame(tick);
+      }
+
+      line.addEventListener("input", paint);
+      line.addEventListener("focus", function () {
+        hint.textContent = "键盘仅在点按后出现";
+      });
+      line.addEventListener("blur", function () {
+        hint.textContent = "点输入才会出键盘 · 细线走完才放行";
+      });
+
+      paint();
+      raf = requestAnimationFrame(tick);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>觉察双轨 · 门 → 使用中 → 结束</title>
+  <style>
+    :root {
+      --ink: #0b0d0c;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --leaf: #3d7a4a;
+      --leaf-soft: rgba(61, 122, 74, 0.14);
+      --sand: #c4a35a;
+      --sand-soft: rgba(196, 163, 90, 0.16);
+      --line: rgba(232, 237, 230, 0.12);
+      --warn: #b87a3d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 50% -10%, #1a2420 0%, transparent 50%),
+        var(--ink);
+      color: var(--paper);
+      font-family: "Iowan Old Style", "Songti SC", "Source Han Serif SC", Georgia, serif;
+      padding: 48px 24px 80px;
+      line-height: 1.55;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; }
+    h1 {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    .lede {
+      color: var(--fog);
+      font-size: 16px;
+      max-width: 36em;
+      margin-bottom: 28px;
+    }
+    .principle {
+      border-left: 2px solid var(--leaf);
+      padding: 8px 0 8px 16px;
+      margin-bottom: 36px;
+      color: var(--paper);
+      font-size: 17px;
+    }
+    .principle span { color: var(--fog); font-size: 14px; display: block; margin-top: 6px; }
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    @media (max-width: 720px) { .split { grid-template-columns: 1fr; } }
+    .track {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px 20px 26px;
+      background: rgba(255,255,255,0.02);
+    }
+    .track.task { border-color: rgba(61, 122, 74, 0.35); }
+    .track.urge { border-color: rgba(196, 163, 90, 0.4); }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+    .track.task .badge { background: var(--leaf-soft); color: #9fd4a8; }
+    .track.urge .badge { background: var(--sand-soft); color: var(--sand); }
+    .track h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+    .track .sub { color: var(--fog); font-size: 13px; margin-bottom: 20px; }
+    .phase { margin-bottom: 18px; }
+    .phase h3 {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: var(--mist);
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+    }
+    .phase p { font-size: 15px; }
+    .phase .ask {
+      margin-top: 6px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      font-size: 14px;
+      color: var(--paper);
+    }
+    .phase .ask em { font-style: normal; color: var(--fog); font-size: 12px; display: block; margin-top: 4px; }
+    .shared {
+      border-top: 1px solid var(--line);
+      padding-top: 32px;
+      margin-bottom: 40px;
+    }
+    .shared h2 { font-size: 18px; margin-bottom: 16px; }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      color: var(--fog);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .flow b { color: var(--paper); font-weight: 600; }
+    .note {
+      color: var(--fog);
+      font-size: 14px;
+      max-width: 42em;
+      margin-bottom: 12px;
+    }
+    .rules {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    @media (max-width: 720px) { .rules { grid-template-columns: 1fr; } }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px 16px 20px;
+      background: rgba(255,255,255,0.02);
+    }
+    .card h3 {
+      font-size: 14px;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      letter-spacing: 0.06em;
+      color: var(--mist);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .card ul { list-style: none; }
+    .card li {
+      font-size: 14px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(232, 237, 230, 0.06);
+      color: var(--paper);
+    }
+    .card li:last-child { border-bottom: none; }
+    .card li span { color: var(--fog); display: block; font-size: 12px; margin-top: 2px; }
+    .card.deny h3 { color: var(--warn); }
+    .phone {
+      margin: 0 auto 36px;
+      width: 280px;
+      border-radius: 28px;
+      border: 1px solid var(--line);
+      background: #121714;
+      padding: 18px 14px 22px;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+    }
+    .phone .status {
+      font-size: 11px;
+      color: var(--fog);
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .island {
+      margin: 0 auto;
+      max-width: 220px;
+      border-radius: 16px;
+      background: #1c221f;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 12px 14px 10px;
+    }
+    .island .q {
+      font-size: 12px;
+      font-weight: 600;
+      color: #9fd4a8;
+      margin-bottom: 4px;
+    }
+    .island .name {
+      font-size: 15px;
+      color: var(--paper);
+      margin-bottom: 14px;
+    }
+    .island .acts {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .island .acts .y { color: #9fd4a8; font-weight: 600; }
+    .island .acts .n { color: var(--fog); }
+    .phone .cap {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--fog);
+    }
+    .metrics {
+      border-top: 1px solid var(--line);
+      padding-top: 28px;
+    }
+    .metrics h2 { font-size: 18px; margin-bottom: 12px; }
+    .metrics ol {
+      padding-left: 1.2em;
+      color: var(--fog);
+      font-size: 14px;
+      max-width: 40em;
+    }
+    .metrics li { margin-bottom: 8px; }
+    .metrics code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      color: #9fd4a8;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>觉察双轨</h1>
+    <p class="lede">
+      进门同一次命名，分出两条线：有实际要做的事，就对照有没有跑偏；
+      只是诚实冲动，就对照待得有没有数。成功条件始终是到场，不是做对。
+    </p>
+    <div class="principle">
+      一次觉察 = 自动化快完成时，对「此刻正在发生什么」做了一次到场标记。
+      <span>诚实命名冲动，和带着事进去，都算到场；跑偏了标出来，也算到场。未回答不算失败。</span>
+    </div>
+
+    <div class="flow">
+      <b>停住</b> → <b>命名</b> → <b>托住</b> → 使用中轻问（≤2）→ SoftExit → 结束对照
+    </div>
+
+    <div class="phone" aria-label="轻问岛示意">
+      <div class="status">使用中 · 约半程</div>
+      <div class="island">
+        <div class="q">还在做「回消息」吗？</div>
+        <div class="name">回消息</div>
+        <div class="acts">
+          <span class="y">还在</span>
+          <span class="n">已经偏了</span>
+        </div>
+      </div>
+      <p class="cap">胶囊侧轻岛 · 约 5 秒自消 · 不挡中心</p>
+    </div>
+
+    <div class="split">
+      <section class="track task">
+        <span class="badge">TASK · 有事</span>
+        <h2>带着实际意图</h2>
+        <p class="sub">例：回一条消息 / 查菜谱 / 找文件</p>
+
+        <div class="phase">
+          <h3>门 · 托住</h3>
+          <p>标签「这件事」· 时长围住命名的对象</p>
+          <div class="ask">跑道：专注于此<em>对象清晰，才谈得上跑偏</em></div>
+        </div>
+        <div class="phase">
+          <h3>使用中</h3>
+          <div class="ask">还在做这件事吗？ · 还在 / 已经偏了<em>问的是对象有没有还在手里</em></div>
+        </div>
+        <div class="phase">
+          <h3>SoftExit</h3>
+          <div class="ask">似乎已经不在这件事上了<em>不强制踢出；结束或再待一会儿</em></div>
+        </div>
+        <div class="phase">
+          <h3>结束对照</h3>
+          <div class="ask">和命名比，这一次 · 没跑偏 / 跑偏了 / 跑远了<em>跑偏才催「实际去做了什么」</em></div>
+        </div>
+      </section>
+
+      <section class="track urge">
+        <span class="badge">URGE · 看见冲动</span>
+        <h2>没有实际事务</h2>
+        <p class="sub">例：就是想刷一会 / 有点无聊 / 顺手要点开</p>
+
+        <div class="phase">
+          <h3>门 · 托住</h3>
+          <p>标签「看见了」· 时长托住这一次，不是托住任务</p>
+          <div class="ask">跑道：带着看见<em>没有「事」可守，不问专注</em></div>
+        </div>
+        <div class="phase">
+          <h3>使用中</h3>
+          <div class="ask">还想待着吗？ · 还想 / 可以停了<em>不问「还在做这件事」——没有这件事</em></div>
+        </div>
+        <div class="phase">
+          <h3>SoftExit</h3>
+          <div class="ask">可以收这一次了<em>停下来也是到场；想接着也行</em></div>
+        </div>
+        <div class="phase">
+          <h3>结束对照</h3>
+          <div class="ask">这一次，待得 · 有数 / 有点久 / 陷进去了<em>不问跑偏；有点久才催「多待在哪了」</em></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="rules">
+      <div class="card">
+        <h3>何时抛</h3>
+        <ul>
+          <li>有意图门且已命名<span>无门 / 无命名 → 不问</span></li>
+          <li>进门满 3 分钟后<span>安静窗内不问</span></li>
+          <li>有时长：约半程（4～20 分）<span>无时长：约满 8 分</span></li>
+          <li>每场最多 2 次<span>第二次至少再隔 12 分</span></li>
+        </ul>
+      </div>
+      <div class="card deny">
+        <h3>不抛</h3>
+        <ul>
+          <li>搜索直达<span>诚实入口不再加第二道停顿</span></li>
+          <li>单次时长 ≤5 分<span>事务短会话；结束对照即可</span></li>
+          <li>日限将尽 / 会话将尽 / 紧急态<span>器械信号优先</span></li>
+          <li>岛已展开或正在跑意图轨<span>互斥，不叠</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="shared">
+      <h2>共用、不分轨的部分</h2>
+      <p class="note">
+        停住拍、身/受/心轻提示、三出口（进入 / 到场离开 / 去做别的）、胶囊时间感知、
+        周回望里的结构——这些对两条线一样。分轨只发生在「命名之后还拿什么当镜子」。
+      </p>
+      <p class="note">
+        契约与验收：`.design/product.md` §13 · 策略代码：`MidSessionCheckPolicy`。
+      </p>
+    </div>
+
+    <div class="metrics">
+      <h2>怎样算有效</h2>
+      <ol>
+        <li>展示 → 有回应（非纯超时）· 事件 <code>mid_check_show</code> / <code>mid_check_action</code></li>
+        <li>点「偏了 / 可以停」→ SoftExit → 2 分钟内结束 · <code>soft_exit_action</code></li>
+        <li>有轻问会话的结束对照档位与时长分布，相对无轻问更诚实（不求更短）</li>
+        <li>关陪伴 / 卸载不因轻问抬升——若抬升，先减频，不加题</li>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>

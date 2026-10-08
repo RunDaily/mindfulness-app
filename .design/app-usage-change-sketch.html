@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>少 · 时长与时段</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --sand: #c4a35a;
+      --line: rgba(232,237,230,.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 72px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 36px; }
+    .hero { text-align: center; max-width: 620px; margin: 0 auto; }
+    .hero .eyebrow { font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px; }
+    .hero h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 980px) { .row { grid-template-columns: 1fr; justify-items: center; } }
+    .col-head { text-align: center; margin-bottom: 8px; max-width: 260px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; }
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9/17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4);
+    }
+    .bar {
+      height: 36px; padding: 12px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600;
+    }
+    .body { flex: 1; padding: 2px 16px 14px; display: flex; flex-direction: column; }
+    .brand { font-family: "Iowan Old Style", "Songti SC", Georgia, serif; font-size: 20px; font-weight: 500; }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 10px; }
+    .k { font-size: 11px; color: var(--mist); }
+    .fact { margin-top: 14px; }
+    .fact .n {
+      margin-top: 3px; font-size: 22px; font-weight: 500; letter-spacing: -.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .fact .s { margin-top: 3px; font-size: 12px; color: var(--fog); }
+    .delta { margin-top: 4px; font-size: 13px; color: var(--leaf-text); }
+    .ticks {
+      margin-top: 12px; height: 28px; display: flex; align-items: flex-end; gap: 8px;
+      border-bottom: 1px solid var(--line); padding-bottom: 4px;
+    }
+    .ticks i {
+      width: 3px; border-radius: 1px; background: rgba(232,237,230,.55); display: block;
+    }
+    .heat {
+      margin-top: 16px; height: 36px; display: flex; align-items: flex-end; gap: 2px;
+    }
+    .heat i { flex: 1; border-radius: 1px 1px 0 0; display: block; min-height: 2px; }
+    .aside { margin-top: 8px; font-size: 12px; color: var(--fog); }
+    .foot { margin-top: auto; padding-top: 12px; }
+    .cta { font-size: 15px; color: var(--leaf-text); }
+    .rowi {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 10px 0; border-bottom: 1px solid var(--line); gap: 8px;
+    }
+    .rowi .n { font-size: 14px; }
+    .rowi .m { font-size: 11px; color: var(--mist); margin-top: 2px; }
+    .rowi .r { font-size: 12px; color: #c5d0c6; text-align: right; font-variant-numeric: tabular-nums; }
+    .nav {
+      margin-top: auto; display: flex; justify-content: space-around; padding-top: 10px;
+      border-top: 1px solid var(--line); font-size: 11px; color: var(--mist);
+    }
+    .nav .on { color: var(--paper); font-weight: 600; }
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.7; max-width: 720px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Less · Change</div>
+      <h1>点进去，看这只少下来没有</h1>
+      <p>今日首页仍只留今天。时长变化和时段分布在这只 App 的详情里，各一句。</p>
+      <div class="thesis">一个差 · 一条热力 · 挤在一段才补半句</div>
+    </header>
+
+    <p class="sec">少 · <strong>详情才展开</strong></p>
+    <section class="row">
+      <div>
+        <div class="col-head"><h3>① 今日</h3><p>不抬近 7 日</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>今日</span></div>
+          <div class="body">
+            <div class="brand">今日</div>
+            <div class="k" style="margin-top:16px">少 · 2/3</div>
+            <div class="rowi">
+              <div><div class="n">小红书</div><div class="m">呼吸 · 日限</div></div>
+              <div class="r">18 / 40 分<br>打开 3/8</div>
+            </div>
+            <div class="rowi">
+              <div><div class="n">抖音</div><div class="m">呼吸 · 日限</div></div>
+              <div class="r">22 / 45 分<br>打开 4/8</div>
+            </div>
+            <div class="nav"><span class="on">今日</span><span>方案</span><span>我</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>② 少下来了</h3><p>日均差，夜里挤着</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>小红书</span></div>
+          <div class="body">
+            <div class="back">‹ 今日</div>
+            <div class="brand">小红书</div>
+            <div class="fact">
+              <div class="k">今日</div>
+              <div class="n">18 / 40 分</div>
+              <div class="s">打开 3/8 · 守住 2</div>
+            </div>
+            <div class="fact">
+              <div class="k">近 7 日</div>
+              <div class="n">日均 18 分</div>
+              <div class="delta">比加上规则前少 12</div>
+              <div class="ticks" aria-hidden="true">
+                <i style="height:86%"></i>
+                <i style="height:62%"></i>
+                <i style="height:48%"></i>
+                <i style="height:40%"></i>
+                <i style="height:70%"></i>
+                <i style="height:28%"></i>
+                <i style="height:36%"></i>
+              </div>
+            </div>
+            <div class="heat" aria-hidden="true">
+              <i style="height:18%;background:rgba(196,163,90,.35)"></i>
+              <i style="height:8%;background:rgba(196,163,90,.25)"></i>
+              <i style="height:6%;background:rgba(196,163,90,.2)"></i>
+              <i style="height:6%;background:rgba(196,163,90,.2)"></i>
+              <i style="height:10%;background:rgba(196,163,90,.28)"></i>
+              <i style="height:14%;background:rgba(196,163,90,.32)"></i>
+              <i style="height:22%;background:rgba(232,237,230,.16)"></i>
+              <i style="height:16%;background:rgba(232,237,230,.12)"></i>
+              <i style="height:12%;background:rgba(232,237,230,.1)"></i>
+              <i style="height:20%;background:rgba(232,237,230,.14)"></i>
+              <i style="height:28%;background:rgba(232,237,230,.18)"></i>
+              <i style="height:24%;background:rgba(232,237,230,.16)"></i>
+              <i style="height:18%;background:rgba(232,237,230,.12)"></i>
+              <i style="height:14%;background:rgba(232,237,230,.1)"></i>
+              <i style="height:22%;background:rgba(232,237,230,.16)"></i>
+              <i style="height:34%;background:rgba(232,237,230,.22)"></i>
+              <i style="height:48%;background:rgba(232,237,230,.28)"></i>
+              <i style="height:40%;background:rgba(232,237,230,.24)"></i>
+              <i style="height:62%;background:rgba(232,237,230,.4)"></i>
+              <i style="height:88%;background:rgba(196,163,90,.75)"></i>
+              <i style="height:70%;background:rgba(196,163,90,.55)"></i>
+              <i style="height:36%;background:rgba(196,163,90,.4)"></i>
+              <i style="height:22%;background:rgba(196,163,90,.3)"></i>
+              <i style="height:16%;background:rgba(196,163,90,.25)"></i>
+            </div>
+            <div class="aside">22 点后占三成</div>
+            <div class="foot"><span class="cta">去改规则</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>③ 还看不出</h3><p>天数不够，差不写</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>抖音</span></div>
+          <div class="body">
+            <div class="back">‹ 今日</div>
+            <div class="brand">抖音</div>
+            <div class="fact">
+              <div class="k">今日</div>
+              <div class="n">22 / 45 分</div>
+              <div class="s">打开 4/8 · 守住 1</div>
+            </div>
+            <div class="foot"><span class="cta">去改规则</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>④ 时间铺开</h3><p>热力在，不写结论</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>微博</span></div>
+          <div class="body">
+            <div class="back">‹ 今日</div>
+            <div class="brand">微博</div>
+            <div class="fact">
+              <div class="k">今日</div>
+              <div class="n">11 / 30 分</div>
+              <div class="s">打开 2/8</div>
+            </div>
+            <div class="fact">
+              <div class="k">近 7 日</div>
+              <div class="n">日均 26 分</div>
+              <div class="delta">比加上规则前少 4</div>
+              <div class="ticks" aria-hidden="true">
+                <i style="height:50%"></i>
+                <i style="height:44%"></i>
+                <i style="height:58%"></i>
+                <i style="height:40%"></i>
+                <i style="height:52%"></i>
+                <i style="height:46%"></i>
+                <i style="height:48%"></i>
+              </div>
+            </div>
+            <div class="heat" aria-hidden="true">
+              <i style="height:28%;background:rgba(196,163,90,.4)"></i>
+              <i style="height:22%;background:rgba(196,163,90,.32)"></i>
+              <i style="height:18%;background:rgba(196,163,90,.28)"></i>
+              <i style="height:20%;background:rgba(196,163,90,.3)"></i>
+              <i style="height:24%;background:rgba(196,163,90,.34)"></i>
+              <i style="height:30%;background:rgba(196,163,90,.4)"></i>
+              <i style="height:34%;background:rgba(232,237,230,.22)"></i>
+              <i style="height:26%;background:rgba(232,237,230,.18)"></i>
+              <i style="height:32%;background:rgba(232,237,230,.2)"></i>
+              <i style="height:28%;background:rgba(232,237,230,.18)"></i>
+              <i style="height:36%;background:rgba(232,237,230,.24)"></i>
+              <i style="height:30%;background:rgba(232,237,230,.2)"></i>
+              <i style="height:24%;background:rgba(232,237,230,.16)"></i>
+              <i style="height:28%;background:rgba(232,237,230,.18)"></i>
+              <i style="height:32%;background:rgba(232,237,230,.2)"></i>
+              <i style="height:26%;background:rgba(232,237,230,.18)"></i>
+              <i style="height:34%;background:rgba(232,237,230,.22)"></i>
+              <i style="height:30%;background:rgba(232,237,230,.2)"></i>
+              <i style="height:28%;background:rgba(232,237,230,.18)"></i>
+              <i style="height:32%;background:rgba(196,163,90,.42)"></i>
+              <i style="height:26%;background:rgba(196,163,90,.36)"></i>
+              <i style="height:22%;background:rgba(196,163,90,.3)"></i>
+              <i style="height:24%;background:rgba(196,163,90,.32)"></i>
+              <i style="height:20%;background:rgba(196,163,90,.28)"></i>
+            </div>
+            <div class="foot"><span class="cta">去改规则</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>框外。</strong>
+      差是近 7 个完整日的日均，对上加上规则之前那 7 日。今天不进平均。差为零，或规则还没满几天，差那一句和七个刻度都不出现，详情只留今天。<br>
+      七个刻度是这 7 日的形状，不标星期，不画坐标。热力是 24 小时、7 日叠在同一条上；沙色是 22 点到 7 点。只有用量真挤在一段里，才写「22 点后占三成」这类半句。铺开就只有热力。<br>
+      配置页用同一条热力，不另采一套。多不进这一页：多只在今日行上看相对昨日。
+    </div>
+  </div>
+</body>
+</html>

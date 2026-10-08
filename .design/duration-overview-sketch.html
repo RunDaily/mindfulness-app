@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>用量 · 时长总览草图</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --leaf-soft: rgba(61,122,74,.14);
+      --sand: #c4a35a; --line: rgba(232,237,230,.12);
+      --dur: #8eb89a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 80px;
+    }
+    .wrap { max-width: 1140px; margin: 0 auto; display: grid; gap: 42px; }
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px;
+    }
+    .hero h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: var(--leaf-soft); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+
+    .map {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 14px;
+      padding: 16px 18px; font-size: 12px; color: var(--fog); line-height: 1.7;
+      font-family: ui-monospace, Menlo, monospace;
+    }
+    .map b { color: var(--paper); font-weight: 600; font-family: "SF Pro Text", "PingFang SC", sans-serif; }
+
+    .rules {
+      max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    @media (max-width: 720px) { .rules { grid-template-columns: 1fr; } }
+    .rule {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.55;
+    }
+    .rule h4 { font-size: 12px; margin-bottom: 8px; }
+    .rule.keep h4 { color: var(--leaf-text); }
+    .rule.drop h4 { color: #c47a6a; }
+    .rule ul { padding-left: 16px; }
+    .rule li { margin: 4px 0; }
+
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: start; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    @media (max-width: 960px) {
+      .row3, .row2 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 280px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+    .pick, .drop {
+      display: inline-block; margin-top: 6px; font-size: 11px;
+      padding: 2px 8px; border-radius: 999px;
+    }
+    .pick { color: var(--leaf-text); border: 1px solid rgba(61,122,74,.4); }
+    .drop { color: #c47a6a; border: 1px solid rgba(196,122,106,.4); }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9/17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .phone.tall { aspect-ratio: 9/18.2; }
+    .phone.bad { opacity: .72; }
+    .bar {
+      height: 28px; padding: 10px 14px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex: none;
+    }
+    .body { flex: 1; padding: 2px 18px 10px; display: flex; flex-direction: column; min-height: 0; }
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500;
+    }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 8px; }
+    .sub { font-size: 12px; color: var(--fog); margin-top: 2px; line-height: 1.4; }
+    .sec-lab {
+      font-size: 10px; color: var(--mist); letter-spacing: .06em;
+      margin-top: 18px; margin-bottom: 4px;
+    }
+    .sec-lab.first { margin-top: 14px; }
+
+    .rowi {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 13px 0; border-bottom: 1px solid var(--line); gap: 10px;
+    }
+    .rowi .n { font-size: 15px; font-weight: 500; }
+    .rowi .m { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.35; }
+    .rowi .r { font-size: 12px; color: rgba(232,237,230,.4); }
+    .rowi.quiet .n { font-size: 13px; font-weight: 400; color: rgba(232,237,230,.55); }
+    .rowi.quiet .m { color: rgba(232,237,230,.28); }
+
+    .nav {
+      margin-top: auto; display: flex; justify-content: space-around;
+      padding: 10px 0 4px; border-top: 1px solid var(--line);
+      font-size: 10px; color: var(--mist);
+    }
+    .nav .on { color: var(--leaf-text); font-weight: 600; }
+
+    .chips { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .chip {
+      font-size: 12px; color: rgba(232,237,230,.4); padding: 4px 0;
+      border-bottom: 1px solid transparent;
+    }
+    .chip.on {
+      color: var(--paper); font-weight: 600;
+      border-bottom-color: rgba(232,237,230,.35);
+    }
+
+    .hero-dur { margin-top: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .hero-dur .big {
+      font-size: 34px; font-weight: 500; color: var(--dur);
+      font-variant-numeric: tabular-nums;
+    }
+    .hero-dur .unit {
+      font-size: 14px; color: var(--dur); opacity: .75; margin-left: 2px;
+    }
+    .hero-dur .meta {
+      margin-top: 6px; font-size: 12px; color: var(--mist); line-height: 1.45;
+    }
+
+    .split { margin-top: 4px; }
+    .s {
+      display: flex; gap: 8px; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid var(--line);
+    }
+    .s .k { font-size: 13px; }
+    .s .v { font-size: 12px; color: var(--mist); }
+    .s .bar {
+      height: 3px; padding: 0; flex: 1; background: rgba(232,237,230,.08);
+      border-radius: 2px; overflow: hidden; margin-top: 6px;
+    }
+    .s .bar b { display: block; height: 100%; background: var(--dur); }
+
+    .bars {
+      display: flex; align-items: flex-end; gap: 6px; height: 88px; margin-top: 16px;
+    }
+    .bars i {
+      flex: 1; border-radius: 3px 3px 0 0;
+      background: rgba(232,237,230,.22);
+      display: block;
+    }
+    .bars.lbl {
+      height: auto; margin-top: 6px;
+      font-size: 11px; color: var(--mist); text-align: center;
+    }
+    .bars.lbl span { flex: 1; }
+
+    .link {
+      margin-top: 18px; font-size: 13px; color: var(--leaf-text);
+    }
+    .x {
+      text-align: center; margin-top: 8px; font-size: 11px; color: #c47a6a;
+    }
+    .cap {
+      max-width: 680px; margin: 0 auto; font-size: 12px; color: var(--mist);
+      text-align: center; line-height: 1.65;
+    }
+    .cap strong { color: var(--sand); font-weight: 500; }
+
+    .note {
+      max-width: 720px; margin: 0 auto; font-size: 12px; color: var(--mist);
+      line-height: 1.65; border-left: 2px solid rgba(61,122,74,.45); padding-left: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">发现 · 用量总览</div>
+      <h1>和「这一周」对称的时长总览</h1>
+      <p>
+        次数看门口怎么选；时长看时间落在哪。同级、分家：发现工具区并列两行，
+        不把分/时塞进次数三刀。
+      </p>
+      <div class="thesis">目录并列 · 三刀只讲时长 · 单位永远显式</div>
+    </header>
+
+    <div>
+      <div class="sec" style="margin-bottom:12px"><strong>地图</strong></div>
+      <div class="map">
+        <b>发现 · 工具</b><br />
+        　这一周　›　门口次数总览（事件 / App / 按日）· 只写「次」<br />
+        　<strong style="color:var(--leaf-text)">用量</strong>　›　时长总览（合计 / App / 按日）· 只写「分 / 时」<br />
+        　日程锁　›　既有<br /><br />
+        <b>不进用量总览</b>　门口四类占比 · 守住/刷次数 · 成绩单 streak<br />
+        <b>深看仍归原处</b>　单 App → 少详情 / 一周节奏；未监控全机扫 → 可与方案近 7 日同口径
+      </div>
+    </div>
+
+    <div>
+      <div class="sec" style="margin-bottom:14px"><strong>取舍</strong></div>
+      <div class="rules">
+        <div class="rule keep">
+          <h4>留下</h4>
+          <ul>
+            <li>发现目录一行「用量」+ 现状（如 8.4 时）</li>
+            <li>默认滚动近 7 日；副文写起止日期</li>
+            <li>固定三刀：合计 / App / 按日</li>
+            <li>数字旁永远带「分」或「时」</li>
+            <li>监控 App：心锚会话时长（门口等待不计）</li>
+          </ul>
+        </div>
+        <div class="rule drop">
+          <h4>拿掉</h4>
+          <ul>
+            <li>与「这一周」同页混刀或四 Tab</li>
+            <li>次数刀里再挂时长列</li>
+            <li>无单位裸数字</li>
+            <li>运营货架 / 排行榜语气</li>
+            <li>第一版不做任意选段（上一周/30 日可后加）</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ① 发现目录插入 -->
+    <div>
+      <div class="sec"><strong>① 发现目录</strong>　工具区插入「用量」</div>
+      <div class="row2" style="margin-top:18px">
+        <div>
+          <div class="col-head">
+            <h3>取 · 与次数并列</h3>
+            <p>这一周管次 · 用量管时</p>
+            <span class="pick">推荐</span>
+          </div>
+          <div class="phone">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="brand">发现</div>
+
+              <div class="sec-lab first">工具</div>
+              <div class="rowi">
+                <div>
+                  <div class="n">这一周</div>
+                  <div class="m">守住 12 次 · 刷 28 次</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">用量</div>
+                  <div class="m">8.4 时</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">日程锁</div>
+                  <div class="m">生效中 · 午休 12:30–13:30</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+
+              <div class="sec-lab">氛围</div>
+              <div class="rowi quiet">
+                <div>
+                  <div class="n">名言</div>
+                  <div class="m">推送已开</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="rowi quiet" style="border-bottom:none">
+                <div>
+                  <div class="n">壁纸</div>
+                  <div class="m">制作</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+
+              <div class="nav">
+                <span>今日</span><span>方案</span><span class="on">发现</span><span>我</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>不好 · 塞进次数页</h3>
+            <p>四刀混读 · 单位打架</p>
+            <span class="drop">不取</span>
+          </div>
+          <div class="phone bad tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 发现</div>
+              <div class="brand" style="font-size:20px">这一周</div>
+              <div class="sub">10 月 2 日 – 10 月 8 日</div>
+              <div class="chips">
+                <span class="chip on">事件</span>
+                <span class="chip">App</span>
+                <span class="chip">按日</span>
+                <span class="chip">时长</span>
+              </div>
+              <div class="sub" style="margin-top:20px">22 · 6 · 16 · 42 ……还有 8.4 时？</div>
+              <div class="nav" style="margin-top:auto">
+                <span>今日</span><span>方案</span><span class="on">发现</span><span>我</span>
+              </div>
+            </div>
+          </div>
+          <p class="x">× 一次问两个问题</p>
+        </div>
+      </div>
+      <p class="cap" style="margin-top:16px">
+        框内只写事实（8.4 时 / 守住 12 次）。「对称总览」「不抢次数」只写在框外。
+      </p>
+    </div>
+
+    <!-- ② 三刀 -->
+    <div>
+      <div class="sec"><strong>② 用量 · 三刀</strong>　合计默认 · 单位永远在</div>
+      <div class="row3" style="margin-top:18px">
+        <div>
+          <div class="col-head">
+            <h3>合计</h3>
+            <p>这周一共多久 · 默认刀</p>
+            <span class="pick">默认</span>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 发现</div>
+              <div class="brand" style="font-size:20px">用量</div>
+              <div class="sub">10 月 2 日 – 10 月 8 日</div>
+              <div class="chips">
+                <span class="chip on">合计</span>
+                <span class="chip">App</span>
+                <span class="chip">按日</span>
+              </div>
+              <div class="hero-dur">
+                <div><span class="big">8.4</span><span class="unit">时</span></div>
+                <div class="meta">日均 1.2 时 · 监控中 5 个</div>
+              </div>
+              <div class="split">
+                <div class="s" style="flex-direction:column;align-items:stretch;border:none;padding-top:12px">
+                  <div style="display:flex;justify-content:space-between"><span class="k">小红书</span><span class="v">3.1 时 · 37%</span></div>
+                  <div class="bar"><b style="width:37%"></b></div>
+                </div>
+                <div class="s" style="flex-direction:column;align-items:stretch">
+                  <div style="display:flex;justify-content:space-between"><span class="k">抖音</span><span class="v">2.4 时 · 29%</span></div>
+                  <div class="bar"><b style="width:29%"></b></div>
+                </div>
+                <div class="s" style="flex-direction:column;align-items:stretch;border:none">
+                  <div style="display:flex;justify-content:space-between"><span class="k">哔哩哔哩</span><span class="v">1.6 时 · 19%</span></div>
+                  <div class="bar"><b style="width:19%"></b></div>
+                </div>
+              </div>
+              <div class="link">按 App 看全部 ›</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>App</h3>
+            <p>谁占时间最多</p>
+            <span class="pick">第二刀</span>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 发现</div>
+              <div class="brand" style="font-size:20px">用量</div>
+              <div class="sub">10 月 2 日 – 10 月 8 日</div>
+              <div class="chips">
+                <span class="chip">合计</span>
+                <span class="chip on">App</span>
+                <span class="chip">按日</span>
+              </div>
+              <div class="rowi" style="margin-top:8px">
+                <div>
+                  <div class="n">小红书</div>
+                  <div class="m">进入 22 次</div>
+                </div>
+                <div class="r" style="color:var(--dur)">3.1 时</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">抖音</div>
+                  <div class="m">进入 14 次</div>
+                </div>
+                <div class="r" style="color:var(--dur)">2.4 时</div>
+              </div>
+              <div class="rowi">
+                <div>
+                  <div class="n">哔哩哔哩</div>
+                  <div class="m">进入 6 次</div>
+                </div>
+                <div class="r" style="color:var(--dur)">1.6 时</div>
+              </div>
+              <div class="rowi" style="border:none">
+                <div>
+                  <div class="n">微信</div>
+                  <div class="m">进入 9 次</div>
+                </div>
+                <div class="r" style="color:var(--dur)">52 分</div>
+              </div>
+              <div class="link">点行 → 该 App 少详情</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="col-head">
+            <h3>按日</h3>
+            <p>七根柱 · 点进当天</p>
+            <span class="pick">第三刀</span>
+          </div>
+          <div class="phone tall">
+            <div class="bar"><span>9:41</span><span>心锚</span></div>
+            <div class="body">
+              <div class="back">‹ 发现</div>
+              <div class="brand" style="font-size:20px">用量</div>
+              <div class="sub">10 月 2 日 – 10 月 8 日</div>
+              <div class="chips">
+                <span class="chip">合计</span>
+                <span class="chip">App</span>
+                <span class="chip on">按日</span>
+              </div>
+              <div class="bars">
+                <i style="height:40%"></i>
+                <i style="height:55%"></i>
+                <i style="height:35%"></i>
+                <i style="height:70%"></i>
+                <i style="height:48%"></i>
+                <i style="height:85%"></i>
+                <i style="height:60%;background:rgba(61,122,74,.75)"></i>
+              </div>
+              <div class="bars lbl">
+                <span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span><span>一</span>
+              </div>
+              <div class="sub" style="margin-top:14px">选中 · 10 月 7 日</div>
+              <div class="rowi">
+                <div>
+                  <div class="n" style="font-size:14px">1.8 时</div>
+                  <div class="m">小红书偏多</div>
+                </div>
+                <div class="r">›</div>
+              </div>
+              <div class="link">打开当天 ›</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="cap" style="margin-top:16px">
+        <strong>单位：</strong>合计英雄数写「8.4 时」；不足 1 时写「52 分」。不写裸数字。
+        App 行右侧是时长主读；次数只做淡副文（进入 n 次），不抢「时」。
+      </p>
+    </div>
+
+    <div class="note">
+      <strong style="color:var(--sand)">口径（框外）：</strong>
+      第一版只汇总<strong>已监控 App</strong>的心锚会话时长（放行后才计；门口等待、硬挡离开不计）。
+      与产品用量分层一致。未监控全机扫仍走方案近 7 日 / 二八；本页不混算系统 + 心锚。
+      点 App 行进少详情；点按日进当天收据——与「这一周」按日下钻同级，一个看次、一个看时。
+      与记录的双向互通见
+      <a href="record-stats-bridge-sketch.html" style="color:var(--leaf-text)">record-stats-bridge-sketch</a>。
+      入口已改为与「门口」合并为发现「总览」，见
+      <a href="overview-merged-sketch.html" style="color:var(--leaf-text)">overview-merged-sketch</a>。
+    </div>
+  </div>
+</body>
+</html>

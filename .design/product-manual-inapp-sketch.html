@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>产品说明书 · App 内阅读 · 草图</title>
+  <style>
+    :root {
+      --ink: #070908;
+      --paper: #e8ede6;
+      --fog: #8b938c;
+      --mist: #5c655e;
+      --leaf: #3d7a4a;
+      --leaf-text: #9fd4a8;
+      --sand: #c4a35a;
+      --warn: #c47a6a;
+      --line: rgba(232, 237, 230, 0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background:
+        radial-gradient(ellipse at 38% -8%, #1a2420 0%, transparent 48%),
+        var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 88px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 44px; }
+
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf);
+      font-weight: 600; margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .sec {
+      text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist);
+    }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+
+    .row4 {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start;
+    }
+    .row2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;
+      max-width: 620px; margin: 0 auto; width: 100%;
+    }
+    @media (max-width: 1100px) {
+      .row4 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .row4, .row2 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head {
+      text-align: center; margin-bottom: 10px;
+      max-width: 260px; margin-left: auto; margin-right: auto;
+    }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+
+    .phone {
+      width: min(260px, 100%); aspect-ratio: 9 / 17.2; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .bar {
+      height: 28px; padding: 10px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex-shrink: 0;
+    }
+    .body {
+      flex: 1; padding: 4px 18px 10px; display: flex; flex-direction: column;
+      min-height: 0; overflow: hidden;
+    }
+    .body.scroll {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .brand {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 22px; font-weight: 500; letter-spacing: .01em;
+    }
+    .back {
+      font-size: 12px; color: var(--mist); margin-bottom: 6px;
+    }
+    .page-title {
+      font-size: 17px; font-weight: 550; color: var(--paper);
+      margin-bottom: 2px;
+    }
+    .page-sub {
+      font-size: 11px; color: var(--mist); margin-bottom: 10px; line-height: 1.4;
+    }
+
+    .pulse {
+      margin-top: 10px; margin-bottom: 6px;
+      font-size: 13px; color: var(--leaf-text); letter-spacing: .01em;
+    }
+
+    .row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 12px; padding: 13px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .row .n { font-size: 15px; font-weight: 500; color: var(--paper); line-height: 1.3; }
+    .row .m {
+      font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.35;
+    }
+    .row .r {
+      font-size: 12px; color: var(--mist); text-align: right; flex-shrink: 0;
+    }
+    .row.soft .n { font-size: 14px; color: var(--fog); font-weight: 450; }
+    .row.faint .n { color: rgba(232,237,230,.38); }
+    .row.faint .m { color: rgba(139,147,140,.4); }
+    .row.focus .n { color: var(--leaf-text); }
+
+    .nav {
+      flex-shrink: 0; display: flex; justify-content: space-around;
+      padding: 10px 4px 12px; border-top: 1px solid var(--line);
+      font-size: 10px; color: var(--mist);
+    }
+    .nav .on { color: var(--leaf-text); font-weight: 600; }
+
+    .foot {
+      margin-top: auto; padding-top: 16px;
+      font-size: 10.5px; color: rgba(139,147,140,.38);
+      text-align: center; line-height: 1.4;
+    }
+
+    /* 目录：序号 + 标题，无卡片 */
+    .toc-item {
+      display: flex; gap: 12px; align-items: baseline;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .toc-item .num {
+      font-size: 12px; color: var(--mist); font-variant-numeric: tabular-nums;
+      width: 16px; flex-shrink: 0; text-align: right;
+    }
+    .toc-item .t {
+      font-size: 14px; font-weight: 500; color: var(--paper); line-height: 1.35;
+    }
+    .toc-item .d {
+      font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.35;
+    }
+    .toc-item.faint .t { color: rgba(232,237,230,.34); font-weight: 450; }
+    .toc-item.faint .num { color: rgba(139,147,140,.35); }
+
+    /* 章节正文 */
+    .chap-kicker {
+      font-size: 10px; letter-spacing: .12em; color: var(--mist);
+      margin-bottom: 6px;
+    }
+    .chap-h {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 20px; font-weight: 500; line-height: 1.3;
+      margin-bottom: 12px;
+    }
+    .chap-p {
+      font-size: 13px; color: rgba(232,237,230,.78); line-height: 1.7;
+      margin-bottom: 10px;
+    }
+    .chap-h3 {
+      font-size: 13px; font-weight: 600; color: var(--paper);
+      margin: 16px 0 8px;
+    }
+    .chap-steps {
+      list-style: none; margin: 0 0 12px;
+    }
+    .chap-steps li {
+      font-size: 12.5px; color: rgba(232,237,230,.72); line-height: 1.55;
+      padding: 6px 0 6px 0;
+      border-bottom: 1px solid rgba(232,237,230,.06);
+      display: flex; gap: 10px;
+    }
+    .chap-steps .i {
+      color: var(--leaf-text); font-variant-numeric: tabular-nums;
+      font-size: 11px; flex-shrink: 0; width: 14px;
+    }
+    .fig {
+      margin: 12px 0 4px;
+      border: 1px dashed rgba(232,237,230,.14);
+      border-radius: 10px;
+      padding: 18px 12px;
+      text-align: center;
+      background: rgba(232,237,230,.03);
+    }
+    .fig .slot {
+      font-size: 11px; color: var(--mist); letter-spacing: .04em;
+      line-height: 1.5;
+    }
+    .fig .cap {
+      margin-top: 8px; font-size: 10.5px; color: rgba(139,147,140,.55);
+      line-height: 1.4;
+    }
+    .chap-nav {
+      display: flex; justify-content: space-between;
+      margin-top: 18px; padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+    }
+    .chap-nav .prev { color: var(--mist); }
+    .chap-nav .next { color: var(--leaf-text); }
+
+    .table-mini {
+      width: 100%; border-collapse: collapse;
+      margin: 4px 0 12px; font-size: 11.5px;
+    }
+    .table-mini th, .table-mini td {
+      text-align: left; padding: 7px 0;
+      border-bottom: 1px solid rgba(232,237,230,.08);
+      vertical-align: top; line-height: 1.4;
+    }
+    .table-mini th { color: var(--mist); font-weight: 500; width: 38%; }
+    .table-mini td { color: rgba(232,237,230,.7); }
+
+    .notes {
+      max-width: 720px; margin: 0 auto;
+      padding: 22px 0 0;
+      border-top: 1px solid var(--line);
+    }
+    .notes h2 {
+      font-size: 13px; font-weight: 600; color: var(--sand);
+      margin-bottom: 12px; letter-spacing: .04em;
+    }
+    .notes ul {
+      list-style: none; display: grid; gap: 10px;
+      font-size: 12.5px; color: var(--fog); line-height: 1.6;
+    }
+    .notes li strong { color: var(--paper); font-weight: 550; }
+    .map {
+      margin-top: 18px; padding: 14px 16px;
+      background: rgba(232,237,230,.04); border-radius: 10px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 11px; color: rgba(232,237,230,.55); line-height: 1.7;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">PRODUCT MANUAL · IN-APP</div>
+      <h1>产品说明书 · App 内阅读</h1>
+      <p>
+        正式文档结构：目录 → 章节正文。入口在「我」，不进今日 / 方案主路径。
+        文案对齐 <code style="color:var(--leaf-text)">docs/product-manual/用户说明书-草稿.md</code>；框内不用对内黑话。
+      </p>
+      <div class="thesis">脊线目录 + 纸质感章节 · 配图位预留 · 不做成帮助中心卡片墙</div>
+    </header>
+
+    <p class="sec">一 · 入口与两级页 · <strong>我 → 目录 → 章节</strong></p>
+
+    <div class="row4">
+      <!-- 1 我 -->
+      <div>
+        <div class="col-head">
+          <h3>我 · 入口</h3>
+          <p>与设置 / 聊 / 关于同级脊线行</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="body">
+            <div class="brand">我</div>
+            <div class="pulse">监控正常 ›</div>
+
+            <div class="row" style="margin-top:6px; border-top:none; padding-top:14px">
+              <div>
+                <div class="n">后台保活</div>
+                <div class="m">防清理已齐</div>
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <div class="n">设置</div>
+                <div class="m">主题、胶囊与陪伴</div>
+              </div>
+            </div>
+            <div class="row">
+              <div>
+                <div class="n">和小锚聊</div>
+                <div class="m">问题、想法，直接说</div>
+              </div>
+            </div>
+            <div class="row focus">
+              <div>
+                <div class="n">产品说明书</div>
+                <div class="m">怎么用、规则是什么</div>
+              </div>
+            </div>
+            <div class="row soft">
+              <div>
+                <div class="n">关于</div>
+                <div class="m">版本、更新与协议</div>
+              </div>
+            </div>
+            <div class="foot">使用数据仅保存在本机</div>
+          </div>
+          <div class="nav">
+            <span>今日</span><span>方案</span><span>发现</span><span class="on">我</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 目录 -->
+      <div>
+        <div class="col-head">
+          <h3>目录</h3>
+          <p>正式序号 · 未写章节降权重</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="body scroll">
+            <div class="back">‹ 我</div>
+            <div class="page-title">产品说明书</div>
+            <div class="page-sub">心锚 · 使用说明</div>
+
+            <div class="toc-item">
+              <div class="num">1</div>
+              <div>
+                <div class="t">心锚是什么</div>
+                <div class="d">减少无意识打开与超时使用</div>
+              </div>
+            </div>
+            <div class="toc-item">
+              <div class="num">2</div>
+              <div>
+                <div class="t">开始使用</div>
+                <div class="d">权限与最短路径</div>
+              </div>
+            </div>
+            <div class="toc-item">
+              <div class="num">3</div>
+              <div>
+                <div class="t">方案</div>
+                <div class="d">添加应用并设定规则</div>
+              </div>
+            </div>
+            <div class="toc-item">
+              <div class="num">4</div>
+              <div>
+                <div class="t">打开应用时</div>
+                <div class="d">拦截页上能做什么</div>
+              </div>
+            </div>
+            <div class="toc-item">
+              <div class="num">5</div>
+              <div>
+                <div class="t">今日</div>
+                <div class="d">查看使用情况</div>
+              </div>
+            </div>
+            <div class="toc-item">
+              <div class="num">6</div>
+              <div>
+                <div class="t">日程锁</div>
+                <div class="d">按时间表锁定一批应用</div>
+              </div>
+            </div>
+            <div class="toc-item">
+              <div class="num">7</div>
+              <div>
+                <div class="t">权限与后台保活</div>
+                <div class="d">拦不住时先查这里</div>
+              </div>
+            </div>
+            <div class="toc-item faint">
+              <div class="num">8</div>
+              <div>
+                <div class="t">会员与数据</div>
+                <div class="d">修订中</div>
+              </div>
+            </div>
+            <div class="toc-item faint">
+              <div class="num">9</div>
+              <div>
+                <div class="t">修订记录</div>
+                <div class="d">修订中</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 章节 · 开始使用 -->
+      <div>
+        <div class="col-head">
+          <h3>章节 · 开始使用</h3>
+          <p>步骤 + 配图位 + 上下章</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="body scroll">
+            <div class="back">‹ 目录</div>
+            <div class="chap-kicker">第 2 章</div>
+            <div class="chap-h">开始使用</div>
+
+            <div class="chap-h3">你需要先完成的设置</div>
+            <table class="table-mini">
+              <tr><th>用量访问</th><td>统计时长与打开次数</td></tr>
+              <tr><th>悬浮窗</th><td>显示拦截页</td></tr>
+              <tr><th>无障碍</th><td>建议开，减少绕过</td></tr>
+            </table>
+            <div class="chap-p" style="font-size:12px;color:var(--mist)">以上入口都在「我」页。</div>
+
+            <div class="fig">
+              <div class="slot">图 F1<br/>「我」· 三项权限状态</div>
+              <div class="cap">实机截图位 · 非装饰插画</div>
+            </div>
+
+            <div class="chap-h3">最短路径</div>
+            <ol class="chap-steps">
+              <li><span class="i">1</span><span>打开「我」，完成用量访问与悬浮窗</span></li>
+              <li><span class="i">2</span><span>打开「方案」，添加一个想少用的应用</span></li>
+              <li><span class="i">3</span><span>设定规则（例如每天最多 30 分钟）</span></li>
+              <li><span class="i">4</span><span>再打开该应用，确认出现拦截页</span></li>
+            </ol>
+
+            <div class="fig">
+              <div class="slot">图 F2<br/>拦截页实拍</div>
+              <div class="cap">通了的样子 · 一张即可</div>
+            </div>
+
+            <div class="chap-nav">
+              <span class="prev">‹ 心锚是什么</span>
+              <span class="next">方案 ›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 章节 · 打开时 / 图重点 -->
+      <div>
+        <div class="col-head">
+          <h3>章节 · 打开时</h3>
+          <p>两态配图对照 · 消除误解</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="body scroll">
+            <div class="back">‹ 目录</div>
+            <div class="chap-kicker">第 4 章</div>
+            <div class="chap-h">打开应用时</div>
+            <div class="chap-p">
+              应用已在方案中且规则生效时，再次打开会先看到拦截页，而不是直接进入。
+            </div>
+
+            <div class="chap-h3">你可以做什么</div>
+            <div class="chap-p" style="font-size:12.5px">
+              先等几秒再决定 · 不进去了 · 搜索后直达 · 写下要做的并选时长后进入。触达日限额或打开次数上限后，通常只能离开。
+            </div>
+
+            <div class="fig">
+              <div class="slot">图 F5-A<br/>可继续进入</div>
+              <div class="cap">打开前等待 / 确认态</div>
+            </div>
+            <div class="fig">
+              <div class="slot">图 F5-B<br/>今日已用完</div>
+              <div class="cap">硬拦态 · 与上图对照</div>
+            </div>
+
+            <div class="chap-h3">系统返回与 Home</div>
+            <div class="chap-p" style="font-size:12.5px">
+              拦截期间用 Home 或最近任务，一般不会真正关掉拦截。离开请点页面上的离开类按钮。
+            </div>
+
+            <div class="chap-nav">
+              <span class="prev">‹ 方案</span>
+              <span class="next">今日 ›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sec">二 · 目录与正文的阅读骨架 · <strong>同一套字重，不另做文档皮肤</strong></p>
+
+    <div class="row2">
+      <div>
+        <div class="col-head">
+          <h3>关于 · 次入口（可选）</h3>
+          <p>不强制；主入口仍在「我」</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="body">
+            <div class="back">‹ 我</div>
+            <div class="page-title" style="margin-top:4px">关于</div>
+            <div style="margin-top:14px">
+              <div style="font-family:'Iowan Old Style','Songti SC',Georgia,serif;font-size:22px;font-weight:500">心锚</div>
+              <div style="font-size:12px;color:var(--mist);margin-top:4px">版本 1.x.x</div>
+            </div>
+            <div class="row" style="margin-top:18px">
+              <div class="n">检查更新</div>
+              <div class="r">已是最新</div>
+            </div>
+            <div class="row focus">
+              <div>
+                <div class="n">产品说明书</div>
+                <div class="m">目录与章节</div>
+              </div>
+            </div>
+            <div class="row soft">
+              <div class="n">用户协议</div>
+            </div>
+            <div class="row soft">
+              <div class="n">隐私政策</div>
+            </div>
+            <div class="foot">法律与版本在关于 · 用法在说明书</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head">
+          <h3>日程锁章 · 对照表形态</h3>
+          <p>两概念并列表 · 仍贴脊线</p>
+        </div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>心锚</span></div>
+          <div class="body scroll">
+            <div class="back">‹ 目录</div>
+            <div class="chap-kicker">第 6 章</div>
+            <div class="chap-h">日程锁</div>
+            <div class="chap-p">
+              按时间表锁定一批应用。入口：发现 → 日程锁。
+            </div>
+            <div class="chap-h3">和方案里「时段锁」的区别</div>
+            <table class="table-mini">
+              <tr><th>方案 · 时段锁</th><td>某一个应用</td></tr>
+              <tr><th>发现 · 日程锁</th><td>一批应用</td></tr>
+              <tr><th>适合</th><td>晚上别碰 vs 工作时段别刷</td></tr>
+            </table>
+            <div class="fig">
+              <div class="slot">图 F8<br/>添加时段表单</div>
+              <div class="cap">名称 · 起止 · 重复 · 锁定范围</div>
+            </div>
+            <div class="chap-nav">
+              <span class="prev">‹ 今日</span>
+              <span class="next">权限与保活 ›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="notes">
+      <h2>框外 · 设计约定</h2>
+      <ul>
+        <li><strong>入口：</strong>「我」主路径加一行「产品说明书」。关于页可再挂一次，不替代主入口。今日 / 方案 / 拦截页不链说明书。</li>
+        <li><strong>两级：</strong>目录页（序号脊线）→ 章节页（衬线章题 + 正文 + 配图虚线位 + 上下章）。不加搜索、不加 FAQ 卡片、不加标签云。</li>
+        <li><strong>配图：</strong>正文里用虚线「图槽」占位；真机落地换成实拍。一张图一个状态；F5 用两张对照。</li>
+        <li><strong>未完成章：</strong>目录保留序号，标题降透明 +「修订中」，可点进则显示「本章修订中」，或不可点。</li>
+        <li><strong>文案：</strong>框内只用用户词（方案、拦截页、日限额、打开前等待）。「少 / 器械 / 门口」不进框。</li>
+        <li><strong>骨架：</strong>与「我 / 关于」同 —— Hairline 行、字色层级；说明书不是第二套文档皮肤。</li>
+      </ul>
+      <div class="map">我 ── 产品说明书 ──› 目录（1…9）
+                    └─› 章节（正文 · 图槽 · ‹上一章 / 下一章›）
+关于 ── 产品说明书 ──› 同上目录（可选次入口）
+
+文案源：docs/product-manual/用户说明书-草稿.md
+配图号：F1–F9（见草稿文末总表）
+
+删：帮助中心卡片墙 · 搜索 FAQ · 主路径旁白链接 · 对内黑话 · 解释设计理由</div>
+    </section>
+  </div>
+</body>
+</html>

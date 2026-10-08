@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>今日</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="kicker">第 5 章</div>
+  <h1>今日</h1>
+  <p>「今日」用来看效果，不负责改规则。改数字请回「方案」。</p>
+
+  <h2>还没有加入任何应用时</h2>
+  <p>「今日」会展示这台手机近 7 日用得较多的应用（需要已开启用量访问）。点某一行可查看概况；底部可点「去方案添加」，把想管的应用加入方案。</p>
+  <p>若尚未授权用量访问，页面会提示先授权，否则看不到近 7 日列表。</p>
+  <figure class="slot">
+    <div class="label">图 · 无规则时的近 7 日列表</div>
+    <figcaption>含「去方案添加」</figcaption>
+  </figure>
+
+  <h2>已有规则时</h2>
+  <p>「今日」主列表变为方案中的应用，每行大致显示：</p>
+  <ul>
+    <li><span>应用名称</span></li>
+    <li><span>今日已用时长（若设了日限额，会显示「已用 / 限额」）</span></li>
+    <li><span>今日打开次数（若设了次数上限，会显示「打开 a / b」；用尽时会标出）</span></li>
+  </ul>
+  <p>点某一行进入该应用的详情。下方可能还有一条「今天」摘要入口，用于回看今天在拦截页上的选择，不是改规则的地方。</p>
+  <figure class="slot">
+    <div class="label">图 · 有规则列表</div>
+    <figcaption>圈出「已用 / 限额」与「打开 a / b」</figcaption>
+  </figure>
+
+  <h2>单个应用详情</h2>
+  <table>
+    <tr><th>今天</th><td>今日已用、与限额 / 打开次数的关系</td></tr>
+    <tr><th>时长（日均）</th><td>加入前与加入后的对照，以及近期走势</td></tr>
+    <tr><th>打开（日均）</th><td>同上，看打开次数是否下来</td></tr>
+    <tr><th>一周节奏等</th><td>更细的分布（若页面提供入口）</td></tr>
+  </table>
+  <p>详情底部一般有「去改规则」，会回到该应用在「方案」里的配置页。</p>
+  <p>页面上若出现一行淡字说明计量方式，大意是：</p>
+  <ul>
+    <li><span><strong>加入前：</strong>按系统用量统计</span></li>
+    <li><span><strong>加入后：</strong>按心锚实际放行后的使用计时；停在拦截页等待、或选择离开而未进入，<strong>不计为使用时间</strong></span></li>
+  </ul>
+
+  <h2>「今日」不做的事</h2>
+  <ul>
+    <li><span>不在这里开关规则、改日限额数字（回方案）</span></li>
+    <li><span>不是完整的系统「屏幕使用时间」替代品；未加入方案的应用，加入后不再占用今日主列表</span></li>
+  </ul>
+
+  <div class="chap-nav">
+    <a class="prev" href="04.html">‹ 打开应用时</a>
+    <a class="next" href="06.html">日程锁 ›</a>
+  </div>
+</body>
+</html>

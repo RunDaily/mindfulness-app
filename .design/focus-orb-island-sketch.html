@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>专注圆球 · 灵动岛 · 跑马灯</title>
+  <style>
+    :root {
+      --bg: #070708;
+      --surface: #121214;
+      --ink: #f2f2f7;
+      --muted: #8e8e93;
+      --accent: #34c759;
+      --island: #0a0a0c;
+      --line: rgba(255,255,255,.14);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 50% 8%, #1b1c1f 0%, transparent 42%),
+        linear-gradient(180deg, #0c0c0e, #050506 70%);
+      color: var(--ink);
+      font-family: "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 64px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+    }
+    h1 { font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+    .sub { font-size: 13px; color: #636366; max-width: 420px; text-align: center; line-height: 1.55; }
+    .row {
+      display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; width: min(1100px, 100%);
+    }
+    .phone {
+      width: min(280px, 100%);
+      background: #000;
+      border: 1px solid #2a2a2c;
+      border-radius: 32px;
+      min-height: 520px;
+      padding: 12px 10px 18px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0,0,0,.55);
+    }
+    .label {
+      font-size: 11px; color: var(--muted); text-align: center; margin-bottom: 10px; font-weight: 600;
+    }
+    .statusbar {
+      height: 22px; display: flex; justify-content: space-between; padding: 0 14px;
+      font-size: 11px; color: #aeaeb2; font-weight: 600;
+    }
+    .app-fake {
+      margin-top: 10px; height: 420px; border-radius: 18px;
+      background:
+        linear-gradient(160deg, #1a1b1e 0%, #101114 50%, #0b0c0e 100%);
+      border: 1px solid #222;
+      position: relative;
+    }
+    .island {
+      position: absolute; left: 50%; top: 10px; transform: translateX(-50%);
+      width: 92%; height: 92px; border-radius: 22px; background: var(--island);
+      border: 1px solid var(--line); padding: 12px 14px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      box-shadow: 0 10px 30px rgba(0,0,0,.45);
+    }
+    .island .eyebrow { font-size: 11px; color: var(--accent); font-weight: 600; }
+    .island .intent { font-size: 15px; font-weight: 500; }
+    .island .meta { font-size: 11px; color: var(--muted); }
+    .island .actions { display: flex; gap: 14px; font-size: 13px; font-weight: 600; }
+    .island .actions .go { color: var(--accent); }
+    .island .actions .no { color: var(--muted); font-weight: 500; }
+
+    .marquee {
+      position: absolute; left: 50%; top: 12px; transform: translateX(-50%);
+      width: 92%; height: 36px; border-radius: 18px; background: var(--island);
+      border: 1px solid var(--line); overflow: hidden;
+      display: flex; align-items: center;
+    }
+    .marquee .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+      margin-left: 12px; flex-shrink: 0;
+    }
+    .marquee .track {
+      white-space: nowrap; margin-left: 10px; font-size: 13px; font-weight: 600;
+      animation: seal 2.6s ease-in-out infinite;
+    }
+    @keyframes seal {
+      0%, 100% { opacity: 0; transform: scale(.97); }
+      20%, 70% { opacity: 1; transform: scale(1); }
+    }
+
+    .orb-wrap {
+      position: absolute; left: 28%; bottom: 28%;
+      width: 56px; height: 56px; display: grid; place-items: center;
+    }
+    .orb-wrap.flash::after {
+      content: "12 分钟";
+      position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+      font-size: 11px; font-weight: 600; color: var(--accent); white-space: nowrap;
+      animation: fade 2s ease infinite;
+    }
+    @keyframes fade {
+      0%, 100% { opacity: 0; } 20%, 70% { opacity: 1; }
+    }
+    .ring {
+      position: absolute; border-radius: 50%; border: 1.2px solid rgba(52,199,89,.45);
+      animation: ripple 3.2s linear infinite;
+    }
+    .ring.r2 { animation-delay: -1.4s; border-color: rgba(52,199,89,.28); }
+    .core {
+      width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
+      animation: breath 2.8s ease-in-out infinite;
+      box-shadow: 0 0 12px rgba(52,199,89,.35);
+    }
+    @keyframes ripple {
+      from { width: 12px; height: 12px; opacity: .45; }
+      to { width: 48px; height: 48px; opacity: 0; }
+    }
+    @keyframes breath {
+      0%, 100% { transform: scale(.9); opacity: .85; }
+      50% { transform: scale(1.12); opacity: 1; }
+    }
+    .cap {
+      margin-top: 10px; font-size: 12px; color: #636366; line-height: 1.45; text-align: center;
+      max-width: 260px; margin-left: auto; margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>专注圆球 · 灵动岛 · 跑马灯</h1>
+  <p class="sub">默认是弱存在的专注圆球；点按在顶部展开信息岛；入场与每 5 分钟用跑马灯提醒意图，随后轻对照。</p>
+  <div class="row">
+    <div>
+      <div class="phone">
+        <div class="label">默认 · 专注圆球</div>
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="app-fake">
+          <div class="orb-wrap flash">
+            <span class="ring"></span>
+            <span class="ring r2"></span>
+            <span class="core"></span>
+          </div>
+        </div>
+      </div>
+      <p class="cap">无文字常驻；每满 1 分钟旁侧闪现已用约 2 秒。可拖到任意区域。</p>
+    </div>
+    <div>
+      <div class="phone">
+        <div class="label">入场 / 节律 · 跑马灯</div>
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="app-fake">
+          <div class="marquee">
+            <span class="dot"></span>
+            <span class="track">专注于此 · 回一封重要的邮件</span>
+          </div>
+          <div class="orb-wrap" style="opacity:.35; left:62%; bottom:22%;">
+            <span class="ring"></span>
+            <span class="core"></span>
+          </div>
+        </div>
+      </div>
+      <p class="cap">拦截进入后播放；之后每 5 分钟前台累计再播一次，随即进入对照岛。</p>
+    </div>
+    <div>
+      <div class="phone">
+        <div class="label">顶部 · 进行中对照 / 信息岛</div>
+        <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+        <div class="app-fake">
+          <div class="island">
+            <div class="eyebrow">还在做这件事吗？</div>
+            <div class="intent">回一封重要的邮件</div>
+            <div class="meta">今日 48分钟 · 3次 · 本次 12:00</div>
+            <div class="actions">
+              <span class="go">仍专注</span>
+              <span class="no">没有专注</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="cap">未专注 → SoftExit 轻提醒尽快退出，不强制踢出。点按圆球也可开信息岛。</p>
+    </div>
+  </div>
+</body>
+</html>

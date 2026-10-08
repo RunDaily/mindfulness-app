@@ -27,6 +27,10 @@ material = "1.12.0"
 activity = "1.10.1"
 constraintlayout = "2.2.1"
 reorderable = "3.1.0"
+zxing = "3.5.3"
+pinyin4j = "2.5.1"
+wechatSdk = "6.8.0"
+playServicesAuth = "21.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -89,6 +93,12 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 
 # LazyColumn drag-reorder
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+
+# 汉字拼音（应用列表字母序 / 简拼搜索）
+pinyin4j = { group = "com.belerweb", name = "pinyin4j", version.ref = "pinyin4j" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+wechat-sdk-android = { group = "com.tencent.mm.opensdk", name = "wechat-sdk-android", version.ref = "wechatSdk" }
+play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

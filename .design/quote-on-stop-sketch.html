@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>停住 · 格言与收藏</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf-text: #9fd4a8; --sand: #c4a35a; --line: rgba(232,237,230,.12); --page: #0c0d0c;
+      --day-bg: #f3f5f1; --day-ink: #1a1f1c; --day-fog: #6b736e; --day-mist: #9aa39c;
+      --day-accent: #27ae60;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 40px; }
+    header { max-width: 680px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 48em; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .row2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; max-width: 760px; margin: 0 auto; }
+    @media (max-width: 900px) {
+      .row3, .row2 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 280px; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: var(--ink); border: 1px solid rgba(255,255,255,.08);
+      padding: 22px 26px 20px; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+    .phone.day {
+      background: var(--day-bg); border-color: rgba(0,0,0,.08);
+      box-shadow: 0 16px 40px rgba(0,0,0,.12);
+      color: var(--day-ink);
+    }
+    .door-tag { font-size: 11px; color: var(--mist); }
+    .phone.day .door-tag { color: var(--day-mist); }
+    .stage {
+      flex: 1; display: flex; flex-direction: column; justify-content: center;
+      text-align: left; min-height: 0;
+    }
+    .title {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 26px; font-weight: 500; line-height: 1.35; min-height: 2.7em;
+    }
+    .phone.day .title { color: var(--day-ink); }
+    .hero {
+      margin-top: 28px; min-height: 52px;
+      display: flex; align-items: flex-end;
+      font-weight: 300; letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .hero.range { font-size: 28px; letter-spacing: -0.02em; }
+    .hero.frac { font-size: 48px; }
+    .unit { margin-top: 8px; min-height: 18px; font-size: 13px; color: var(--fog); }
+    .phone.day .unit { color: var(--day-fog); }
+    .when {
+      margin-top: 16px; min-height: 22px;
+      font-size: 13px; color: var(--fog); line-height: 1.55;
+    }
+    .purpose { margin-top: 16px; font-size: 13px; color: var(--fog); }
+
+    .quote-block {
+      margin-bottom: 16px;
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 10px; align-items: start;
+    }
+    .quote {
+      font-size: 11px; font-style: italic; line-height: 1.5;
+      color: rgba(92,101,94,.78); letter-spacing: .02em;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .quote-author {
+      margin-top: 5px; font-size: 10px; font-style: normal;
+      color: rgba(92,101,94,.48);
+    }
+    .fav {
+      font-size: 13px; color: rgba(92,101,94,.55);
+      padding-top: 1px; letter-spacing: .02em;
+      white-space: nowrap; cursor: default;
+    }
+    .fav.on { color: var(--leaf-text); }
+    .phone.day .quote { color: rgba(107,115,110,.72); }
+    .phone.day .quote-author { color: rgba(107,115,110,.45); }
+    .phone.day .fav { color: rgba(154,163,156,.7); }
+    .phone.day .fav.on { color: var(--day-accent); }
+
+    .leave-row {
+      display: flex; gap: 28px; align-items: center; padding-bottom: 6px;
+    }
+    .leave { font-size: 16px; color: var(--leaf-text); }
+    .extend { font-size: 16px; color: var(--fog); }
+    .phone.day .leave { color: var(--day-accent); }
+    .phone.day .extend { color: var(--day-fog); }
+
+    /* module */
+    .mod-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .mod-back { font-size: 13px; color: var(--day-mist); }
+    .mod-title { font-size: 15px; font-weight: 600; color: var(--day-ink); }
+    .mod-tabs {
+      display: flex; gap: 18px; margin-bottom: 18px; border-bottom: 1px solid rgba(0,0,0,.06);
+      padding-bottom: 10px;
+    }
+    .mod-tab { font-size: 13px; color: var(--day-mist); }
+    .mod-tab.on { color: var(--day-accent); font-weight: 600; }
+    .mod-link {
+      font-size: 14px; font-weight: 600; color: var(--day-accent);
+      margin-bottom: 14px;
+    }
+    .mod-empty { font-size: 14px; color: rgba(26,31,28,.35); padding: 16px 0; }
+    .mod-row {
+      padding: 14px 0; border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+    .mod-row .q {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 15px; line-height: 1.45; color: var(--day-ink);
+    }
+    .mod-row .meta {
+      margin-top: 6px; font-size: 11px; color: var(--day-mist);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .mod-row .heart { color: var(--day-accent); font-size: 12px; }
+    .mod-sub {
+      margin-top: 8px; font-size: 11px; color: var(--day-fog); line-height: 1.55;
+    }
+    .author-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin: 0 8px 8px 0; padding: 6px 10px;
+      border-radius: 999px; border: 1px solid rgba(0,0,0,.08);
+      font-size: 12px; color: var(--day-ink);
+    }
+    .author-chip.on { border-color: rgba(39,174,96,.35); color: var(--day-accent); }
+
+    /* flow */
+    .flow {
+      display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px;
+      align-items: center; max-width: 860px; margin: 0 auto;
+    }
+    @media (max-width: 720px) {
+      .flow { grid-template-columns: 1fr; }
+      .flow .arrow { transform: rotate(90deg); justify-self: center; }
+    }
+    .flow-card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      min-height: 88px;
+    }
+    .flow-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .flow-card p { font-size: 11px; color: var(--fog); line-height: 1.55; }
+    .flow .arrow { color: var(--mist); font-size: 18px; }
+
+    .note {
+      max-width: 760px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Quote · On Stop</div>
+      <h1>门关上时遇见一句。想留，轻轻收藏。</h1>
+      <p>
+        格言只出现在「已经停住」的时刻：单次到点、日时长锁、时段锁。进门意图拦截不加。<br />
+        句子从订阅池来；没有订阅，用服务器默认池。收藏是个人夹，不决定抽句，也不抢事实。
+      </p>
+    </header>
+
+    <p class="sec">取句 · <strong>订阅优先，默认池兜底</strong></p>
+    <section class="flow">
+      <div class="flow-card">
+        <h4>有订阅</h4>
+        <p>已订作者 / 体系的句子池。同一次拦住按小时槽稳定，不每次重绘乱换。</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="flow-card">
+        <h4>无订阅</h4>
+        <p>服务器精选默认池。离线才落到本地硬编码兜底。</p>
+      </div>
+      <div class="arrow">→</div>
+      <div class="flow-card">
+        <h4>不抽收藏</h4>
+        <p>收藏只保管，不收窄门页句子。越留越窄会腻。</p>
+      </div>
+    </section>
+
+    <p class="sec">三种停住 · <strong>同一脚注，可收藏</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>单次时长到了</h3>
+          <p>有离开 / 再要。格言更轻，不抢续时。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">抖音</div>
+          <div class="stage">
+            <div class="title">这次到了</div>
+            <div class="hero frac">15</div>
+            <div class="unit">分</div>
+            <div class="purpose">回消息</div>
+          </div>
+          <div class="quote-block">
+            <div>
+              <div class="quote">真正的休息是给大脑留白，而非换个刺激。</div>
+              <div class="quote-author">— 佚名</div>
+            </div>
+            <div class="fav">♡</div>
+          </div>
+          <div class="leave-row">
+            <div class="leave">离开</div>
+            <div class="extend">再要 5 分</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>日时长锁</h3>
+          <p>事实是额度。脚注余韵，点一下留下。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">小红书</div>
+          <div class="stage">
+            <div class="title">今天的时间<br />用完了</div>
+            <div class="hero frac">32 / 30</div>
+            <div class="unit">分</div>
+            <div class="when">明天再开</div>
+          </div>
+          <div class="quote-block">
+            <div>
+              <div class="quote">慢下来，才能看见更多。</div>
+              <div class="quote-author">— 村上春树</div>
+            </div>
+            <div class="fav on">♥</div>
+          </div>
+          <div class="leave-row">
+            <div class="leave">离开</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>时段锁</h3>
+          <p>事实是时间窗。格言仍是脚注。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">抖音</div>
+          <div class="stage">
+            <div class="title">这段时间<br />先不进去</div>
+            <div class="hero range">23:00–07:00</div>
+            <div class="unit"></div>
+            <div class="when">每天 · 07:00 打开</div>
+          </div>
+          <div class="quote-block">
+            <div>
+              <div class="quote">每一次打开手机，都是一次主动的选择。</div>
+              <div class="quote-author">— 心锚</div>
+            </div>
+            <div class="fav">♡</div>
+          </div>
+          <div class="leave-row">
+            <div class="leave">离开</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">脚注动作 · <strong>空心 → 实心，不弹页</strong></p>
+    <section class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>未收藏</h3>
+          <p>雾色空心。点一下即收藏。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">微信</div>
+          <div class="stage">
+            <div class="title">今天的时间<br />用完了</div>
+            <div class="hero frac">45 / 45</div>
+            <div class="unit">分</div>
+            <div class="when">明天再开</div>
+          </div>
+          <div class="quote-block">
+            <div>
+              <div class="quote">注意力是一种选择，不是一种消耗品。</div>
+              <div class="quote-author">— 卡尔·纽波特</div>
+            </div>
+            <div class="fav">♡</div>
+          </div>
+          <div class="leave-row"><div class="leave">离开</div></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>已收藏</h3>
+          <p>叶色实心。再点可取消。无 toast。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">微信</div>
+          <div class="stage">
+            <div class="title">今天的时间<br />用完了</div>
+            <div class="hero frac">45 / 45</div>
+            <div class="unit">分</div>
+            <div class="when">明天再开</div>
+          </div>
+          <div class="quote-block">
+            <div>
+              <div class="quote">注意力是一种选择，不是一种消耗品。</div>
+              <div class="quote-author">— 卡尔·纽波特</div>
+            </div>
+            <div class="fav on">♥</div>
+          </div>
+          <div class="leave-row"><div class="leave">离开</div></div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">格言模块 · <strong>订阅是源，收藏是夹</strong></p>
+    <section class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>收藏</h3>
+          <p>门页留下的句，在这里重读。</p>
+        </div>
+        <div class="phone day">
+          <div class="mod-bar">
+            <div class="mod-back">‹</div>
+            <div class="mod-title">格言</div>
+            <div style="width:14px"></div>
+          </div>
+          <div class="mod-tabs">
+            <div class="mod-tab on">收藏</div>
+            <div class="mod-tab">订阅</div>
+          </div>
+          <div class="mod-row">
+            <div class="q">注意力是一种选择，不是一种消耗品。</div>
+            <div class="meta">
+              <span>卡尔·纽波特</span>
+              <span class="heart">♥</span>
+            </div>
+          </div>
+          <div class="mod-row">
+            <div class="q">慢下来，才能看见更多。</div>
+            <div class="meta">
+              <span>村上春树</span>
+              <span class="heart">♥</span>
+            </div>
+          </div>
+          <div class="mod-row">
+            <div class="q">真正的休息是给大脑留白，而非换个刺激。</div>
+            <div class="meta">
+              <span>佚名</span>
+              <span class="heart">♥</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>订阅</h3>
+          <p>决定门页从谁的池子来。</p>
+        </div>
+        <div class="phone day">
+          <div class="mod-bar">
+            <div class="mod-back">‹</div>
+            <div class="mod-title">格言</div>
+            <div style="width:14px"></div>
+          </div>
+          <div class="mod-tabs">
+            <div class="mod-tab">收藏</div>
+            <div class="mod-tab on">订阅</div>
+          </div>
+          <div class="mod-link">选作者</div>
+          <div class="mod-sub">已订作者优先供句；未订阅用精选池。</div>
+          <div style="margin-top:16px">
+            <span class="author-chip on">卡尔·纽波特 · 已订</span>
+            <span class="author-chip on">村上春树 · 已订</span>
+            <span class="author-chip">塞涅卡</span>
+            <span class="author-chip">心锚精选</span>
+          </div>
+          <div class="mod-empty" style="margin-top:auto;padding-top:28px">
+            也可在作者目录里继续订阅。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>出现：</strong>单次到点、日时长锁、时段锁。意图门进门、打开次数硬挡，不加格言。<br />
+      <strong>快关：</strong>格言模块顶上「门页格言」开关，默认开；关则三种停住页都不显示脚注。<br />
+      <strong>形态：</strong>脚注在「离开」上方。雾色斜体，最多两行 + 作者一行。右侧 ♡ / ♥，不进格言时刻页，不弹提示。<br />
+      <strong>取句：</strong>有订阅 → 订阅池；无订阅 → 服务器默认池；离线 → 本地兜底。同一次 overlay / 同一小时槽固定一句。<br />
+      <strong>收藏 ≠ 抽句池：</strong>门页不优先只抽收藏。收藏进模块「收藏」页，可取消、可重读。<br />
+      <strong>订阅：</strong>只改内容源。作者目录与模块「订阅」页同一事实。<br />
+      <strong>不进框：</strong>「点击收藏」「从门页带走」、大按钮心、卡片格言、进门拦截加句。
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>随意浏览到点 · 再需要一点时间 · 草图</title>
+  <style>
+    :root {
+      --ink: #e8ede6;
+      --mist: #5c655e;
+      --fog: #8b938c;
+      --paper: #e8ede6;
+      --leaf: #3d7a4a;
+      --leaf-text: #9fd4a8;
+      --leaf-soft: rgba(61,122,74,.16);
+      --line: rgba(232,237,230,.12);
+      --warm: #c4a35a;
+      --browse: #c47a9a;
+      --bg: #070908;
+      --door: #0a0c0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background:
+        radial-gradient(ellipse at 35% -10%, #1a2420 0%, transparent 48%),
+        var(--bg);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 100px;
+    }
+    .wrap { max-width: 1140px; margin: 0 auto; }
+
+    .hero { text-align: center; max-width: 640px; margin: 0 auto 40px; }
+    .eyebrow {
+      font-size: 11px; letter-spacing: .16em; color: var(--leaf-text);
+      font-weight: 600; margin-bottom: 10px;
+    }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 12px; font-size: 14px; color: var(--fog); line-height: 1.7; }
+    .thesis {
+      margin-top: 14px; display: inline-block;
+      padding: 8px 14px; border-radius: 999px;
+      background: var(--leaf-soft); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+
+    .section { margin-bottom: 58px; }
+    .sec-head { text-align: center; margin-bottom: 18px; }
+    .sec-head h2 { font-size: 15px; font-weight: 650; }
+    .sec-head p {
+      margin-top: 8px; font-size: 13px; color: var(--fog);
+      line-height: 1.65; max-width: 580px; margin-left: auto; margin-right: auto;
+    }
+
+    .note {
+      max-width: 700px; margin: 0 auto 20px;
+      padding: 14px 16px;
+      border-left: 2px solid var(--leaf);
+      background: rgba(255,255,255,.02);
+      border-radius: 0 10px 10px 0;
+      font-size: 13px; color: var(--fog); line-height: 1.7;
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+    .note.warm { border-left-color: var(--warm); }
+    .note.browse { border-left-color: var(--browse); }
+
+    .flow {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+      gap: 8px; max-width: 860px; margin: 0 auto 8px; font-size: 13px; color: var(--fog);
+    }
+    .flow .chip {
+      padding: 8px 12px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--paper); font-weight: 500;
+      background: rgba(255,255,255,.02);
+    }
+    .flow .chip.browse { border-color: rgba(196,122,154,.4); color: #e0b4c8; }
+    .flow .chip.intent { border-color: rgba(61,122,74,.45); color: var(--leaf-text); }
+    .flow .arrow { color: var(--mist); font-size: 12px; }
+    .flow .cut {
+      text-decoration: line-through; opacity: .55; border-style: dashed;
+    }
+
+    .name-pick {
+      max-width: 560px; margin: 0 auto 8px; display: grid; gap: 8px;
+    }
+    .name-row {
+      display: flex; align-items: baseline; gap: 12px;
+      padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
+      font-size: 13px; color: var(--fog);
+    }
+    .name-row.pick {
+      border-color: rgba(61,122,74,.4); background: var(--leaf-soft); color: var(--paper);
+    }
+    .name-row .tag {
+      flex: none; font-size: 11px; font-weight: 650; min-width: 40px; color: var(--mist);
+    }
+    .name-row.pick .tag { color: var(--leaf-text); }
+
+    .row2, .row3 {
+      display: grid; gap: 22px; align-items: start; justify-content: center;
+    }
+    .row2 { grid-template-columns: repeat(2, minmax(0, 280px)); }
+    .row3 { grid-template-columns: repeat(3, minmax(0, 270px)); }
+    @media (max-width: 900px) {
+      .row2, .row3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+
+    .col-head { text-align: center; margin-bottom: 10px; max-width: 280px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; font-weight: 650; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 4px; line-height: 1.45; }
+    .col-head .drop, .col-head .pick {
+      display: inline-block; margin-top: 6px; font-size: 11px;
+      padding: 2px 8px; border-radius: 999px;
+    }
+    .col-head .drop { color: #c47a6a; border: 1px solid rgba(196,122,106,.4); }
+    .col-head .pick { color: var(--leaf-text); border: 1px solid rgba(61,122,74,.4); }
+
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9/17.8;
+      border-radius: 30px; border: 1px solid rgba(255,255,255,.1);
+      background: var(--door); overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0,0,0,.45);
+      display: flex; flex-direction: column; margin: 0 auto;
+      padding: 10px 18px 14px;
+    }
+    .phone.tall { aspect-ratio: 9/19.4; }
+    .app {
+      font-size: 11px; color: var(--mist); margin-top: 18px; flex: none;
+    }
+    .stage { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+    .stage.top { justify-content: flex-start; padding-top: 10px; }
+    .title {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: 24px; font-weight: 500; color: var(--paper); line-height: 1.25;
+    }
+    .hero-n {
+      margin-top: 26px; font-size: 46px; font-weight: 300;
+      letter-spacing: -1.2px; color: var(--paper);
+    }
+    .unit { margin-top: 6px; font-size: 13px; color: var(--fog); }
+    .purpose { margin-top: 14px; font-size: 13px; color: var(--fog); }
+    .purpose.browse { color: #d4a0b8; }
+
+    .field {
+      margin-top: 18px;
+      border-bottom: 1px solid rgba(232,237,230,.18);
+      padding-bottom: 8px;
+    }
+    .field .ph { font-size: 15px; color: var(--mist); }
+    .field .val { font-size: 15px; color: var(--paper); }
+
+    .chips {
+      margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .chip-t {
+      font-size: 12px; padding: 7px 11px; border-radius: 999px;
+      border: 1px solid var(--line); color: rgba(232,237,230,.72);
+    }
+    .chip-t.on {
+      border-color: rgba(61,122,74,.5); color: var(--leaf-text);
+      background: var(--leaf-soft);
+    }
+
+    .ruler-lab { margin-top: 28px; font-size: 13px; color: var(--fog); }
+    .ruler {
+      margin-top: 14px; position: relative; height: 36px;
+    }
+    .ruler-track {
+      position: absolute; left: 0; right: 0; top: 16px; height: 2px;
+      background: rgba(232,237,230,.12);
+    }
+    .ruler-fill {
+      position: absolute; left: 0; width: 42%; top: 16px; height: 2px;
+      background: rgba(157,212,168,.55);
+    }
+    .ruler-ticks {
+      position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+      display: flex; justify-content: space-between; align-items: flex-end;
+    }
+    .ruler-ticks span {
+      font-size: 11px; color: var(--mist); position: relative;
+      width: 20px; text-align: center;
+    }
+    .ruler-ticks span.on { color: var(--paper); font-weight: 650; }
+    .ruler-ticks span::before {
+      content: ""; position: absolute; left: 50%; top: 8px;
+      width: 1px; height: 8px; background: rgba(232,237,230,.25);
+      transform: translateX(-50%);
+    }
+    .ruler-ticks span.on::before { background: var(--leaf-text); height: 12px; top: 4px; }
+
+    .quote {
+      margin-top: auto; padding-top: 12px; flex: none;
+      font-size: 12px; color: rgba(232,237,230,.38); line-height: 1.45;
+    }
+
+    .acts {
+      display: flex; gap: 28px; align-items: center;
+      padding-top: 14px; flex: none;
+    }
+    .acts .leave { font-size: 16px; color: var(--leaf-text); }
+    .acts .sec { font-size: 16px; color: var(--fog); }
+    .acts .pri { font-size: 16px; color: var(--paper); font-weight: 500; }
+    .acts .dim { font-size: 16px; color: var(--mist); }
+
+    .cap-bar {
+      margin-top: 16px; height: 36px; border-radius: 18px;
+      background: rgba(28,28,30,.94); border: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 12px; font-size: 12px; color: rgba(242,242,247,.88);
+    }
+    .cap-bar .dot {
+      width: 16px; height: 16px; border-radius: 5px;
+      background: rgba(61,122,74,.4);
+    }
+    .cap-bar .sub {
+      font-size: 11px; color: rgba(242,242,247,.5); max-width: 72px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .matrix {
+      width: 100%; max-width: 760px; margin: 0 auto;
+      border-collapse: collapse; font-size: 13px;
+    }
+    .matrix th, .matrix td {
+      border-bottom: 1px solid var(--line);
+      padding: 11px 12px; text-align: left; vertical-align: top;
+      color: var(--fog); line-height: 1.5;
+    }
+    .matrix th { color: var(--mist); font-weight: 600; font-size: 11px; }
+    .matrix td:first-child { color: var(--paper); font-weight: 600; white-space: nowrap; }
+    .ok { color: #9fd4a8; }
+    .cut { color: #c47a6a; }
+    .soft { color: rgba(232,237,230,.45); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="hero">
+      <div class="eyebrow">CASUAL BROWSE → NAMED CONTINUE</div>
+      <h1>随意浏览到点 · 再需要一点时间</h1>
+      <p>
+        第一拍：离开为主，再需要一点时间为次。点进去再命名。
+        半门复用意图表述（输入 + 快捷标签）+ 滑尺选多久，进入后转为意图续段。
+      </p>
+      <div class="thesis">离开为主 · 再需要一点时间 → 写下意图 → 滑尺 → 进入</div>
+    </header>
+
+    <!-- 〇 用词 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>〇 · 用词</h2>
+      </div>
+      <div class="name-pick">
+        <div class="name-row pick">
+          <span class="tag">路径</span>
+          <span><strong>随意浏览</strong> · 用户可见；代码仍可 Browse / BROWSE</span>
+        </div>
+        <div class="name-row">
+          <span class="tag">不用</span>
+          <span>刷一刷 · 口语偏抖、易轻；随意浏览更准、更稳</span>
+        </div>
+        <div class="name-row pick">
+          <span class="tag">到点</span>
+          <span><strong>再需要一点时间</strong> · 次要动作；视觉轻于「离开」</span>
+        </div>
+        <div class="name-row">
+          <span class="tag">不用</span>
+          <span>接着做 / 再要一点时间 · 前者未命名不准；后者略冲</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 一 流程 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>一 · 两拍流程</h2>
+      </div>
+      <div class="flow">
+        <span class="chip browse">随意浏览到点</span>
+        <span class="arrow">→</span>
+        <span class="chip">离开</span>
+        <span class="arrow">或</span>
+        <span class="chip">再需要一点时间</span>
+        <span class="arrow">→</span>
+        <span class="chip">意图 + 滑尺</span>
+        <span class="arrow">→</span>
+        <span class="chip intent">INTENT 续段</span>
+      </div>
+      <div class="flow" style="margin-top:10px">
+        <span class="chip cut">无锚续时（仍随意浏览）</span>
+      </div>
+      <div class="note browse" style="margin-top:16px">
+        随意浏览到点：主动作是<strong>离开</strong>；<strong>再需要一点时间</strong>为次要，且必须经过命名半门。
+        意图 / 搜索到点：仍可现网式直接续时（已有锚）。
+      </div>
+    </section>
+
+    <!-- 二 第一拍 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>二 · 到点第一拍</h2>
+        <p>与现网同壳；右侧动作改为「再要一点时间」。</p>
+      </div>
+      <div class="row2">
+        <div>
+          <div class="col-head">
+            <h3>现网</h3>
+            <p>续一点时间 · 无锚</p>
+            <span class="drop">随意浏览路径弃用</span>
+          </div>
+          <div class="phone">
+            <div class="app">抖音</div>
+            <div class="stage">
+              <div class="title">这次到了</div>
+              <div class="hero-n">15</div>
+              <div class="unit">分</div>
+              <div class="purpose browse">刷一刷</div>
+            </div>
+            <div class="quote">真正的休息是给大脑留白，而非换个刺激。</div>
+            <div class="acts">
+              <span class="leave">离开</span>
+              <span class="sec">续一点时间</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>修订</h3>
+            <p>离开为主 · 续时为次</p>
+            <span class="pick">采用</span>
+          </div>
+          <div class="phone">
+            <div class="app">抖音</div>
+            <div class="stage">
+              <div class="title">这次到了</div>
+              <div class="hero-n">15</div>
+              <div class="unit">分</div>
+              <div class="purpose browse">随意浏览</div>
+            </div>
+            <div class="quote">真正的休息是给大脑留白，而非换个刺激。</div>
+            <div class="acts">
+              <span class="leave">离开</span>
+              <span class="sec">再需要一点时间</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="note" style="margin-top:18px">
+        <strong>视觉权重：</strong>「离开」用叶色主动作字；「再需要一点时间」用雾色次要字（与现网「续一点时间」同级或更淡），不抢离开。
+      </div>
+    </section>
+
+    <!-- 三 第二拍 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>三 · 再需要一点时间 · 半门</h2>
+        <p>复用意图表述：输入一行 + 快捷标签；时长用滑尺。无「也可以」分区。</p>
+      </div>
+      <div class="note">
+        <strong>优先复用意图门中区组件</strong>（输入、快捷标签、DoorDurationRuler），
+        减一套交互。差异只在：标题/上下文是「续段命名」，确认是「进入」而非「进门」。
+      </div>
+      <div class="row3">
+        <div>
+          <div class="col-head">
+            <h3>空态</h3>
+            <p>先写或点标签</p>
+          </div>
+          <div class="phone tall">
+            <div class="app">抖音</div>
+            <div class="stage top">
+              <div class="title" style="font-size:22px">再需要一点时间</div>
+              <div class="purpose browse" style="margin-top:8px">刚才 · 随意浏览 · 15 分</div>
+              <div class="field"><span class="ph">这一次要做什么</span></div>
+              <div class="chips">
+                <span class="chip-t">看教程</span>
+                <span class="chip-t">回消息</span>
+                <span class="chip-t">收藏整理</span>
+                <span class="chip-t">找灵感</span>
+              </div>
+              <div class="ruler-lab">再留多久</div>
+              <div class="ruler">
+                <div class="ruler-track"></div>
+                <div class="ruler-fill"></div>
+                <div class="ruler-ticks">
+                  <span>3</span><span class="on">5</span><span>8</span><span>10</span>
+                </div>
+              </div>
+            </div>
+            <div class="acts">
+              <span class="dim">返回</span>
+              <span class="dim">进入</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>已命名</h3>
+            <p>标签或手写均可</p>
+          </div>
+          <div class="phone tall">
+            <div class="app">抖音</div>
+            <div class="stage top">
+              <div class="title" style="font-size:22px">再需要一点时间</div>
+              <div class="purpose browse" style="margin-top:8px">刚才 · 随意浏览 · 15 分</div>
+              <div class="field"><span class="val">看完这条食谱</span></div>
+              <div class="chips">
+                <span class="chip-t">看教程</span>
+                <span class="chip-t on">回消息</span>
+                <span class="chip-t">收藏整理</span>
+                <span class="chip-t">找灵感</span>
+              </div>
+              <div class="ruler-lab">再留多久</div>
+              <div class="ruler">
+                <div class="ruler-track"></div>
+                <div class="ruler-fill" style="width:42%"></div>
+                <div class="ruler-ticks">
+                  <span>3</span><span class="on">5</span><span>8</span><span>10</span>
+                </div>
+              </div>
+            </div>
+            <div class="acts">
+              <span class="dim">返回</span>
+              <span class="pri">进入</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="col-head">
+            <h3>进入后</h3>
+            <p>同场变意图条</p>
+          </div>
+          <div class="phone tall">
+            <div class="app" style="opacity:.4">内容还在</div>
+            <div class="stage">
+              <div style="height:72px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line)"></div>
+              <div style="margin-top:10px;height:8px;width:55%;border-radius:4px;background:rgba(255,255,255,.05)"></div>
+              <div style="margin-top:8px;height:8px;width:40%;border-radius:4px;background:rgba(255,255,255,.035)"></div>
+              <div class="cap-bar">
+                <span class="dot"></span>
+                <span>00:12</span>
+                <span class="sub">看完这条食谱</span>
+              </div>
+              <p style="margin-top:14px;font-size:11px;color:var(--mist);line-height:1.45;text-align:center">
+                正计时 · 命名在条上<br />轻问锚在这次意图
+              </p>
+            </div>
+            <div class="acts" style="opacity:0">占位</div>
+          </div>
+        </div>
+      </div>
+      <div class="note warm" style="margin-top:20px">
+        半门<strong>不设「也可以 / 去查」栏目</strong>。若以后要搜索续段，用输入语义或单独入口再议；
+        V1 续段统一转为<strong>意图</strong>即可。
+      </div>
+    </section>
+
+    <!-- 四 规则 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>四 · 规则</h2>
+      </div>
+      <table class="matrix">
+        <thead>
+          <tr><th>项</th><th>约定</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>第一拍文案</td>
+            <td class="ok">离开（主）· 再需要一点时间（次 · 雾色）</td>
+          </tr>
+          <tr>
+            <td>第二拍内容</td>
+            <td class="ok">意图输入 + 快捷标签 + DoorDurationRuler · 进入</td>
+          </tr>
+          <tr>
+            <td>进入条件</td>
+            <td class="ok">意图非空（点标签或手写）</td>
+          </tr>
+          <tr>
+            <td>形态</td>
+            <td class="ok">同会话 BROWSE → INTENT；不回桌面、不重播进门</td>
+          </tr>
+          <tr>
+            <td>无锚续浏览</td>
+            <td class="cut">随意浏览路径取消</td>
+          </tr>
+          <tr>
+            <td>用户可见路径名</td>
+            <td class="ok">随意浏览（替代刷一刷）</td>
+          </tr>
+          <tr>
+            <td>意图/搜索到点</td>
+            <td class="soft">保持现网直接续时</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 五 验收 -->
+    <section class="section">
+      <div class="sec-head">
+        <h2>五 · 验收</h2>
+      </div>
+      <div class="note">
+        随意浏览到点 → 「离开」更醒目；「再需要一点时间」更淡。<br />
+        点再需要一点时间 → 半门：输入/标签 + 滑尺；未填意图时「进入」不可用。<br />
+        进入 → 胶囊正计时 + 命名，内容未重置。<br />
+        返回 → 回到到点第一拍。<br />
+        界面文案「随意浏览」，不再对用户写「刷一刷」。
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

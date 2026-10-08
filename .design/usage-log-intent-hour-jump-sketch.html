@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>使用日志 · 意图优先 + 时段小时跳转</title>
+  <style>
+    :root {
+      --bg: #000;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --green: #34c759;
+      --blue: #6bb4f0;
+      --line: rgba(255,255,255,.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, #1a1a1c 0%, #0a0a0a 45%, #000 100%);
+      color: #fff;
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 56px;
+      gap: 18px;
+    }
+    .page-title { text-align: center; max-width: 440px; }
+    .page-title h1 { font-size: 15px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .page-title p { font-size: 13px; color: var(--dim); line-height: 1.55; }
+
+    .phones {
+      display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; align-items: flex-start;
+    }
+    .phone {
+      width: min(360px, 100%);
+      background: var(--bg);
+      border: 1px solid #2a2a2c;
+      border-radius: 32px;
+      padding: 14px 0 22px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.65);
+      overflow: hidden;
+    }
+    .phone-cap {
+      text-align: center; font-size: 12px; color: var(--dim); margin-top: 10px; line-height: 1.45;
+      max-width: 360px;
+    }
+    .topbar { padding: 6px 18px 8px; }
+    .topbar h2 { font-size: 17px; font-weight: 600; }
+    .topbar .sub { margin-top: 2px; font-size: 11px; color: var(--muted); }
+
+    /* sticky period + hour rail */
+    .period-sticky {
+      position: sticky; top: 0; z-index: 3;
+      background: rgba(0,0,0,.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      padding: 8px 12px 10px;
+    }
+    .period-head {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .period-head .name { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.55); }
+    .period-head .range {
+      font-size: 11px; font-family: ui-monospace, Menlo, monospace; color: rgba(255,255,255,.28);
+    }
+    .period-head .hair { flex: 1; height: 1px; background: rgba(255,255,255,.08); }
+
+    .hour-rail {
+      display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .hour-rail::-webkit-scrollbar { display: none; }
+    .hour-chip {
+      flex: 0 0 auto;
+      min-width: 34px; height: 28px;
+      padding: 0 8px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: rgba(255,255,255,.05);
+      color: rgba(255,255,255,.38);
+      font: 600 12px/28px ui-monospace, Menlo, monospace;
+      text-align: center;
+    }
+    .hour-chip.has { color: rgba(255,255,255,.72); background: rgba(255,255,255,.08); }
+    .hour-chip.on {
+      color: var(--green);
+      background: rgba(52,199,89,.14);
+      border-color: rgba(52,199,89,.4);
+    }
+    .hour-chip.empty { opacity: .45; }
+
+    .list { padding: 4px 0 0; }
+    .row {
+      display: grid;
+      grid-template-columns: 32px 28px 18px 1fr;
+      gap: 0 4px;
+      padding: 0 10px;
+      min-height: 48px;
+      align-items: start;
+    }
+    .row.anchor {
+      scroll-margin-top: 88px;
+      background: linear-gradient(90deg, rgba(52,199,89,.06), transparent 55%);
+    }
+    .h {
+      text-align: right; padding-top: 12px;
+      font: 600 13px/1 ui-monospace, Menlo, monospace; color: rgba(255,255,255,.55);
+    }
+    .h.dim { color: rgba(255,255,255,.14); font-weight: 500; font-size: 11px; }
+    .m {
+      text-align: right; padding-top: 12px; padding-right: 2px;
+      font: 500 11px/1 ui-monospace, Menlo, monospace; color: rgba(255,255,255,.4);
+    }
+    .spine { position: relative; display: flex; justify-content: center; padding-top: 14px; min-height: 100%; }
+    .spine::before {
+      content: ""; position: absolute; top: 0; bottom: 0; left: 50%;
+      width: 1px; margin-left: -.5px; background: rgba(255,255,255,.12);
+    }
+    .dot {
+      position: relative; z-index: 1; width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,.5); box-shadow: 0 0 0 3px #000;
+    }
+    .dot.blue { background: var(--blue); }
+    .dot.green { background: var(--green); }
+    .dot.hollow { background: #000; border: 1.5px solid rgba(255,255,255,.4); }
+
+    .body { padding: 8px 0 10px 6px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .chip {
+      align-self: flex-start; font-size: 11px; font-weight: 600;
+      padding: 2px 7px; border-radius: 5px;
+      background: rgba(255,255,255,.07); color: rgba(255,255,255,.55);
+    }
+    .chip.blue { background: rgba(107,180,240,.14); color: var(--blue); }
+    .chip.green { background: rgba(52,199,89,.14); color: var(--green); }
+
+    /* 意图优先：主行是意图；App 名退后 */
+    .intent {
+      font-size: 15px; font-weight: 600; color: rgba(255,255,255,.92);
+      letter-spacing: -.01em; line-height: 1.3;
+    }
+    .meta {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: rgba(255,255,255,.38); font-weight: 500;
+    }
+    .ico {
+      width: 14px; height: 14px; border-radius: 3px;
+      background: linear-gradient(145deg, #ff5a6a, #c9184a); opacity: .85;
+    }
+    .ico.xhs { background: linear-gradient(145deg, #ff2442, #c9184a); }
+    .ambient {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 13px; font-weight: 600; color: rgba(255,255,255,.55);
+      padding-top: 2px;
+    }
+    .ambient.home { color: rgba(52,199,89,.88); }
+    .g {
+      width: 14px; height: 14px; border-radius: 3px;
+      background: rgba(255,255,255,.08);
+      display: grid; place-items: center; font-size: 8px; color: rgba(255,255,255,.45);
+    }
+
+    .callout {
+      max-width: 760px; display: grid; gap: 10px;
+      font-size: 13px; color: var(--muted); line-height: 1.55;
+    }
+    .callout strong { color: #d1d1d6; font-weight: 600; }
+    .note {
+      border-left: 2px solid rgba(52,199,89,.45);
+      padding: 8px 0 8px 12px; color: var(--dim);
+    }
+  </style>
+</head>
+<body>
+  <div class="page-title">
+    <h1>理解草图 · 意图优先 + 时段内小时跳转</h1>
+    <p>App 名退后；有意图时主行写意图。时段头下固定一排可点小时，点到哪，列表滚到哪。</p>
+  </div>
+
+  <div class="phones">
+    <div>
+      <div class="phone">
+        <div class="topbar">
+          <h2>使用日志</h2>
+          <div class="sub">一天中的切换</div>
+        </div>
+
+        <div class="period-sticky">
+          <div class="period-head">
+            <span class="name">下午</span>
+            <span class="range">12:00–18:00</span>
+            <div class="hair"></div>
+          </div>
+          <!-- 固定小时轨：本时段全部小时；有内容高亮，当前锚点绿色 -->
+          <div class="hour-rail" title="点击跳到该小时首条">
+            <span class="hour-chip empty">12</span>
+            <span class="hour-chip has on">13</span>
+            <span class="hour-chip has">14</span>
+            <span class="hour-chip empty">15</span>
+            <span class="hour-chip empty">16</span>
+            <span class="hour-chip has">17</span>
+          </div>
+        </div>
+
+        <div class="list">
+          <div class="row anchor">
+            <div class="h">13</div>
+            <div class="m">:39</div>
+            <div class="spine"><div class="dot blue"></div></div>
+            <div class="body">
+              <span class="chip blue">进入</span>
+              <div class="intent">音乐</div>
+              <div class="meta"><span class="ico xhs"></span>小红书</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="h dim">13</div>
+            <div class="m">:40</div>
+            <div class="spine"><div class="dot green"></div></div>
+            <div class="body">
+              <div class="ambient home"><span class="g">⌂</span>回桌面</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="h dim">13</div>
+            <div class="m">:42</div>
+            <div class="spine"><div class="dot hollow"></div></div>
+            <div class="body">
+              <div class="ambient"><span class="g">亮</span>点亮屏幕</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="h dim">13</div>
+            <div class="m">:44</div>
+            <div class="spine"><div class="dot blue"></div></div>
+            <div class="body">
+              <span class="chip blue">进入</span>
+              <div class="intent">回消息给老板</div>
+              <div class="meta"><span class="ico"></span>微信</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="h dim">13</div>
+            <div class="m">:51</div>
+            <div class="spine"><div class="dot"></div></div>
+            <div class="body">
+              <span class="chip">离开</span>
+              <div class="meta" style="margin-top:2px"><span class="ico"></span>微信 · 未完结</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="phone-cap">点「13」→ 列表滚到 13 点首条（绿描边为当前锚点小时）</p>
+    </div>
+
+    <div>
+      <div class="phone">
+        <div class="topbar">
+          <h2>对比 · 现在的问题</h2>
+          <div class="sub">App 名当主角时</div>
+        </div>
+        <div class="period-sticky">
+          <div class="period-head">
+            <span class="name">下午</span>
+            <span class="range">12:00–18:00</span>
+            <div class="hair"></div>
+          </div>
+        </div>
+        <div class="list">
+          <div class="row">
+            <div class="h">13</div>
+            <div class="m">:39</div>
+            <div class="spine"><div class="dot blue"></div></div>
+            <div class="body">
+              <span class="chip blue">进入</span>
+              <div class="intent" style="font-size:14px;font-weight:500;color:rgba(255,255,255,.88)">小红书</div>
+              <div class="meta">音乐</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="h dim">13</div>
+            <div class="m">:44</div>
+            <div class="spine"><div class="dot blue"></div></div>
+            <div class="body">
+              <span class="chip blue">进入</span>
+              <div class="intent" style="font-size:14px;font-weight:500;color:rgba(255,255,255,.88)">微信</div>
+              <div class="meta">回消息给老板</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="phone-cap">意图被压成副行，读起来像「用了哪些 App」，不是「带着什么意图」</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="note">
+      <strong>1. 意图优先</strong> — 同意。有意图时主行写意图（15–16sp SemiBold）；App 名 + 小图标退到次行 muted。无意图（直进/离开）才让 App 名当主行，但仍不必高亮抢戏。
+    </div>
+    <div class="note">
+      <strong>2. 时段内固定小时轨</strong> — 明白：sticky「下午」下面一排 12…17，空小时可点但更淡；点「14」→ 列表滚到 14:00 首条（或该小时锚点），当前小时 chip 高亮。这是定位导航，不是再做一个 24h 轴。
+    </div>
+  </div>
+</body>
+</html>

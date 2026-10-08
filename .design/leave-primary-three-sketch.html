@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>拦截 · 离开为主强调</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --line: rgba(232,237,230,.12);
+      --sand: #c4a35a; --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 40px; }
+    header { max-width: 640px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 46em; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .row2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; max-width: 720px; margin: 0 auto; }
+    @media (max-width: 900px) {
+      .row3, .row2 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 280px; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+    .tag-was {
+      display: inline-block; margin-top: 6px; font-size: 10px; color: var(--sand);
+      letter-spacing: .04em;
+    }
+
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: var(--ink); border: 1px solid rgba(255,255,255,.08);
+      display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+      position: relative; overflow: hidden;
+    }
+    .phone.dim .body, .phone.dim .dock { opacity: .42; }
+    .phone .behind {
+      position: absolute; inset: 0; opacity: .1; pointer-events: none;
+      background:
+        linear-gradient(180deg, transparent 42%, #050605 92%),
+        repeating-linear-gradient(0deg, transparent, transparent 47px, rgba(255,255,255,.035) 48px),
+        repeating-linear-gradient(90deg, transparent, transparent 47px, rgba(255,255,255,.035) 48px);
+    }
+    .body {
+      flex: 1; display: flex; flex-direction: column;
+      padding: 22px 26px 0; position: relative; z-index: 1; min-height: 0;
+    }
+    .id-row { display: flex; align-items: center; gap: 8px; }
+    .id-icon {
+      width: 18px; height: 18px; border-radius: 4px;
+      background: linear-gradient(145deg, #07c160, #06ad56);
+    }
+    .id-icon.dy { background: linear-gradient(145deg, #1c1c1e, #333); border: 1px solid rgba(255,255,255,.12); }
+    .id-icon.wx { background: linear-gradient(145deg, #07c160, #06ad56); }
+    .door-tag { font-size: 11px; color: var(--mist); }
+    .moment { margin-top: 6px; font-size: 11px; color: rgba(92,101,94,.85); }
+    .stage {
+      flex: 1; display: flex; flex-direction: column; justify-content: center;
+      text-align: left; min-height: 0; padding-bottom: 12px;
+    }
+    .title {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 26px; font-weight: 500; line-height: 1.35;
+    }
+    .meta {
+      margin-top: 10px; font-size: 13px; color: var(--fog);
+      font-variant-numeric: tabular-nums; line-height: 1.45;
+    }
+    .field-row {
+      margin-top: 28px; display: flex; align-items: center; gap: 10px;
+    }
+    .field {
+      flex: 1; border-bottom: 1px solid rgba(232,237,230,.22);
+      padding: 6px 0 8px; font-size: 16px; color: rgba(139,147,140,.55);
+    }
+    .outline {
+      font-size: 12px; color: var(--mist);
+      border: 1px solid rgba(232,237,230,.16);
+      border-radius: 6px; padding: 5px 8px; white-space: nowrap;
+    }
+    .ruler {
+      margin-top: 22px; text-align: center;
+    }
+    .ruler .hint { font-size: 16px; color: var(--mist); }
+    .ruler .ticks {
+      margin-top: 12px; height: 36px; position: relative;
+      background: linear-gradient(90deg,
+        transparent 0%, rgba(92,101,94,.35) 8%, rgba(92,101,94,.35) 92%, transparent 100%);
+      -webkit-mask: repeating-linear-gradient(90deg, #000 0 1.5px, transparent 1.5px 18px);
+      mask: repeating-linear-gradient(90deg, #000 0 1.5px, transparent 1.5px 18px);
+    }
+    .ruler .needle {
+      position: absolute; left: 50%; top: 0; bottom: 8px; width: 1.5px;
+      background: var(--leaf-text); transform: translateX(-50%);
+    }
+    .hero {
+      margin-top: 28px; font-size: 48px; font-weight: 300;
+      letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1;
+    }
+    .hero.range { font-size: 28px; letter-spacing: -0.02em; }
+    .unit { margin-top: 8px; font-size: 13px; color: var(--fog); }
+    .when { margin-top: 16px; font-size: 13px; color: var(--fog); line-height: 1.55; }
+    .mins {
+      margin-top: 28px; display: flex; gap: 22px; align-items: flex-end;
+      font-variant-numeric: tabular-nums;
+    }
+    .mins b { font-size: 22px; font-weight: 300; color: var(--leaf-text); }
+    .mins span { font-size: 12px; color: var(--mist); padding-bottom: 2px; }
+
+    /* ── dock：离开在右，为主强调 ── */
+    .dock {
+      position: relative; z-index: 2;
+      padding: 0 26px 18px;
+      display: flex; flex-direction: column;
+    }
+    .bar {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 16px;
+    }
+    .left-rail, .right-rail {
+      display: flex; flex-direction: column;
+    }
+    .left-rail { align-items: flex-start; }
+    .right-rail { align-items: flex-end; }
+
+    .leave {
+      font-size: 17px; color: var(--leaf-text); line-height: 1.2;
+      font-weight: 500;
+    }
+    .leave.solo-right {
+      margin-left: auto; padding-bottom: 6px;
+    }
+    .enter {
+      font-size: 15px; color: var(--mist); line-height: 1.2;
+    }
+    .enter.on { color: var(--fog); }
+    .need {
+      font-size: 15px; color: var(--mist); line-height: 1.2;
+    }
+    .back {
+      font-size: 15px; color: var(--mist); line-height: 1.2;
+    }
+
+    .quick {
+      display: flex; flex-direction: column; align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .quick .q-word { font-size: 15px; color: var(--leaf-text); line-height: 1.2; }
+    .quick .half-arrow {
+      width: 28px; height: 10px; margin-top: 4px; position: relative;
+    }
+    .quick .half-arrow::before {
+      content: ""; position: absolute; left: 0; right: 6px; top: 68%;
+      height: 1.4px; background: var(--leaf-text); border-radius: 1px;
+    }
+    .quick .half-arrow::after {
+      content: ""; position: absolute; right: 0; top: 10%;
+      width: 8px; height: 1.4px; background: var(--leaf-text); border-radius: 1px;
+      transform: rotate(-42deg); transform-origin: right center;
+    }
+    .quick .q-cnt {
+      margin-top: 4px; font-size: 12px; color: var(--mist);
+      font-variant-numeric: tabular-nums;
+    }
+    .quick .lab { font-size: 12px; color: var(--mist); padding-top: 3px; }
+    .quick .dur-col { display: flex; flex-direction: column; align-items: center; }
+    .quick .dur { font-size: 15px; color: var(--leaf-text); line-height: 1.15; }
+    .quick .hook {
+      font-size: 11px; color: rgba(159,212,168,.85); margin-top: 1px; line-height: 1;
+    }
+    .quick .cnt { font-size: 12px; color: var(--mist); padding-top: 3px; }
+
+    /* 旧对照：离开在左 */
+    .bar.was {
+      /* same structure but flipped weights for dim phones */
+    }
+    .phone.was .leave { font-weight: 400; }
+    .phone.was .enter { color: var(--leaf-text); font-size: 16px; }
+    .phone.was .need { color: var(--leaf-text); }
+
+    .mark {
+      position: absolute; right: 22px; bottom: 52px; z-index: 6;
+      font-size: 10px; color: var(--sand); letter-spacing: .06em;
+      border: 1px dashed rgba(196,163,90,.45); border-radius: 999px;
+      padding: 3px 8px; background: rgba(12,13,12,.75);
+    }
+    .phone.was .mark { display: none; }
+
+    .note {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Leave First · Three Doors</div>
+      <h1>三扇门，同一条底栏原则：离开是主成功。</h1>
+      <p>
+        进入是被允许的次路径，不占右下主位。离开始终叶色、偏右、略重。
+        软门写意图时快捷隐去；硬挡只有离开，也改贴右。事务门第一拍已接近，底栏左右对调以对齐。
+      </p>
+    </header>
+
+    <p class="sec">主提案 · <strong>离开在右 · 进入/次路径在左</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>软门</h3>
+          <p>左：快速（半箭）+ 进入<br />右：离开（主）· 不写时长</p>
+        </div>
+        <div class="phone">
+          <div class="behind"></div>
+          <div class="body">
+            <div class="id-row">
+              <div class="id-icon wx"></div>
+              <div class="door-tag">微信</div>
+            </div>
+            <div class="moment">9月29日 周二 · 酉时 · 18:14</div>
+            <div class="stage">
+              <div class="title">做什么</div>
+              <div class="meta">今日已用 42 / 90 分</div>
+              <div class="field-row">
+                <div class="field">写下来…</div>
+                <div class="outline">搜索直达</div>
+              </div>
+              <div class="ruler">
+                <div class="hint">选择时长</div>
+                <div class="ticks"><i class="needle"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <div class="left-rail">
+                <div class="quick">
+                  <div class="q-word">快速</div>
+                  <div class="half-arrow" aria-hidden="true"></div>
+                  <div class="q-cnt">×3</div>
+                </div>
+                <div class="enter">进入</div>
+              </div>
+              <div class="right-rail">
+                <div class="leave">离开</div>
+              </div>
+            </div>
+          </div>
+          <div class="mark">主</div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>硬挡</h3>
+          <p>只有离开。从左下改到右下，与另两扇同脊。</p>
+        </div>
+        <div class="phone">
+          <div class="body">
+            <div class="door-tag">抖音</div>
+            <div class="stage">
+              <div class="title">今天的额度<br />用完了</div>
+              <div class="hero">90<span style="font-size:18px;color:var(--fog);font-weight:400"> / 90</span></div>
+              <div class="unit">分</div>
+              <div class="when">明天 0:00 再开</div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="leave solo-right">离开</div>
+          </div>
+          <div class="mark">主</div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>事务门 · 第一拍</h3>
+          <p>左：有事，进去（淡）<br />右：离开（主）</p>
+        </div>
+        <div class="phone">
+          <div class="body">
+            <div class="door-tag">邮件</div>
+            <div class="stage">
+              <div class="title">这一次<br />先不必进</div>
+              <div class="meta">今日第 2 次</div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <div class="need">有事，进去</div>
+              <div class="leave">离开</div>
+            </div>
+          </div>
+          <div class="mark">主</div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">软门变体 · <strong>写意图时快捷隐去 · 进入仍可亮</strong></p>
+    <section class="row2">
+      <div class="col">
+        <div class="col-head">
+          <h3>已写 · 已选时长</h3>
+          <p>快捷消失。进入转可点但仍轻于离开。</p>
+        </div>
+        <div class="phone">
+          <div class="behind"></div>
+          <div class="body">
+            <div class="id-row">
+              <div class="id-icon wx"></div>
+              <div class="door-tag">微信</div>
+            </div>
+            <div class="moment">9月29日 周二 · 酉时 · 18:14</div>
+            <div class="stage">
+              <div class="title">做什么</div>
+              <div class="meta">今日已用 42 / 90 分</div>
+              <div class="field-row">
+                <div class="field" style="color:var(--paper)">回一下群消息</div>
+                <div class="outline">搜索直达</div>
+              </div>
+              <div class="ruler">
+                <div class="hint" style="color:var(--leaf-text);font-size:22px;font-weight:500">15分</div>
+                <div class="ticks"><i class="needle"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <div class="enter on">进入</div>
+              <div class="leave">离开</div>
+            </div>
+          </div>
+          <div class="mark">主</div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="col-head">
+          <h3>事务门 · 第二拍</h3>
+          <p>左：返回（淡）· 右：离开仍在。<br />点分钟即进，不另设进入。</p>
+        </div>
+        <div class="phone">
+          <div class="body">
+            <div class="door-tag">邮件</div>
+            <div class="stage">
+              <div class="title">多久</div>
+              <div class="meta">点一下就进</div>
+              <div class="mins">
+                <b>1</b><b>2</b><b>3</b><b>5</b><span>分</span>
+              </div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <div class="back">返回</div>
+              <div class="leave">离开</div>
+            </div>
+          </div>
+          <div class="mark">主</div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">对照 · <strong>现在（离开偏左 / 进入偏右）</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>软门 · 旧</h3>
+          <p class="tag-was">离开左 · 进入右</p>
+        </div>
+        <div class="phone was dim">
+          <div class="body">
+            <div class="door-tag">微信</div>
+            <div class="stage">
+              <div class="title">做什么</div>
+              <div class="meta">今日已用 42 / 90 分</div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <div class="leave">离开</div>
+              <div class="left-rail" style="align-items:flex-end">
+                <div class="quick" style="margin-bottom:10px">
+                  <span class="lab">快捷</span>
+                  <span class="dur-col"><span class="dur">5分</span><span class="hook">⌃</span></span>
+                  <span class="cnt">×3</span>
+                </div>
+                <div class="enter" style="color:var(--leaf-text);font-size:16px">进入</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>硬挡 · 旧</h3>
+          <p class="tag-was">离开贴左下</p>
+        </div>
+        <div class="phone was dim">
+          <div class="body">
+            <div class="door-tag">抖音</div>
+            <div class="stage">
+              <div class="title">今天的额度<br />用完了</div>
+              <div class="hero">90</div>
+              <div class="unit">分</div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="leave" style="margin-right:auto;padding-bottom:6px">离开</div>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>事务 · 旧</h3>
+          <p class="tag-was">离开左 · 有事右淡</p>
+        </div>
+        <div class="phone was dim">
+          <div class="body">
+            <div class="door-tag">邮件</div>
+            <div class="stage">
+              <div class="title">这一次<br />先不必进</div>
+            </div>
+          </div>
+          <div class="dock">
+            <div class="bar">
+              <div class="leave">离开</div>
+              <div class="need">有事，进去</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>读法</strong>：底栏右缘是「推荐成功」——离开。左缘是「我仍要进」——快速 / 进入 / 有事进去，字更淡。
+      快速形态：文案「快速」+ 横向半箭头（只有上尖）+ ×次；门口不写默认时长。
+      若认这版，代码已按此对齐软门 / 硬挡 / 事务门。
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>权限与后台保活</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="kicker">第 7 章</div>
+  <h1>权限与后台保活</h1>
+
+  <h2>权限分别做什么</h2>
+  <table>
+    <tr><th>用量访问</th><td>看不到近 7 日用量；日限额等依赖时长的规则无法可靠工作</td></tr>
+    <tr><th>悬浮窗</th><td>无法在其它应用上方显示拦截页</td></tr>
+    <tr><th>无障碍</th><td>拦截页期间更容易被 Home / 最近任务绕过</td></tr>
+  </table>
+  <p>入口都在「我」。缺项时会直接提示有几项需处理；全部正常时显示「监控正常」。</p>
+
+  <h2>为什么有时「规则在，却拦不住」</h2>
+  <p>常见原因不是规则写错，而是系统把心锚清出了后台，或限制了自启动。不同手机品牌的设置名称不同（如自启动、后台耗电、电池优化等）。</p>
+  <ol>
+    <li><span class="i">1</span><span>打开「我」，看权限是否仍齐全</span></li>
+    <li><span class="i">2</span><span>若提示与电池 / 后台相关，按页内指引进入保活指南</span></li>
+    <li><span class="i">3</span><span>按清单逐项打开后，再试打开一个方案中的应用，确认拦截页仍会出现</span></li>
+  </ol>
+  <p>说明书不在此罗列各品牌逐步路径；以 App 内保活指南为准。</p>
+  <figure class="slot">
+    <div class="label">图 ·「我」缺项提示 + 保活指南列表</div>
+    <figcaption>品牌逐步截图在保活指南内维护</figcaption>
+  </figure>
+
+  <h2>建议的检查顺序</h2>
+  <ol>
+    <li><span class="i">1</span><span>用量访问、悬浮窗是否开启</span></li>
+    <li><span class="i">2</span><span>无障碍是否开启</span></li>
+    <li><span class="i">3</span><span>电池优化 / 后台限制是否放过心锚</span></li>
+    <li><span class="i">4</span><span>再测：桌面打开方案中的应用 → 应出现拦截页</span></li>
+  </ol>
+
+  <div class="chap-nav">
+    <a class="prev" href="06.html">‹ 日程锁</a>
+    <a class="next" href="index.html">回目录 ›</a>
+  </div>
+</body>
+</html>

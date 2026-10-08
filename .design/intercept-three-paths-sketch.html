@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>拦截页 · 三路分流</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --sand: #c4a35a;
+      --line: rgba(232,237,230,.12); --page: #0c0d0c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; background: var(--page); color: var(--paper);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 44px 22px 80px;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 36px; }
+    header { max-width: 640px; }
+    .eyebrow { font-size: 11px; letter-spacing: .22em; color: var(--mist); margin-bottom: 12px; }
+    h1 {
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: clamp(24px, 3.2vw, 32px); font-weight: 500; letter-spacing: .04em; line-height: 1.35;
+    }
+    header p { margin-top: 12px; font-size: 13px; line-height: 1.75; color: var(--fog); max-width: 46em; }
+    .flow {
+      max-width: 720px; font-size: 13px; line-height: 1.8; color: var(--fog);
+    }
+    .flow b { color: var(--paper); font-weight: 600; }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .1em; color: var(--mist); }
+    .sec strong { color: var(--sand); letter-spacing: 0; font-size: 13px; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .row1 { display: grid; justify-items: center; }
+    @media (max-width: 960px) {
+      .row, .row3 { grid-template-columns: 1fr; justify-items: center; }
+    }
+    .col { display: grid; gap: 10px; justify-items: center; }
+    .col-head { text-align: center; max-width: 260px; }
+    .col-head h3 { font-size: 13px; font-weight: 600; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; line-height: 1.5; }
+    .phone {
+      width: min(270px, 100%); aspect-ratio: 9 / 19.5; border-radius: 28px;
+      background: var(--ink); border: 1px solid rgba(255,255,255,.08);
+      padding: 22px 24px 18px; display: flex; flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+    .door-tag { font-size: 11px; color: var(--mist); }
+    .top {
+      margin-top: 18px; display: flex; flex-direction: column; gap: 4px;
+    }
+    .name { font-size: 18px; color: var(--paper); letter-spacing: .02em; }
+    .meta { font-size: 12px; color: var(--fog); font-variant-numeric: tabular-nums; }
+    .hero {
+      margin-top: 28px;
+      font-family: "Songti SC", "Noto Serif SC", "STSong", serif;
+      font-size: 22px; font-weight: 500; line-height: 1.35; letter-spacing: .02em;
+    }
+    .center {
+      flex: 1; display: flex; flex-direction: column;
+      justify-content: center;
+    }
+    .center.tight { justify-content: flex-start; padding-top: 8px; }
+    .paths { margin-top: 28px; display: grid; gap: 18px; }
+    .path {
+      display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start;
+    }
+    .glyph {
+      font-size: 15px; color: var(--fog); line-height: 1.4; padding-top: 1px;
+    }
+    .path-title { font-size: 15px; color: var(--paper); line-height: 1.35; }
+    .path-sub { margin-top: 3px; font-size: 12px; color: var(--mist); line-height: 1.4; }
+    .path.primary .path-title { font-size: 16px; color: var(--paper); }
+    .path.primary .glyph { color: var(--paper); }
+    .path.primary .path-sub { color: var(--fog); }
+    .path.secondary .path-title { color: rgba(232,237,230,.78); }
+    .path.secondary .glyph { color: var(--fog); }
+    .path.tertiary .path-title { font-size: 14px; color: rgba(92,101,94,.88); }
+    .path.tertiary .glyph, .path.tertiary .path-sub { color: rgba(92,101,94,.62); }
+    .leave {
+      align-self: center; margin-top: auto; margin-bottom: 4px;
+      font-size: 15px; font-weight: 500; color: var(--leaf-text);
+      border: 1px solid rgba(159,212,168,.55); background: rgba(61,122,74,.16);
+      border-radius: 14px; padding: 11px 22px;
+    }
+    .field {
+      margin-top: 18px; width: 100%; border: none;
+      border-bottom: 1px solid rgba(232,237,230,.2); background: transparent;
+      color: var(--paper); font-size: 16px; text-align: left; padding: 4px 0 8px;
+      font-family: inherit;
+    }
+    .field.ph { color: var(--mist); }
+    .tags-label {
+      margin-top: 22px; font-size: 11px; letter-spacing: .08em; color: var(--mist);
+    }
+    .tags {
+      margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px;
+    }
+    .tag { font-size: 13px; color: var(--fog); line-height: 1.4; }
+    .tag.on { color: var(--leaf-text); }
+    .mins {
+      margin-top: 22px; display: flex; gap: 22px; font-variant-numeric: tabular-nums;
+      align-items: baseline;
+    }
+    .mins span { font-size: 22px; font-weight: 300; color: var(--mist); letter-spacing: -0.02em; }
+    .mins span.on { color: var(--leaf-text); font-size: 24px; }
+    .remain {
+      margin-top: 16px; font-size: 12px; color: var(--fog); font-variant-numeric: tabular-nums;
+    }
+    .acts {
+      display: flex; gap: 28px; align-items: center; padding-bottom: 6px;
+    }
+    .acts.single { justify-content: flex-start; }
+    .act { font-size: 16px; color: var(--fog); }
+    .act.go { color: var(--leaf-text); }
+    .act.wait { color: var(--mist); }
+    .act.soft { color: var(--mist); font-size: 15px; }
+    .note {
+      max-width: 720px; margin: 0 auto; border: 1px solid var(--line); border-radius: 12px;
+      padding: 14px 16px; font-size: 12px; line-height: 1.75; color: var(--fog);
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Intercept · Three Paths</div>
+      <h1>门前先认清自己。清楚的去搜或写；不清楚的，先认一笔时长。</h1>
+      <p>
+        总门只问「这次要做什么」。三条路按意图清晰度分开，不再同一屏混搜、写意图、选时长。<br />
+        搜索是诚实入口，一步到位。写下意图是办事。刷一刷承认无目的，但必须先承诺本次多久。
+      </p>
+    </header>
+
+    <p class="flow">
+      <b>顺序</b>　事实（次数 · 已用）→ 认清自己 → 搜索 / 写意图 / 刷一刷 → 进入或返回
+    </p>
+
+    <p class="sec">总门 · <strong>先分流</strong></p>
+    <section class="row1">
+      <div class="col">
+        <div class="col-head">
+          <h3>① 你这次要做什么？</h3>
+          <p>顶上只放事实。三条路是这一屏唯一的决策。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">小红书</div>
+          <div class="top">
+            <div class="name">小红书</div>
+            <div class="meta">今日第 3 次 · 已用 8/25 分钟</div>
+          </div>
+          <div class="center tight">
+            <div class="hero">你这次要做什么？</div>
+            <div class="paths">
+              <div class="path primary">
+                <div class="glyph">⌕</div>
+                <div>
+                  <div class="path-title">搜索直达</div>
+                  <div class="path-sub">我知道要搜什么</div>
+                </div>
+              </div>
+              <div class="path secondary">
+                <div class="glyph">✎</div>
+                <div>
+                  <div class="path-title">写下意图</div>
+                  <div class="path-sub">我知道要做什么</div>
+                </div>
+              </div>
+              <div class="path tertiary">
+                <div class="glyph">≡</div>
+                <div>
+                  <div class="path-title">随意浏览</div>
+                  <div class="path-sub">我没有明确的目的</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="leave">先不进去了</div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">三条分路 · <strong>各管一事</strong></p>
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>② 搜索直达</h3>
+          <p>词够就去搜。不定本次时长。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">搜</div>
+          <div class="center">
+            <div class="hero">你要搜什么？</div>
+            <div class="field ph">输入关键词</div>
+          </div>
+          <div class="acts">
+            <span class="act wait">搜索</span>
+            <span class="act soft">返回</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>②′ 词够了</h3>
+          <p>搜索变叶色。仍无第二道停顿。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">搜</div>
+          <div class="center">
+            <div class="hero">你要搜什么？</div>
+            <div class="field">日式咖喱</div>
+          </div>
+          <div class="acts">
+            <span class="act go">搜索</span>
+            <span class="act soft">返回</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>③ 写下意图</h3>
+          <p>自由输入，或点快捷标签。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">意图</div>
+          <div class="center tight">
+            <div class="hero">你要干什么？</div>
+            <div class="field ph">这一次…</div>
+            <div class="tags-label">快捷标签</div>
+            <div class="tags">
+              <span class="tag">回复消息</span>
+              <span class="tag">改资料</span>
+              <span class="tag">发布内容</span>
+              <span class="tag">看主页</span>
+              <span class="tag">看收藏</span>
+              <span class="tag">看数据</span>
+            </div>
+          </div>
+          <div class="acts">
+            <span class="act wait">进入</span>
+            <span class="act soft">返回</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row3">
+      <div class="col">
+        <div class="col-head">
+          <h3>③′ 选了标签</h3>
+          <p>进入变叶色。办事路，不叠搜词。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">意图</div>
+          <div class="center tight">
+            <div class="hero">你要干什么？</div>
+            <div class="field">回复消息</div>
+            <div class="tags-label">快捷标签</div>
+            <div class="tags">
+              <span class="tag on">回复消息</span>
+              <span class="tag">改资料</span>
+              <span class="tag">发布内容</span>
+              <span class="tag">看主页</span>
+              <span class="tag">看收藏</span>
+              <span class="tag">看数据</span>
+            </div>
+          </div>
+          <div class="acts">
+            <span class="act go">进入</span>
+            <span class="act soft">返回</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>④ 刷一刷</h3>
+          <p>承认无目的。先认本次多久。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">刷</div>
+          <div class="center">
+            <div class="hero">这次刷多久？</div>
+            <div class="mins">
+              <span>3</span><span>5</span><span>10</span>
+            </div>
+            <div class="remain">今日 33/50</div>
+          </div>
+          <div class="acts">
+            <span class="act wait">进入</span>
+            <span class="act soft">返回</span>
+          </div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="col-head">
+          <h3>④′ 选了时长</h3>
+          <p>进入变叶色。已刷/日限在旁看着。</p>
+        </div>
+        <div class="phone">
+          <div class="door-tag">刷</div>
+          <div class="center">
+            <div class="hero">这次刷多久？</div>
+            <div class="mins">
+              <span>3</span><span class="on">5</span><span>10</span>
+            </div>
+            <div class="remain">今日 33/50</div>
+          </div>
+          <div class="acts">
+            <span class="act go">进入</span>
+            <span class="act soft">返回</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="note">
+      <strong>落定：</strong>总门只做分流。三条副题各自完整：搜词 / 写意图 / 认时长。返回回到总门，取消离开。<br />
+      <strong>搜索：</strong>至少两字，「搜索」变叶色。不定本次时长，不再加第二道停顿。<br />
+      <strong>写下意图：</strong>手写或点标签填入。有内容才可进入。不定本次时长。快捷标签按 App 配置。<br />
+      <strong>刷一刷：</strong>时长是一列字，未选则进入淡；选了才叶色。额度用「今日 x/y」陈述已刷/日限；不限则不写。只有这一路需要时长。<br />
+      <strong>不进框：</strong>教学句、架构旁白、色块按钮底、Tab。深链不可靠的 App 不出「搜索直达」。
+    </div>
+  </div>
+</body>
+</html>

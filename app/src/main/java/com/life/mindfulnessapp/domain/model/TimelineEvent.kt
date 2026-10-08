@@ -11,7 +11,7 @@ import com.life.mindfulnessapp.data.db.entity.UsageRecordEntity
  *
  * [timeMs] 用于统一排序，代表事件的关键时间点。
  *
- * 展示层另见 [collapseTimelineForDisplay]：连续门外停下可视觉合并。
+ * 展示层另见 [collapseTimelineForDisplay] / [buildTimelineSections]：逐条展示，按时段与间隔分段。
  */
 sealed class TimelineEvent {
     abstract val timeMs: Long
@@ -42,6 +42,8 @@ sealed class TimelineEvent {
         val mindfulnessLevel: Int? = null,
         /** 意图类型；旧数据可为 null；PURPOSELESS 仅历史旁路遗留 */
         val intentKind: IntentKind? = null,
+        /** 原始 intentKind 存储值（正向出口用 POSITIVE_*） */
+        val intentKindRaw: String? = null,
         /** 本条会话是否启用了意图门 */
         val hasIntentGate: Boolean = false,
         /** 本条会话是否启用了时长锁 */
@@ -49,13 +51,18 @@ sealed class TimelineEvent {
         /** 本次会话时长上限（分钟）；0 表示未设单次上限 */
         val sessionLimitMinutes: Int = 0,
         /** 本次已续时分钟数 */
-        val sessionExtensionMinutes: Int = 0
+        val sessionExtensionMinutes: Int = 0,
+        /** 该 App 当前是否启用对照（用于首页【照】） */
+        val compareEnabled: Boolean = true,
+        /** 对照最低时长（分钟） */
+        val compareMinMinutes: Int = 10
     ) : TimelineEvent() {
         override val timeMs: Long get() = startTime
 
         val isLimitReached: Boolean
             get() = endReason == UsageRecordEntity.EndReason.LIMIT_REACHED ||
-                endReason == UsageRecordEntity.EndReason.SESSION_LIMIT_REACHED
+                endReason == UsageRecordEntity.EndReason.SESSION_LIMIT_REACHED ||
+                endReason == UsageRecordEntity.EndReason.PERIOD_LOCK
 
         /** 单次意图时长锁触顶 */
         val isSessionLimitReached: Boolean
@@ -72,14 +79,21 @@ sealed class TimelineEvent {
                 return over.takeIf { it > 0L }
             }
 
+        /** 未收口：endTime 约定为 -1，兼容历史脏数据（≤0） */
         val isOngoing: Boolean
-            get() = endTime == -1L
+            get() = endTime <= 0L
 
         /** 意图门拦下后离开，未真正进入 */
         val isGateQuit: Boolean
             get() = UsageRecordEntity.EndReason.isGateQuit(purpose, endReason, durationSeconds)
 
-        /** 门外停下后打开了心锚（相对离开回桌面） */
+        val isPositiveExit: Boolean
+            get() = UsageRecordEntity.EndReason.isPositiveExit(endReason)
+
+        val positiveExitKind: PositiveExitKind?
+            get() = if (isPositiveExit) PositiveExitKind.fromStorage(intentKindRaw) else null
+
+        /** 守住离开后是否打开了心锚（相对离开回桌面） */
         val isGateDismissToOwnApp: Boolean
             get() = isGateQuit &&
                 UsageRecordEntity.EndReason.isGateDismissToOwnApp(endReason)
@@ -90,23 +104,34 @@ sealed class TimelineEvent {
 
         /** 有意图并进入（含进行中的有意图会话） */
         val isMindful: Boolean
-            get() = purpose != null
+            get() = purpose != null && !isPositiveExit
 
         /** 无意图的实际使用（仅时长锁直进等）；缺意图 ≠ 克制 */
         val isDirectEntry: Boolean
             get() = !isOngoing && !isLimitReached && !isGateQuit && !isSeed &&
+                !isPositiveExit &&
                 purpose == null && intentKind != IntentKind.PURPOSELESS
 
         /**
-         * 门外停下的一行说明文案。
-         * 非门外停下返回 null。
+         * 守住离开的一行说明文案。
+         * 非守住离开返回 null。单 App 记录页可去掉应用名。
          */
-        val gateQuitLine: String?
-            get() = when {
-                !isGateQuit -> null
-                isGateDismissToOwnApp -> "到了心锚 · $appName"
-                else -> "离开了 · $appName"
+        fun gateQuitLine(includeAppName: Boolean = true): String? {
+            if (!isGateQuit) return null
+            val verb = when {
+                endReason == UsageRecordEntity.EndReason.GATE_PASSIVE -> "被动离开"
+                isGateDismissToOwnApp -> "守住 · 到了心锚"
+                else -> "守住离开"
             }
+            return if (includeAppName) "$verb · $appName" else verb
+        }
+
+        fun positiveExitLine(): String? {
+            if (!isPositiveExit) return null
+            val title = purpose?.trim().orEmpty().ifEmpty { "去做了" }
+            val kind = positiveExitKind?.kindLabel
+            return if (kind != null) "去做了 · $title" else "去做了 · $title"
+        }
 
         /**
          * 意图门情景下的意图行文案；非意图门情景返回 null。
@@ -114,19 +139,19 @@ sealed class TimelineEvent {
          */
         val intentLine: String?
             get() {
-                if (isGateQuit || isSeed || !hasIntentGate) return null
+                if (isGateQuit || isPositiveExit || isSeed || !hasIntentGate) return null
                 val trimmed = purpose?.trim().orEmpty()
                 if (trimmed.isNotEmpty() && intentKind != IntentKind.PURPOSELESS) return trimmed
                 return "没有目的"
             }
 
         /**
-         * 非标准闭环的轻量结束标注；标准结束（主动结束 / 触顶 / 门外停下 / 种子）不展示。
+         * 非标准闭环的轻量结束标注；标准结束（主动结束 / 触顶 / 守住离开 / 种子）不展示。
          * 优先用 [UsageRecordEntity.EndReason.displayKindLabel] 的中断短因。
          */
         val softEndReasonLabel: String?
             get() {
-                if (isOngoing || isGateQuit || isLimitReached || isSeed) return null
+                if (isOngoing || isGateQuit || isPositiveExit || isLimitReached || isSeed) return null
                 if (endReason == UsageRecordEntity.EndReason.MANUAL) return null
                 return UsageRecordEntity.EndReason.displayKindLabel(endReason)
                     ?: UsageRecordEntity.EndReason.softEndReasonLabel(endReason)

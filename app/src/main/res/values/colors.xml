@@ -30,4 +30,8 @@
     <color name="text_primary">#1A2E1C</color>        <!-- 近黑深绿 -->
     <color name="text_secondary">#4D6B54</color>      <!-- 次文字 -->
     <color name="text_hint">#8BA08E</color>           <!-- 提示文字 -->
+    <!-- 窗口底色：与 Compose 日/夜背景对齐，避免冷启动白屏闪一下 -->
+    <color name="app_window_bg_night">#FF0F1117</color>
+    <color name="app_window_bg_day">#FFF4F6F9</color>
+    <color name="app_window_bg_mist">#FFE6ECE8</color>
 </resources>

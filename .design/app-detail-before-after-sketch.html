@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>少详情 · 前/后对照 · 三图</title>
+  <style>
+    :root {
+      --ink: #070908; --paper: #e8ede6; --fog: #8b938c; --mist: #5c655e;
+      --leaf: #3d7a4a; --leaf-text: #9fd4a8; --sand: #c4a35a;
+      --line: rgba(232,237,230,.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; color: var(--paper);
+      background: radial-gradient(ellipse at 40% -8%, #1a2420 0%, transparent 48%), var(--ink);
+      font-family: "SF Pro Text", "PingFang SC", sans-serif;
+      padding: 28px 14px 80px;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 36px; }
+    .hero { text-align: center; max-width: 680px; margin: 0 auto; }
+    .eyebrow { font-size: 11px; letter-spacing: .16em; color: var(--leaf); font-weight: 600; margin-bottom: 10px; }
+    h1 {
+      font-family: "Iowan Old Style", "Songti SC", Georgia, serif;
+      font-size: clamp(22px, 3vw, 28px); font-weight: 500; line-height: 1.3;
+    }
+    .hero p { margin-top: 10px; font-size: 13px; color: var(--fog); line-height: 1.65; }
+    .thesis {
+      margin-top: 14px; display: inline-block; padding: 8px 14px; border-radius: 999px;
+      background: rgba(61,122,74,.14); border: 1px solid rgba(61,122,74,.35);
+      font-size: 12px; color: #b7d4be;
+    }
+    .sec { text-align: center; font-size: 11px; letter-spacing: .08em; color: var(--mist); }
+    .sec strong { color: var(--sand); font-size: 13px; letter-spacing: 0; }
+    .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 620px; margin: 0 auto; }
+    @media (max-width: 980px) { .row, .row2 { grid-template-columns: 1fr; justify-items: center; } }
+    .col-head { text-align: center; margin-bottom: 8px; max-width: 300px; margin-left: auto; margin-right: auto; }
+    .col-head h3 { font-size: 13px; }
+    .col-head p { font-size: 11px; color: var(--mist); margin-top: 3px; }
+    .phone {
+      width: min(280px, 100%); aspect-ratio: 9/20.5; border-radius: 30px;
+      border: 1px solid rgba(255,255,255,.1); background: #050706;
+      display: flex; flex-direction: column; margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0,0,0,.4); overflow: hidden;
+    }
+    .phone.tall { aspect-ratio: 9/22; }
+    .bar {
+      height: 34px; padding: 12px 16px 0; display: flex; justify-content: space-between;
+      font-size: 10px; color: rgba(232,237,230,.4); font-weight: 600; flex: none;
+    }
+    .scroll { flex: 1; padding: 2px 16px 14px; display: flex; flex-direction: column; overflow: hidden; }
+    .brand { font-family: "Iowan Old Style", "Songti SC", Georgia, serif; font-size: 20px; font-weight: 500; }
+    .back { font-size: 12px; color: var(--mist); margin-bottom: 8px; }
+    .k { font-size: 11px; color: var(--mist); }
+    .block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .block:first-of-type { margin-top: 12px; padding-top: 0; border-top: none; }
+    .compare {
+      margin-top: 10px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px;
+      align-items: end;
+    }
+    .compare .side .lab { font-size: 10px; color: var(--mist); }
+    .compare .side .n {
+      margin-top: 4px; font-size: 26px; font-weight: 500; letter-spacing: -.04em;
+      font-variant-numeric: tabular-nums; line-height: 1;
+    }
+    .compare .side .u { font-size: 12px; color: var(--fog); font-weight: 400; margin-left: 2px; }
+    .compare .side.after .n { color: var(--leaf-text); }
+    .compare .mid {
+      font-size: 11px; color: var(--mist); padding-bottom: 6px; text-align: center;
+    }
+    .delta { margin-top: 8px; font-size: 12px; color: var(--leaf-text); }
+    .chart {
+      margin-top: 10px; height: 48px; display: flex; align-items: flex-end; gap: 3px;
+      border-bottom: 1px solid var(--line); padding-bottom: 2px;
+    }
+    .chart.opens { height: 36px; }
+    .chart i {
+      flex: 1; border-radius: 1px 1px 0 0; display: block; min-height: 2px;
+      background: rgba(232,237,230,.28);
+    }
+    .chart i.on { background: rgba(61,122,74,.85); }
+    .chart i.dot {
+      position: relative;
+    }
+    .join {
+      width: 0; border-left: 1px dashed rgba(196,163,90,.55); align-self: stretch;
+      margin: 0 1px; flex: none;
+    }
+    .ruler {
+      margin-top: 8px; height: 28px; display: flex; align-items: flex-end; gap: 2px;
+    }
+    .ruler i {
+      flex: 1; border-radius: 1px 1px 0 0; min-height: 2px;
+      background: rgba(232,237,230,.22);
+    }
+    .ruler .ticks {
+      display: flex; justify-content: space-between; margin-top: 4px;
+      font-size: 9px; color: var(--mist);
+    }
+    .rules {
+      margin-top: 14px; padding: 12px 0 0; border-top: 1px solid var(--line);
+    }
+    .rules .line {
+      margin-top: 6px; font-size: 14px; font-variant-numeric: tabular-nums;
+    }
+    .rules .meta { margin-top: 3px; font-size: 12px; color: var(--fog); }
+    .rules .sum { margin-top: 8px; font-size: 12px; color: var(--mist); line-height: 1.45; }
+    .link {
+      margin-top: 2px; display: flex; justify-content: space-between;
+      padding: 10px 0; font-size: 13px;
+    }
+    .link .l { color: var(--mist); }
+    .link .a { color: var(--leaf-text); }
+    .cta { font-size: 15px; color: var(--leaf-text); }
+    .foot { margin-top: auto; padding-top: 10px; }
+    .note {
+      border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      font-size: 12px; color: var(--fog); line-height: 1.75; max-width: 740px; margin: 0 auto;
+    }
+    .note strong { color: var(--paper); font-weight: 600; }
+    .map {
+      max-width: 740px; margin: 0 auto; font-size: 12px; color: var(--fog);
+      line-height: 1.7; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px;
+      white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .name-pick {
+      max-width: 740px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+    @media (max-width: 700px) { .name-pick { grid-template-columns: 1fr; } }
+    .name-card {
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+      font-size: 12px; color: var(--fog); line-height: 1.6;
+    }
+    .name-card.on { border-color: rgba(61,122,74,.45); background: rgba(61,122,74,.08); }
+    .name-card h4 { font-size: 13px; color: var(--paper); font-weight: 600; margin-bottom: 4px; }
+    .name-card .tag { font-size: 10px; color: var(--leaf-text); margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Detail · Before / After</div>
+      <h1>前 | 后对照 · 下挂对应图 · 配置另区</h1>
+      <p>时长与打开各成一块：左侧监控前日均，右侧加入后日均；正下方是那条变化图。尺子单独一块看「何时」。今日契约与器械摘要进配置区，不跟两个大数抢位。</p>
+      <div class="thesis">对照在上 · 图在下 · 尺子独立 · 配置另区</div>
+    </header>
+
+    <pre class="map">小红书
+────────────────
+时长 · 变化
+  监控前日均  →  加入后日均
+  [时长变化图：灰段 | 绿段]
+────────────────
+打开 · 变化
+  监控前日均  →  加入后日均
+  [打开变化图]
+────────────────
+今天 · 何时在用
+  [尺子]
+  一周节奏 ›
+────────────────
+配置
+  今日 33/45 · 打开 6/10
+  日限 45 · 次数 25 · …
+  去改规则</pre>
+
+    <p class="sec">命名 · <strong>变化 vs 走势</strong></p>
+    <div class="name-pick">
+      <div class="name-card on">
+        <h4>推荐：变化</h4>
+        这块的主业是「加入前后差了多少」。左/右两个日均就是在说变化；图是变化的展开。<br />
+        副文可用「加入前 → 加入后」。
+        <div class="tag">与左右对照同故事</div>
+      </div>
+      <div class="name-card">
+        <h4>走势 · 可作细看标题</h4>
+        「走势」更像连续日序曲线，不强调前/后对照。细看页（点图进入）仍可用「走势」；详情主块用「变化」更贴。
+        <div class="tag" style="color:var(--mist)">细看保留「走势」即可</div>
+      </div>
+    </div>
+
+    <p class="sec">详情 · <strong>建议形态</strong></p>
+    <section class="row">
+      <div>
+        <div class="col-head"><h3>① 整页</h3><p>三图 + 配置区</p></div>
+        <div class="phone tall">
+          <div class="bar"><span>9:41</span><span>详情</span></div>
+          <div class="scroll">
+            <div class="back">‹ 今日</div>
+            <div class="brand">小红书</div>
+
+            <!-- 时长 -->
+            <div class="block">
+              <div class="k">时长 · 变化</div>
+              <div class="compare">
+                <div class="side">
+                  <div class="lab">监控前 · 日均</div>
+                  <div class="n">74<span class="u">分</span></div>
+                </div>
+                <div class="mid">→</div>
+                <div class="side after">
+                  <div class="lab">加入后 · 日均</div>
+                  <div class="n">55<span class="u">分</span></div>
+                </div>
+              </div>
+              <div class="delta">少 19 分/日</div>
+              <div class="chart">
+                <i style="height:70%"></i><i style="height:55%"></i><i style="height:62%"></i>
+                <i style="height:80%"></i><i style="height:58%"></i><i style="height:72%"></i>
+                <i style="height:65%"></i>
+                <div class="join"></div>
+                <i class="on" style="height:42%"></i><i class="on" style="height:38%"></i>
+                <i class="on" style="height:48%"></i><i class="on" style="height:35%"></i>
+                <i class="on" style="height:40%"></i>
+              </div>
+              <div class="k" style="margin-top:4px">加入前 → 加入后 · 点开细看</div>
+            </div>
+
+            <!-- 打开 -->
+            <div class="block">
+              <div class="k">打开 · 变化</div>
+              <div class="compare">
+                <div class="side">
+                  <div class="lab">监控前 · 日均</div>
+                  <div class="n">22<span class="u">次</span></div>
+                </div>
+                <div class="mid">→</div>
+                <div class="side after">
+                  <div class="lab">加入后 · 日均</div>
+                  <div class="n">9<span class="u">次</span></div>
+                </div>
+              </div>
+              <div class="delta">少 13 次/日</div>
+              <div class="chart opens">
+                <i style="height:80%"></i><i style="height:60%"></i><i style="height:70%"></i>
+                <i style="height:90%"></i><i style="height:55%"></i><i style="height:75%"></i>
+                <i style="height:65%"></i>
+                <div class="join"></div>
+                <i class="on" style="height:30%"></i><i class="on" style="height:28%"></i>
+                <i class="on" style="height:35%"></i><i class="on" style="height:22%"></i>
+                <i class="on" style="height:25%"></i>
+              </div>
+            </div>
+
+            <!-- 尺子 -->
+            <div class="block">
+              <div class="k">今天 · 何时在用</div>
+              <div class="ruler">
+                <i style="height:10%"></i><i style="height:8%"></i><i style="height:8%"></i>
+                <i style="height:12%"></i><i style="height:20%"></i><i style="height:45%"></i>
+                <i style="height:60%"></i><i style="height:35%"></i><i style="height:50%"></i>
+                <i style="height:70%"></i><i style="height:40%"></i><i style="height:25%"></i>
+              </div>
+              <div class="ticks"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+              <div class="link"><span class="l">7 天 · 整点尺子</span><span class="a">一周节奏 ›</span></div>
+            </div>
+
+            <!-- 配置 -->
+            <div class="rules">
+              <div class="k">配置</div>
+              <div class="line">今日 33 / 45 分</div>
+              <div class="meta">打开 6 / 25 · 守住 1</div>
+              <div class="sum">日限 45 分 · 次数 25 · 呼吸 8 秒</div>
+              <div class="foot"><span class="cta">去改规则</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>② 一块解剖 · 时长</h3><p>数与图同一故事</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>时长</span></div>
+          <div class="scroll">
+            <div class="brand" style="font-size:17px">时长 · 变化</div>
+            <p class="k" style="margin-top:8px;line-height:1.5">左 = 加入时冻结的监控前 7 日均<br />右 = 加入后完整日日均（心锚）</p>
+
+            <div class="compare" style="margin-top:16px">
+              <div class="side">
+                <div class="lab">监控前</div>
+                <div class="n">74<span class="u">分</span></div>
+              </div>
+              <div class="mid">→</div>
+              <div class="side after">
+                <div class="lab">加入后</div>
+                <div class="n">55<span class="u">分</span></div>
+              </div>
+            </div>
+            <div class="delta">少 19 分/日 · 由两数相减</div>
+
+            <div class="chart" style="margin-top:16px;height:56px">
+              <i style="height:70%"></i><i style="height:55%"></i><i style="height:62%"></i>
+              <i style="height:80%"></i><i style="height:58%"></i><i style="height:72%"></i>
+              <i style="height:65%"></i>
+              <div class="join"></div>
+              <i class="on" style="height:42%"></i><i class="on" style="height:38%"></i>
+              <i class="on" style="height:48%"></i><i class="on" style="height:35%"></i>
+              <i class="on" style="height:40%"></i>
+            </div>
+            <div class="k" style="margin-top:6px">虚线 = 加入日 · 灰=前 · 绿=后</div>
+            <div class="k" style="margin-top:10px;color:var(--fog)">点图 → 细看（仍叫走势亦可）</div>
+
+            <div style="margin-top:18px;font-size:11px;color:#c47a72;line-height:1.55;border-top:1px dashed rgba(196,122,114,.4);padding-top:10px">
+              不好：只有一个「日均 55」却混了系统 7 日。<br />
+              不好：打开 127 与次数限额对不上。<br />
+              不好：配置数字压在第一眼。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="col-head"><h3>③ 配置另区</h3><p>今日契约 + 摘要</p></div>
+        <div class="phone">
+          <div class="bar"><span>9:41</span><span>配置区</span></div>
+          <div class="scroll">
+            <div class="brand" style="font-size:17px">为什么另区</div>
+            <p class="k" style="margin-top:10px;line-height:1.55">变化讲「管了之后怎样」。<br />配置讲「今天规则是什么」。<br />两件事不要叠在同一行英雄数里。</p>
+
+            <div class="rules" style="margin-top:18px">
+              <div class="k">配置</div>
+              <div class="line">今日 0 / 85 分</div>
+              <div class="meta">打开 0 / 25 · 守住 1</div>
+              <div class="sum">日限 85 · 次数 25 · 呼吸 1 秒 · 时段关</div>
+              <div style="margin-top:14px"><span class="cta">去改规则</span></div>
+            </div>
+
+            <div class="block">
+              <div class="k">可选顺序</div>
+              <div class="k" style="margin-top:8px;color:var(--fog);line-height:1.55">
+                A. 变化（时长→打开）→ 尺子 → 配置（推荐）<br />
+                B. 配置置顶 → 变化 → 尺子（偏执行日）
+              </div>
+              <div class="k" style="margin-top:10px;color:var(--leaf-text)">推荐 A：详情主业仍是看变化</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="sec">三图 · <strong>各管什么</strong></p>
+    <section class="row2">
+      <div class="name-card">
+        <h4>1 · 尺子</h4>
+        今天（或一周）按小时看「何时在用」。不管前/后对照，管节奏。<br />
+        入口：今天条 +「一周节奏 ›」
+      </div>
+      <div class="name-card">
+        <h4>2 · 时长变化图</h4>
+        日柱：加入前灰 / 加入后绿。挂在「时长 · 变化」两数下。
+      </div>
+      <div class="name-card">
+        <h4>3 · 打开变化图</h4>
+        打开矮柱，同轴分段。挂在「打开 · 变化」两数下。<br />
+        （就是之前细看里那条，提回详情主表面。）
+      </div>
+      <div class="name-card on">
+        <h4>口径</h4>
+        左：加入时冻结的监控前 7 日均（系统）<br />
+        右：加入后完整日日均（心锚，不含今天）<br />
+        图：与左右同故事，禁止再用系统近 7 日顶右数
+      </div>
+    </section>
+
+    <p class="note">
+      <strong>认同：</strong>前|后对照 + 下挂对应图 + 配置另区，比「一个日均英雄 + 今日契约抢位」清楚。<br />
+      <strong>命名：</strong>详情主块用「变化」；点进细看可用「走势」。三图分别叫：尺子、时长变化、打开变化。<br />
+      <strong>顺序：</strong>时长变化 → 打开变化 → 尺子 → 配置（推荐）。<br />
+      <strong>尚无加入后完整日：</strong>右侧显示「—」或「过完今天再看」，不拿系统数冒充。
+    </p>
+  </div>
+</body>
+</html>

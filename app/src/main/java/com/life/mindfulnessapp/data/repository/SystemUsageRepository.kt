@@ -3,11 +3,23 @@ package com.life.mindfulnessapp.data.repository
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
+import android.os.Build
 import com.life.mindfulnessapp.data.db.dao.HourlyUsage
+import com.life.mindfulnessapp.domain.model.ExploreAppUsageDetail
+import com.life.mindfulnessapp.domain.model.AppWeeklySystemUsage
+import com.life.mindfulnessapp.domain.model.PreJoinDaySnap
+import com.life.mindfulnessapp.domain.model.PreJoinUsageSnapshot
+import com.life.mindfulnessapp.domain.model.SystemDayPeriodStats
+import com.life.mindfulnessapp.domain.model.SystemDayAligned
+import com.life.mindfulnessapp.domain.model.SystemForegroundSession
+import com.life.mindfulnessapp.domain.model.SystemUsageDayDetail
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,37 +50,106 @@ class SystemUsageRepository @Inject constructor(
     suspend fun getTodayTotalScreenSeconds(): Long = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val (start, end) = UsageRecordRepository.getDayRange(now)
-        var totalMs = 0L
-        try {
-            val events = usageStatsManager.queryEvents(start, minOf(end, now))
-            val event = UsageEvents.Event()
-            // 记录每个 App 最近一次进入前台的时间
-            val fgStartMap = mutableMapOf<String, Long>()
-
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                when (event.eventType) {
-                    UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                        fgStartMap[event.packageName] = event.timeStamp.coerceAtLeast(start)
-                    }
-                    UsageEvents.Event.MOVE_TO_BACKGROUND -> {
-                        val fgStart = fgStartMap.remove(event.packageName)
-                        if (fgStart != null) {
-                            val fgEnd = event.timeStamp.coerceAtMost(minOf(end, now))
-                            totalMs += (fgEnd - fgStart).coerceAtLeast(0L)
-                        }
-                    }
-                }
-            }
-            // 仍在前台的 App（无 BACKGROUND 事件）：计算到 now
-            fgStartMap.values.forEach { fgStart ->
-                totalMs += (now - fgStart).coerceAtLeast(0L)
-            }
-        } catch (_: Exception) {
-            // 权限未授予时返回 0
-        }
-        totalMs / 1000L
+        scanForegroundSegments(start, minOf(end, now))
+            .sumOf { (it.endMs - it.startMs).coerceAtLeast(0L) } / 1000L
     }
+
+    /** 桌面 Hub：一次扫描产出今日合计、24 小时桶、按包聚合。 */
+    data class TodaySystemGlanceApp(
+        val packageName: String,
+        val totalSeconds: Long,
+        val openCount: Int = 0
+    )
+
+    data class TodaySystemGlance(
+        val totalSeconds: Long,
+        val hourlySeconds: LongArray,
+        val topApps: List<TodaySystemGlanceApp>
+    ) {
+        companion object {
+            val Empty = TodaySystemGlance(
+                totalSeconds = 0L,
+                hourlySeconds = LongArray(24),
+                topApps = emptyList()
+            )
+        }
+    }
+
+    /**
+     * 今日系统用量一瞥（桌面 Hub）。
+     *
+     * 只计入 [allowedPackages]（Launcher 可见、排除桌面与本应用），
+     * 与探索排行同一前台合并口径。一次扫描同时得到合计、小时热力、按包排行。
+     */
+    suspend fun getTodaySystemGlance(
+        allowedPackages: Set<String>
+    ): TodaySystemGlance = withContext(Dispatchers.IO) {
+        if (allowedPackages.isEmpty()) return@withContext TodaySystemGlance.Empty
+        val now = System.currentTimeMillis()
+        val (todayStart, _) = UsageRecordRepository.getDayRange(now)
+        val hourly = LongArray(24)
+        val durationMsByPkg = mutableMapOf<String, Long>()
+        val opensByPkg = mutableMapOf<String, Int>()
+        for (seg in mergedSegments(todayStart, now)) {
+            if (seg.packageName !in allowedPackages) continue
+            val durMs = (seg.endMs - seg.startMs).coerceAtLeast(0L)
+            if (durMs <= 0L) continue
+            durationMsByPkg[seg.packageName] =
+                (durationMsByPkg[seg.packageName] ?: 0L) + durMs
+            // 与 countSessionOpensByPackage 同口径：每段前台计一次打开
+            opensByPkg[seg.packageName] = (opensByPkg[seg.packageName] ?: 0) + 1
+            accumulateHourly(hourly, seg.startMs, seg.endMs)
+        }
+        val tops = durationMsByPkg.entries
+            .map { (pkg, ms) ->
+                val secs = ms / 1000L
+                var opens = opensByPkg[pkg] ?: 0
+                if (opens < 0) opens = 0
+                if (secs >= 5 * 60L && opens == 0) opens = 1
+                TodaySystemGlanceApp(pkg, secs, opens)
+            }
+            .filter { it.totalSeconds > 0L }
+            .sortedByDescending { it.totalSeconds }
+        TodaySystemGlance(
+            totalSeconds = durationMsByPkg.values.sum() / 1000L,
+            hourlySeconds = hourly,
+            topApps = tops
+        )
+    }
+
+    /** 今日系统用量快照：与探索 / 7 日排行同口径（前台会话合并 + 打开次数）。 */
+    data class TodaySystemUsageSnapshot(
+        val totalSeconds: Long,
+        val openCount: Int
+    )
+
+    /**
+     * 指定 App 今日系统用量。
+     *
+     * - **时长**：前台段合并（与探索详情时长一致）
+     * - **打开次数**：与 [getLast7CompleteDaysUsageByPackage] 同源（RESUMED / FOREGROUND，800ms 去重）
+     * - [sessionOriginStartMs]：当前会话进入时刻；系统事件有延迟时补计本次打开
+     */
+    suspend fun getTodaySystemUsageSnapshot(
+        packageName: String,
+        sessionOriginStartMs: Long = 0L
+    ): TodaySystemUsageSnapshot =
+        withContext(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            val (todayStart, _) = UsageRecordRepository.getDayRange(now)
+            val totalSeconds = queryUsageSeconds(packageName, todayStart, now)
+            var openCount = todayOpenCountFromSystem(
+                packageName = packageName,
+                todayStart = todayStart,
+                now = now,
+                sessionOriginStartMs = sessionOriginStartMs
+            )
+            if (totalSeconds >= 5 * 60L && openCount == 0) openCount = 1
+            TodaySystemUsageSnapshot(
+                totalSeconds = totalSeconds.coerceAtLeast(0L),
+                openCount = openCount.coerceAtLeast(0)
+            )
+        }
 
     /**
      * 获取指定 App 今日的系统实际使用时长（秒）。
@@ -175,36 +256,12 @@ class SystemUsageRepository @Inject constructor(
         endMs: Long
     ): List<HourlyUsage> = withContext(Dispatchers.IO) {
         val hourlySeconds = LongArray(24) { 0L }
-        try {
-            val events = usageStatsManager.queryEvents(startMs, endMs)
-            val event = UsageEvents.Event()
-            var fgStartTime = -1L
-
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                if (event.packageName != packageName) continue
-
-                when (event.eventType) {
-                    UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                        fgStartTime = event.timeStamp.coerceAtLeast(startMs)
-                    }
-                    UsageEvents.Event.MOVE_TO_BACKGROUND -> {
-                        if (fgStartTime > 0) {
-                            val fgEnd = event.timeStamp.coerceAtMost(endMs)
-                            accumulateHourly(hourlySeconds, fgStartTime, fgEnd)
-                            fgStartTime = -1L
-                        }
-                    }
-                }
+        val queryEnd = minOf(endMs, System.currentTimeMillis())
+        scanForegroundSegments(startMs, queryEnd)
+            .filter { it.packageName == packageName }
+            .forEach { seg ->
+                accumulateHourly(hourlySeconds, seg.startMs, seg.endMs)
             }
-            // 如果 App 仍在前台（没有 BACKGROUND 事件），计算到 endMs
-            if (fgStartTime > 0) {
-                accumulateHourly(hourlySeconds, fgStartTime, endMs)
-            }
-        } catch (e: Exception) {
-            // 没有权限时静默返回空列表
-        }
-
         hourlySeconds.mapIndexed { hour, seconds ->
             HourlyUsage(hour = hour, totalSeconds = seconds)
         }.filter { it.totalSeconds > 0 }
@@ -418,7 +475,675 @@ class SystemUsageRepository @Inject constructor(
         result
     }
 
+    /**
+     * 过去 7 个完整自然日（不含今天）各 App 的系统用量。
+     *
+     * - **时长**：`queryUsageStats(INTERVAL_DAILY)` 聚合，与系统「数字健康」口径一致
+     * - **打开次数**：`queryEvents` 统计 ACTIVITY_RESUMED / MOVE_TO_FOREGROUND（去重），
+     *   兼容部分 OEM 只上报其中一种事件的情况
+     */
+    suspend fun getLast7CompleteDaysUsageByPackage(): Map<String, AppWeeklySystemUsage> =
+        withContext(Dispatchers.IO) {
+            val (todayStart, _) = UsageRecordRepository.getDayRange(System.currentTimeMillis())
+            val dayMs = 24 * 60 * 60 * 1000L
+            val startMs = todayStart - AppWeeklySystemUsage.DAYS * dayMs
+            val endMs = todayStart
+
+            val durationSecondsByPkg = mutableMapOf<String, Long>()
+            try {
+                val stats = usageStatsManager.queryUsageStats(
+                    android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+                    startMs,
+                    endMs
+                )
+                stats?.forEach { stat ->
+                    val sec = stat.totalTimeInForeground / 1000L
+                    if (sec <= 0L) return@forEach
+                    durationSecondsByPkg[stat.packageName] =
+                        (durationSecondsByPkg[stat.packageName] ?: 0L) + sec
+                }
+            } catch (_: Exception) { /* 无权限 */ }
+
+            val launchesByPkg = mutableMapOf<String, Int>()
+            val lastLaunchMsByPkg = mutableMapOf<String, Long>()
+            try {
+                val events = usageStatsManager.queryEvents(startMs, endMs)
+                val event = UsageEvents.Event()
+                while (events.hasNextEvent()) {
+                    events.getNextEvent(event)
+                    val isLaunch = when (event.eventType) {
+                        UsageEvents.Event.ACTIVITY_RESUMED,
+                        UsageEvents.Event.MOVE_TO_FOREGROUND -> true
+                        else -> false
+                    }
+                    if (!isLaunch) continue
+                    val pkg = event.packageName
+                    val last = lastLaunchMsByPkg[pkg] ?: 0L
+                    if (event.timeStamp - last < launchEventDedupeMs) continue
+                    launchesByPkg[pkg] = (launchesByPkg[pkg] ?: 0) + 1
+                    lastLaunchMsByPkg[pkg] = event.timeStamp
+                }
+            } catch (_: Exception) { /* 无权限 */ }
+
+            val packages = durationSecondsByPkg.keys + launchesByPkg.keys
+            packages.associateWith { pkg ->
+                val totalSeconds = durationSecondsByPkg[pkg] ?: 0L
+                var totalLaunches = launchesByPkg[pkg] ?: 0
+                // 有时长但事件流未记到打开：至少按 1 次计，避免「0 次却数小时」的违和展示
+                if (totalSeconds >= 5 * 60L && totalLaunches == 0) {
+                    totalLaunches = 1
+                }
+                AppWeeklySystemUsage(
+                    totalSeconds = totalSeconds,
+                    totalLaunches = totalLaunches
+                )
+            }
+        }
+
+    /** 同一次打开可能连续触发 RESUMED + MOVE_TO_FOREGROUND，合并为一次 */
+    private val launchEventDedupeMs = 800L
+
+    /** 系统事件写入滞后：会话已开始但 queryEvents 尚未出现对应 FOREGROUND */
+    private val launchReconcileWindowMs = 15_000L
+
+    /**
+     * 今日打开次数（系统事件流，与 7 日批量挑选统计同源）。
+     * 若 [sessionOriginStartMs] 落在今日且附近尚无匹配事件，补 +1 避免刚进入时显示滞后。
+     */
+    private fun todayOpenCountFromSystem(
+        packageName: String,
+        todayStart: Long,
+        now: Long,
+        sessionOriginStartMs: Long
+    ): Int {
+        val launchTimes = scanSystemLaunches(todayStart, now, packageName).map { it.second }
+        var count = launchTimes.size
+        if (sessionOriginStartMs > todayStart) {
+            val matched = launchTimes.any {
+                kotlin.math.abs(it - sessionOriginStartMs) <= launchReconcileWindowMs
+            }
+            if (!matched) count += 1
+        }
+        return count
+    }
+
+    /** 过短前台闪烁不计入（毫秒） */
+    private val minSessionMs = 2_000L
+
+    /**
+     * 同包相邻前台段间隔 ≤ 此值则合并为一次打开。
+     * 覆盖闪屏 / 桌面闪回 / 同包 Activity 重进导致的「一次打开记两次」。
+     */
+    private val sessionMergeGapMs = 5_000L
+
+    /**
+     * 探索排行：最近 [days] 个自然日的各 App 系统用量。
+     *
+     * @param includeToday false 时统计「今天之前」连续 [days] 个完整自然日（排行对比更公平）。
+     */
+    suspend fun getRecentDaysUsageByPackage(
+        days: Int = AppWeeklySystemUsage.DAYS,
+        includeToday: Boolean = true
+    ): Map<String, AppWeeklySystemUsage> = withContext(Dispatchers.IO) {
+        if (days <= 0) return@withContext emptyMap()
+        val now = System.currentTimeMillis()
+        val (todayStart, _) = UsageRecordRepository.getDayRange(now)
+        val dayMs = 24 * 60 * 60 * 1000L
+        val startMs = if (includeToday) {
+            todayStart - (days - 1) * dayMs
+        } else {
+            todayStart - days * dayMs
+        }
+        val queryEnd = if (includeToday) now else todayStart
+
+        val durationMsByPkg = mutableMapOf<String, Long>()
+        for (seg in mergedSegments(startMs, queryEnd)) {
+            durationMsByPkg[seg.packageName] =
+                (durationMsByPkg[seg.packageName] ?: 0L) + (seg.endMs - seg.startMs)
+        }
+        val launchesByPkg = countSessionOpensByPackage(startMs, queryEnd)
+
+        val packages = durationMsByPkg.keys + launchesByPkg.keys
+        packages.associateWith { pkg ->
+            val totalSeconds = (durationMsByPkg[pkg] ?: 0L) / 1000L
+            var totalLaunches = (launchesByPkg[pkg] ?: 0).coerceAtLeast(0)
+            if (totalSeconds >= 5 * 60L && totalLaunches == 0) totalLaunches = 1
+            AppWeeklySystemUsage(totalSeconds = totalSeconds, totalLaunches = totalLaunches)
+        }
+    }
+
+    /**
+     * 某自然日全局前台时间线（单前台扫描，未按包合并间隔）。
+     * 供「使用日志」推导打开 / 离开 / 返回 / 回桌面。
+     */
+    suspend fun getDayForegroundTimeline(
+        dayStartMs: Long,
+        dayEndMs: Long
+    ): List<DayForegroundSegment> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val queryEnd = minOf(dayEndMs, now)
+        if (queryEnd <= dayStartMs) return@withContext emptyList()
+        scanForegroundSegments(dayStartMs, queryEnd)
+            .filter { it.endMs - it.startMs >= minSessionMs }
+            .map {
+                DayForegroundSegment(
+                    packageName = it.packageName,
+                    startMs = it.startMs,
+                    endMs = it.endMs,
+                    ongoing = it.ongoing
+                )
+            }
+    }
+
+    data class DayForegroundSegment(
+        val packageName: String,
+        val startMs: Long,
+        val endMs: Long,
+        val ongoing: Boolean
+    )
+
+    /**
+     * 指定 App 今日系统前台会话（与探索详情同口径）。
+     * 含仍在进行中的当前段；跨日切开的后半段 [SystemForegroundSession.countsAsOpen] 为 false。
+     */
+    suspend fun getTodayForegroundSessions(
+        packageName: String
+    ): List<SystemForegroundSession> = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val (todayStart, _) = UsageRecordRepository.getDayRange(now)
+        val raw = queryForegroundSessions(packageName, todayStart, now)
+        splitSessionsIntoDay(raw, todayStart, now).sortedByDescending { it.startMs }
+    }
+
+    /**
+     * 指定自然日的系统前台会话（与探索详情同口径）。
+     * [dayStartMs] 须为该日 0 点；未到的未来日返回空。
+     */
+    suspend fun getForegroundSessionsOnDay(
+        packageName: String,
+        dayStartMs: Long
+    ): List<SystemForegroundSession> = withContext(Dispatchers.IO) {
+        val dayMs = 24 * 60 * 60 * 1000L
+        val dayEnd = dayStartMs + dayMs
+        val now = System.currentTimeMillis()
+        if (dayStartMs >= now) return@withContext emptyList()
+        val queryEnd = minOf(dayEnd, now)
+        if (queryEnd <= dayStartMs) return@withContext emptyList()
+        val raw = queryForegroundSessions(packageName, dayStartMs, queryEnd)
+        splitSessionsIntoDay(raw, dayStartMs, queryEnd).sortedBy { it.startMs }
+    }
+
+    /**
+     * 多日系统用量对齐（探索同口径）：柱高 = 当日会话时长之和。
+     * 一次拉事件再按日切开，避免柱用日聚合、列表用残缺事件对不上。
+     */
+    suspend fun getSystemDaysAligned(
+        packageName: String,
+        dayStarts: List<Long>
+    ): Map<Long, SystemDayAligned> = withContext(Dispatchers.IO) {
+        if (dayStarts.isEmpty()) return@withContext emptyMap()
+        val now = System.currentTimeMillis()
+        val dayMs = 24L * 60 * 60 * 1000
+        val rangeStart = dayStarts.minOrNull()!!
+        val rangeEnd = dayStarts.maxOrNull()!! + dayMs
+        if (rangeStart >= now) return@withContext dayStarts.associateWith { SystemDayAligned.Empty }
+        val queryEnd = minOf(rangeEnd, now)
+        val raw = queryForegroundSessions(packageName, rangeStart, queryEnd)
+        dayStarts.associateWith { dStart ->
+            if (dStart >= now) return@associateWith SystemDayAligned.Empty
+            val dEnd = dStart + dayMs
+            val end = minOf(dEnd, now)
+            if (end <= dStart) return@associateWith SystemDayAligned.Empty
+            val sessions = splitSessionsIntoDay(raw, dStart, end).sortedBy { it.startMs }
+            val totalSec = sessions.sumOf { it.durationMs } / 1000L
+            SystemDayAligned(totalSeconds = totalSec, sessions = sessions)
+        }
+    }
+
+    /**
+     * 系锚瞬间：加入日之前 [days] 个完整自然日的逐日快照（会话时长 + 打开次数）。
+     * @return first = 日均秒数（总秒/天数），second = [PreJoinUsageSnapshot] JSON
+     */
+    suspend fun capturePreJoinUsageSnapshot(
+        packageName: String,
+        joinDayStartMs: Long,
+        days: Int = 7
+    ): Pair<Long, String> = withContext(Dispatchers.IO) {
+        if (days <= 0) {
+            return@withContext 0L to PreJoinUsageSnapshot.encode(joinDayStartMs, emptyList())
+        }
+        val dayMs = 24L * 60 * 60 * 1000
+        val starts = (days downTo 1).map { joinDayStartMs - it * dayMs }
+        val aligned = getSystemDaysAligned(packageName, starts)
+        val snaps = starts.map { d ->
+            val a = aligned[d] ?: SystemDayAligned.Empty
+            com.life.mindfulnessapp.domain.model.PreJoinDaySnap(
+                dayStartMs = d,
+                totalSeconds = a.totalSeconds.coerceAtLeast(0L),
+                opens = a.sessions.count { it.countsAsOpen }
+            )
+        }
+        val total = snaps.sumOf { it.totalSeconds }
+        val avg = total / days
+        avg to PreJoinUsageSnapshot.encode(joinDayStartMs, snaps)
+    }
+
+    /**
+     * 探索详情：7 个完整自然日。
+     * 柱图 / 汇总 / 下方记录列表统一为「前台会话」口径（打开 = 每次进入，5 秒内合并）。
+     */
+    suspend fun getExploreAppUsageDetail(
+        packageName: String,
+        days: Int = AppWeeklySystemUsage.DAYS
+    ): ExploreAppUsageDetail = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val (todayStart, _) = UsageRecordRepository.getDayRange(now)
+        val dayMs = 24 * 60 * 60 * 1000L
+        val completeStart = todayStart - days * dayMs
+
+        val rawSessions = queryForegroundSessions(packageName, completeStart, todayStart)
+        val completeDays = buildExploreCompleteDays(
+            rangeStart = completeStart,
+            dayCount = days,
+            todayStart = todayStart,
+            rawSessions = rawSessions
+        )
+        val weekUsage = AppWeeklySystemUsage(
+            totalSeconds = completeDays.sumOf { it.totalSeconds },
+            totalLaunches = completeDays.sumOf { it.openCount }
+        )
+
+        ExploreAppUsageDetail(
+            completeDays = completeDays,
+            weekUsage = weekUsage
+        )
+    }
+
+    private fun buildExploreCompleteDays(
+        rangeStart: Long,
+        dayCount: Int,
+        todayStart: Long,
+        rawSessions: List<SystemForegroundSession>
+    ): List<SystemUsageDayDetail> {
+        if (dayCount <= 0) return emptyList()
+        val dayMs = 24 * 60 * 60 * 1000L
+        val weekdayFmt = SimpleDateFormat("M月d日 EEE", Locale.CHINA)
+        val chartFmt = SimpleDateFormat("MM-dd", Locale.getDefault())
+        val yesterdayStart = todayStart - dayMs
+
+        return (0 until dayCount).map { offset ->
+            val dStart = rangeStart + offset * dayMs
+            val dEnd = dStart + dayMs
+            val queryEnd = minOf(dEnd, todayStart)
+            val daySessions = splitSessionsIntoDay(rawSessions, dStart, queryEnd)
+                .sortedBy { it.startMs }
+            val openSessions = daySessions.filter { it.countsAsOpen }
+            val openCount = openSessions.size
+            val totalSeconds = daySessions.sumOf { it.durationMs } / 1000L
+            val periods = bucketPeriodsFromLaunches(openSessions.map { it.startMs })
+            val isYesterday = dStart == yesterdayStart
+            val label = when {
+                isYesterday -> "昨天"
+                else -> weekdayFmt.format(Date(dStart))
+            }
+            SystemUsageDayDetail(
+                dayStartMs = dStart,
+                label = label,
+                chartDateLabel = chartFmt.format(Date(dStart)),
+                isToday = false,
+                isYesterday = isYesterday,
+                sessions = daySessions,
+                totalSeconds = totalSeconds,
+                openCount = openCount,
+                periods = periods
+            )
+        }
+    }
+
+    /**
+     * 探索详情（旧）：含今天的连续 N 天。新详情请用 [getExploreAppUsageDetail]。
+     */
+    suspend fun getForegroundSessionsByDay(
+        packageName: String,
+        days: Int = AppWeeklySystemUsage.DAYS
+    ): List<SystemUsageDayDetail> = withContext(Dispatchers.IO) {
+        if (days <= 0) return@withContext emptyList()
+        val now = System.currentTimeMillis()
+        val (todayStart, _) = UsageRecordRepository.getDayRange(now)
+        val dayMs = 24 * 60 * 60 * 1000L
+        val rangeStart = todayStart - (days - 1) * dayMs
+        val rawSessions = queryForegroundSessions(packageName, rangeStart, now)
+        buildDayDetails(
+            rangeStart = rangeStart,
+            dayCount = days,
+            rangeEndExclusive = rangeStart + days * dayMs,
+            now = now,
+            todayStart = todayStart,
+            rawSessions = rawSessions
+        ).asReversed()
+    }
+
+    private fun buildDayDetails(
+        rangeStart: Long,
+        dayCount: Int,
+        rangeEndExclusive: Long,
+        now: Long,
+        todayStart: Long,
+        rawSessions: List<SystemForegroundSession>
+    ): List<SystemUsageDayDetail> {
+        if (dayCount <= 0) return emptyList()
+        val dayMs = 24 * 60 * 60 * 1000L
+        val weekdayFmt = SimpleDateFormat("M月d日 EEE", Locale.CHINA)
+        val chartFmt = SimpleDateFormat("MM-dd", Locale.getDefault())
+        val yesterdayStart = todayStart - dayMs
+
+        return (0 until dayCount).map { offset ->
+            val dStart = rangeStart + offset * dayMs
+            if (dStart >= rangeEndExclusive) return@map null
+            val dEnd = dStart + dayMs
+            val queryEnd = minOf(dEnd, rangeEndExclusive, now)
+            if (queryEnd <= dStart) return@map null
+            val daySessions = splitSessionsIntoDay(rawSessions, dStart, queryEnd)
+                .sortedBy { it.startMs }
+            val totalMs = daySessions.sumOf { it.durationMs }
+            val openCount = daySessions.count { it.countsAsOpen }
+            val periods = bucketPeriodsFromLaunches(
+                daySessions.filter { it.countsAsOpen }.map { it.startMs }
+            )
+            val isToday = dStart == todayStart
+            val isYesterday = dStart == yesterdayStart
+            val label = when {
+                isToday -> "今天"
+                isYesterday -> "昨天"
+                else -> weekdayFmt.format(Date(dStart))
+            }
+            SystemUsageDayDetail(
+                dayStartMs = dStart,
+                label = label,
+                chartDateLabel = chartFmt.format(Date(dStart)),
+                isToday = isToday,
+                isYesterday = isYesterday,
+                sessions = daySessions,
+                totalSeconds = totalMs / 1000L,
+                openCount = openCount,
+                periods = periods
+            )
+        }.filterNotNull()
+    }
+
+
+    /**
+     * 时间之尺：多个包名在 [rangeStartMs, rangeEndMs) 内的前台会话（按日裁剪）。
+     * 与系统「使用详情」同口径。
+     */
+    suspend fun getForegroundSessionsForPackages(
+        packageNames: Collection<String>,
+        rangeStartMs: Long,
+        rangeEndMs: Long
+    ): Map<String, List<SystemForegroundSession>> = withContext(Dispatchers.IO) {
+        if (packageNames.isEmpty() || rangeEndMs <= rangeStartMs) return@withContext emptyMap()
+        val dayMs = 24L * 60 * 60 * 1000
+        packageNames.associateWith { pkg ->
+            val raw = queryForegroundSessions(pkg, rangeStartMs, rangeEndMs)
+            val all = mutableListOf<SystemForegroundSession>()
+            var day = rangeStartMs
+            while (day < rangeEndMs) {
+                val dayEnd = minOf(day + dayMs, rangeEndMs)
+                all += splitSessionsIntoDay(raw, day, dayEnd)
+                day = dayEnd
+            }
+            all.sortedBy { it.startMs }
+        }
+    }
+
     // ── 私有辅助方法 ──────────────────────────────────────────────────────────
+
+    private data class FgSegment(
+        val packageName: String,
+        val startMs: Long,
+        val endMs: Long,
+        val ongoing: Boolean
+    )
+
+    /**
+     * 全局单前台扫描：同一时刻只认一个前台 App。
+     *
+     * 关键点：仅按包名配对 FG/BG 时，OEM 漏发 BACKGROUND 会让会话一直挂到 now，
+     * 表现为「刷新时长还在涨」「近 7 日上百小时」。切到另一包的 FOREGROUND 时必须收口上一段。
+     */
+    private fun scanForegroundSegments(startMs: Long, endMs: Long): List<FgSegment> {
+        val now = System.currentTimeMillis()
+        val queryEnd = minOf(endMs, now)
+        if (queryEnd <= startMs) return emptyList()
+
+        val out = mutableListOf<FgSegment>()
+        var currentPkg: String? = null
+        var fgStart = -1L
+
+        fun closeAt(end: Long, ongoing: Boolean) {
+            val pkg = currentPkg ?: return
+            if (fgStart > 0L) {
+                val clippedStart = fgStart.coerceAtLeast(startMs)
+                val clippedEnd = end.coerceAtMost(queryEnd)
+                if (clippedEnd > clippedStart) {
+                    out += FgSegment(
+                        packageName = pkg,
+                        startMs = clippedStart,
+                        endMs = clippedEnd,
+                        ongoing = ongoing
+                    )
+                }
+            }
+            currentPkg = null
+            fgStart = -1L
+        }
+
+        try {
+            val events = usageStatsManager.queryEvents(startMs, queryEnd)
+            val event = UsageEvents.Event()
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                val pkg = event.packageName ?: continue
+                when {
+                    isForegroundStart(event.eventType) -> {
+                        val t = event.timeStamp.coerceIn(startMs, queryEnd)
+                        if (currentPkg == pkg && fgStart > 0L) {
+                            // 同包重复 FOREGROUND：忽略
+                            continue
+                        }
+                        if (currentPkg != null) {
+                            closeAt(t, ongoing = false)
+                        }
+                        currentPkg = pkg
+                        fgStart = t
+                    }
+                    isForegroundEnd(event.eventType) -> {
+                        if (currentPkg == pkg) {
+                            closeAt(event.timeStamp.coerceAtMost(queryEnd), ongoing = false)
+                        }
+                    }
+                }
+            }
+            if (currentPkg != null) {
+                closeAt(queryEnd, ongoing = true)
+            }
+        } catch (_: Exception) {
+            return emptyList()
+        }
+        return out
+    }
+
+    /** 过滤过短段后，按包合并短间隔相邻段，供排行与详情共用。 */
+    private fun mergedSegments(startMs: Long, endMs: Long): List<FgSegment> =
+        mergeAdjacentSegments(
+            scanForegroundSegments(startMs, endMs)
+                .filter { it.endMs - it.startMs >= minSessionMs }
+        )
+
+    /**
+     * 同包按时间排序后，间隔 ≤ [sessionMergeGapMs] 的相邻段合并为一次打开。
+     */
+    private fun mergeAdjacentSegments(segments: List<FgSegment>): List<FgSegment> {
+        if (segments.isEmpty()) return emptyList()
+        val merged = mutableListOf<FgSegment>()
+        segments.groupBy { it.packageName }.values.forEach { pkgSegs ->
+            val sorted = pkgSegs.sortedBy { it.startMs }
+            var cur = sorted.first()
+            for (i in 1 until sorted.size) {
+                val next = sorted[i]
+                val gap = next.startMs - cur.endMs
+                if (gap in 0L..sessionMergeGapMs) {
+                    cur = cur.copy(
+                        endMs = next.endMs,
+                        ongoing = next.ongoing
+                    )
+                } else {
+                    merged += cur
+                    cur = next
+                }
+            }
+            merged += cur
+        }
+        return merged.sortedBy { it.startMs }
+    }
+
+    private fun isForegroundStart(eventType: Int): Boolean =
+        eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
+
+    private fun isForegroundEnd(eventType: Int): Boolean =
+        eventType == UsageEvents.Event.MOVE_TO_BACKGROUND
+
+    /** 打开计数：兼容部分 OEM 只报 RESUMED 或只报 FOREGROUND */
+    private fun isLaunchEvent(eventType: Int): Boolean {
+        if (eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) return true
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            eventType == UsageEvents.Event.ACTIVITY_RESUMED
+    }
+
+    /**
+     * 解析指定 App 在区间内的前台会话列表（未按日切开）。
+     * 必须看全局事件流，才能在漏 BACKGROUND 时靠「别的 App 进前台」收口。
+     */
+    private fun queryForegroundSessions(
+        packageName: String,
+        startMs: Long,
+        endMs: Long
+    ): List<SystemForegroundSession> =
+        mergedSegments(startMs, endMs)
+            .filter { it.packageName == packageName }
+            .map { seg ->
+                val span = seg.endMs - seg.startMs
+                SystemForegroundSession(
+                    startMs = seg.startMs,
+                    endMs = seg.endMs,
+                    durationSeconds = span / 1000L,
+                    ongoing = seg.ongoing,
+                    countsAsOpen = true
+                )
+            }
+
+    /** 将会话裁剪到某一自然日窗口；跨日会话拆成当日片段。 */
+    private fun splitSessionsIntoDay(
+        sessions: List<SystemForegroundSession>,
+        dayStart: Long,
+        dayEnd: Long
+    ): List<SystemForegroundSession> {
+        if (dayEnd <= dayStart) return emptyList()
+        val out = mutableListOf<SystemForegroundSession>()
+        for (s in sessions) {
+            val clipStart = maxOf(s.startMs, dayStart)
+            val clipEnd = minOf(s.endMs, dayEnd)
+            if (clipEnd - clipStart < minSessionMs) continue
+            out += SystemForegroundSession(
+                startMs = clipStart,
+                endMs = clipEnd,
+                durationSeconds = (clipEnd - clipStart) / 1000L,
+                ongoing = s.ongoing && clipEnd == s.endMs,
+                // 只有会话真正开始落在该日的才算一次打开
+                countsAsOpen = s.startMs >= dayStart
+            )
+        }
+        return out
+    }
+
+    private fun bucketPeriodsFromLaunches(launchTimesMs: List<Long>): SystemDayPeriodStats {
+        var dawn = 0
+        var morning = 0
+        var afternoon = 0
+        var evening = 0
+        val cal = Calendar.getInstance()
+        for (t in launchTimesMs) {
+            cal.timeInMillis = t
+            when (cal.get(Calendar.HOUR_OF_DAY)) {
+                in 0 until 6 -> dawn++
+                in 6 until 12 -> morning++
+                in 12 until 18 -> afternoon++
+                else -> evening++
+            }
+        }
+        return SystemDayPeriodStats(dawn, morning, afternoon, evening)
+    }
+
+    /**
+     * 探索口径的打开次数：与详情会话列表一致。
+     * 每次进入前台计 1 次；同包相邻段间隔 ≤ [sessionMergeGapMs] 合并为一次。
+     */
+    private fun countSessionOpensByPackage(startMs: Long, endMs: Long): Map<String, Int> {
+        val counts = mutableMapOf<String, Int>()
+        for (seg in mergedSegments(startMs, endMs)) {
+            counts[seg.packageName] = (counts[seg.packageName] ?: 0) + 1
+        }
+        return counts
+    }
+
+    /**
+     * 系统事件流打开次数（RESUMED / FOREGROUND，800ms 去重）。
+     * 微信等 App 内 Activity 切换会偏高，探索页已改用 [countSessionOpensByPackage]。
+     */
+    private fun countSystemLaunchesByPackage(startMs: Long, endMs: Long): Map<String, Int> {
+        val counts = mutableMapOf<String, Int>()
+        for ((pkg, _) in scanSystemLaunches(startMs, endMs)) {
+            counts[pkg] = (counts[pkg] ?: 0) + 1
+        }
+        return counts
+    }
+
+    private fun systemLaunchTimestamps(
+        packageName: String,
+        startMs: Long,
+        endMs: Long
+    ): List<Long> =
+        scanSystemLaunches(startMs, endMs, packageName).map { it.second }
+
+    private fun scanSystemLaunches(
+        startMs: Long,
+        endMs: Long,
+        packageName: String? = null
+    ): List<Pair<String, Long>> {
+        val now = System.currentTimeMillis()
+        val queryEnd = minOf(endMs, now)
+        if (queryEnd <= startMs) return emptyList()
+        val out = mutableListOf<Pair<String, Long>>()
+        val lastLaunchMsByPkg = mutableMapOf<String, Long>()
+        try {
+            val events = usageStatsManager.queryEvents(startMs, queryEnd)
+            val event = UsageEvents.Event()
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                if (!isLaunchEvent(event.eventType)) continue
+                val pkg = event.packageName ?: continue
+                if (packageName != null && pkg != packageName) continue
+                val t = event.timeStamp
+                val last = lastLaunchMsByPkg[pkg] ?: 0L
+                if (t - last < launchEventDedupeMs) continue
+                lastLaunchMsByPkg[pkg] = t
+                out += pkg to t
+            }
+        } catch (_: Exception) {
+            return emptyList()
+        }
+        return out
+    }
 
     /**
      * 通过 queryEvents 精确计算指定 App 在给定时间段内的前台使用时长（秒）。
@@ -426,42 +1151,10 @@ class SystemUsageRepository @Inject constructor(
      * 相比 queryUsageStats（以天为最小粒度），queryEvents 可按任意时间段精确计算，
      * 适合今日、本周等跨天的场景。
      */
-    private fun queryUsageSeconds(packageName: String, startMs: Long, endMs: Long): Long {
-        val now = System.currentTimeMillis()
-        // 查询终点不超过当前时刻，避免把今日剩余时间也计入
-        val queryEnd = minOf(endMs, now)
-        var totalMs = 0L
-        try {
-            val events = usageStatsManager.queryEvents(startMs, queryEnd)
-            val event = UsageEvents.Event()
-            var fgStartTime = -1L
-
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                if (event.packageName != packageName) continue
-
-                when (event.eventType) {
-                    UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                        fgStartTime = event.timeStamp.coerceAtLeast(startMs)
-                    }
-                    UsageEvents.Event.MOVE_TO_BACKGROUND -> {
-                        if (fgStartTime > 0) {
-                            val fgEnd = event.timeStamp.coerceAtMost(queryEnd)
-                            totalMs += (fgEnd - fgStartTime).coerceAtLeast(0L)
-                            fgStartTime = -1L
-                        }
-                    }
-                }
-            }
-            // App 仍在前台（无 BACKGROUND 事件）：计算到 now，不计算今日剩余时间
-            if (fgStartTime > 0) {
-                totalMs += (queryEnd - fgStartTime).coerceAtLeast(0L)
-            }
-        } catch (e: Exception) {
-            // 权限未授予时静默返回 0
-        }
-        return totalMs / 1000L
-    }
+    private fun queryUsageSeconds(packageName: String, startMs: Long, endMs: Long): Long =
+        mergedSegments(startMs, endMs)
+            .filter { it.packageName == packageName }
+            .sumOf { (it.endMs - it.startMs).coerceAtLeast(0L) } / 1000L
 
     /**
      * 将 [fgStart, fgEnd) 这段前台时间，累加到 hourlySeconds 对应的小时桶中。

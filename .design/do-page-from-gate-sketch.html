@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>心锚 · 下区收起 → 去做全页</title>
+  <style>
+    :root {
+      --bg: #000;
+      --surface: #1c1c1e;
+      --line: #3a3a3c;
+      --text: #fff;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --green: #34c759;
+      --green-dim: rgba(52, 199, 89, 0.16);
+      --amber: #ffd60a;
+      --amber-dim: rgba(255, 214, 10, 0.12);
+      --blue: #64d2ff;
+      --blue-dim: rgba(100, 210, 255, 0.12);
+      --violet: #bf5af2;
+      --violet-dim: rgba(191, 90, 242, 0.14);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 20% 0%, #102018 0%, transparent 42%),
+        radial-gradient(ellipse at 80% 10%, #12101a 0%, transparent 40%),
+        #050506;
+      color: var(--text);
+      font-family: "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+      padding: 28px 16px 64px;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 28px; }
+
+    .hero { text-align: center; max-width: 640px; margin: 0 auto; }
+    .hero .eyebrow {
+      font-size: 11px; font-weight: 600; letter-spacing: .12em;
+      color: var(--green); margin-bottom: 10px;
+    }
+    .hero h1 { font-size: 22px; font-weight: 650; letter-spacing: -.02em; }
+    .hero p { margin-top: 10px; font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    .flow-bar {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center;
+      font-size: 12px; color: var(--dim);
+    }
+    .flow-bar .step {
+      padding: 7px 12px; border-radius: 999px; border: 1px solid #2a2a2c;
+      background: #121214; color: #d1d1d6;
+    }
+    .flow-bar .step.on {
+      border-color: rgba(52,199,89,.4); background: var(--green-dim); color: #b7f0c4;
+    }
+    .flow-bar .arr { color: #48484a; }
+
+    .phones {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start;
+    }
+    @media (max-width: 960px) { .phones { grid-template-columns: 1fr; max-width: 390px; margin: 0 auto; } }
+
+    .col-head { text-align: center; margin-bottom: 10px; }
+    .col-head h3 { font-size: 13px; font-weight: 650; }
+    .col-head p { font-size: 11px; color: var(--dim); margin-top: 3px; line-height: 1.4; }
+
+    .phone {
+      width: 100%; max-width: 390px; margin: 0 auto;
+      background: var(--bg);
+      border: 1px solid #2a2a2c; border-radius: 36px;
+      padding: 12px 12px 18px;
+      box-shadow: 0 0 0 1px #111, 0 24px 80px rgba(0,0,0,.5);
+      display: flex; flex-direction: column; gap: 10px;
+      position: relative; overflow: hidden; min-height: 640px;
+    }
+    .status-bar {
+      height: 22px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px; font-size: 11px; font-weight: 600; color: #aeaeb2;
+    }
+    .region {
+      background: var(--surface); border: 1px solid #2a2a2c;
+      border-radius: var(--radius); padding: 14px; position: relative;
+    }
+    .region-tag {
+      position: absolute; top: -9px; left: 12px;
+      font-size: 10px; font-weight: 650; letter-spacing: .04em;
+      border-radius: 999px; padding: 2px 8px;
+    }
+    .tag-green { color: var(--green); background: #0d1a10; border: 1px solid rgba(52,199,89,.35); }
+    .tag-amber { color: #ffe08a; background: #1a1608; border: 1px solid rgba(255,214,10,.3); }
+    .tag-blue { color: var(--blue); background: #0c1820; border: 1px solid rgba(100,210,255,.35); }
+
+    .gate-top {
+      display: grid; grid-template-columns: 1fr auto; gap: 10px;
+      align-items: center; min-height: 72px; padding-top: 14px;
+    }
+    .app-meta { display: flex; align-items: center; gap: 10px; }
+    .app-icon {
+      width: 40px; height: 40px; border-radius: 11px;
+      background: linear-gradient(145deg, #ff5a6a, #c9184a);
+      display: grid; place-items: center; font-size: 11px; font-weight: 700;
+    }
+    .app-name { font-size: 15px; font-weight: 650; }
+    .app-sub { margin-top: 2px; font-size: 11px; color: var(--muted); }
+    .clock {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 1.5px dashed #4a4a4e;
+      background: radial-gradient(circle at 50% 50%, #242426 0%, #161618 70%);
+    }
+
+    .ask { font-size: 15px; font-weight: 650; line-height: 1.35; margin-bottom: 10px; padding-top: 4px; }
+    .search-row {
+      display: flex; align-items: center; gap: 8px;
+      background: #0e0e10; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px;
+    }
+    .search-row .ph { flex: 1; font-size: 13px; color: #636366; }
+    .search-go {
+      font-size: 12px; font-weight: 700; color: #003a12;
+      background: var(--green); border-radius: 999px; padding: 6px 12px;
+    }
+    .leave {
+      text-align: center; font-size: 12px; color: var(--muted);
+      padding: 8px 0 2px; text-decoration: underline; text-underline-offset: 3px;
+    }
+
+    /* 收起态下区 */
+    .teaser {
+      padding-top: 16px; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .teaser:hover, .teaser.pulse {
+      border-color: rgba(52,199,89,.4);
+      background: linear-gradient(180deg, #142018 0%, var(--surface) 55%);
+    }
+    .teaser-title {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .teaser-title .l {
+      font-size: 13px; font-weight: 650; color: var(--muted);
+    }
+    .teaser-title .r {
+      font-size: 11px; font-weight: 650; color: var(--green);
+    }
+    .chips {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;
+    }
+    .chip {
+      font-size: 11px; padding: 6px 10px; border-radius: 999px;
+      background: #0e0e10; border: 1px solid #2a2a2c; color: #d1d1d6;
+    }
+    .chip.mine {
+      border-color: rgba(191,90,242,.35); background: var(--violet-dim); color: #e0b0ff;
+    }
+    .chip.place {
+      border-color: rgba(100,210,255,.3); background: var(--blue-dim); color: #a8e4ff;
+    }
+    .teaser-hint {
+      font-size: 10px; color: #48484a; text-align: center; line-height: 1.4;
+    }
+    .teaser-hit {
+      margin-top: 10px; text-align: center;
+      font-size: 12px; font-weight: 650; color: var(--green);
+      padding: 10px; border-radius: 12px; background: var(--green-dim);
+      border: 1px dashed rgba(52,199,89,.35);
+    }
+
+    /* 全页去做 */
+    .do-page {
+      display: flex; flex-direction: column; gap: 10px;
+      flex: 1; min-height: 0;
+    }
+    .do-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 4px 2px;
+    }
+    .do-nav button {
+      border: 0; background: transparent; color: var(--muted);
+      font-size: 13px; font-family: inherit; cursor: pointer; padding: 6px 4px;
+    }
+    .do-nav .title { font-size: 15px; font-weight: 650; }
+    .do-nav .leave-link { color: var(--amber); font-weight: 650; }
+
+    .section-label {
+      font-size: 11px; font-weight: 650; color: var(--dim);
+      letter-spacing: .04em; margin: 4px 0 8px; padding-top: 2px;
+    }
+    .section-label span {
+      color: var(--muted); font-weight: 500; letter-spacing: 0; margin-left: 6px;
+    }
+
+    .item {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;
+      padding: 11px 12px; border-radius: 14px;
+      background: #0e0e10; border: 1px solid #2a2a2c;
+      margin-bottom: 7px; cursor: pointer;
+    }
+    .item:hover { border-color: #3a3a3c; }
+    .item.hl {
+      border-color: rgba(255,214,10,.4);
+      background: linear-gradient(180deg, #1a1608 0%, #0e0e10 100%);
+    }
+    .item-ico {
+      width: 32px; height: 32px; border-radius: 10px;
+      display: grid; place-items: center; font-size: 14px;
+      background: var(--green-dim); color: var(--green);
+    }
+    .item.hl .item-ico { background: var(--amber-dim); color: var(--amber); }
+    .item.mine .item-ico { background: var(--violet-dim); color: #e0b0ff; }
+    .item.place .item-ico { background: var(--blue-dim); color: var(--blue); }
+    .item-name { font-size: 13px; font-weight: 650; }
+    .item-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+    .item-act {
+      font-size: 10px; font-weight: 650; color: var(--green);
+      background: var(--green-dim); border-radius: 999px; padding: 4px 8px;
+      white-space: nowrap;
+    }
+    .server-tag {
+      display: inline-block; font-size: 9px; font-weight: 650;
+      padding: 2px 6px; border-radius: 999px; margin-left: 6px;
+      background: #1a1a1c; color: #8e8e93; border: 1px solid #2a2a2c;
+      vertical-align: middle;
+    }
+
+    /* 反馈态 */
+    .feedback {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 24px 16px; gap: 8px;
+    }
+    .feedback .eyebrow { font-size: 12px; color: var(--muted); }
+    .feedback .big {
+      font-size: 28px; font-weight: 700; letter-spacing: -.03em; margin: 8px 0 4px;
+    }
+    .feedback .sub { font-size: 15px; color: #a8e4ff; }
+    .feedback .meter {
+      margin-top: 18px; width: 120px; height: 120px; border-radius: 50%;
+      border: 3px solid rgba(52,199,89,.35);
+      background: radial-gradient(circle, var(--green-dim), transparent 70%);
+      display: grid; place-items: center;
+      font-size: 13px; font-weight: 650; color: var(--green);
+    }
+    .feedback .skip {
+      margin-top: 16px; font-size: 12px; color: var(--dim);
+      text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+    }
+    .feedback .stats {
+      margin-top: 14px; font-size: 11px; color: var(--dim); line-height: 1.5;
+    }
+
+    .dim-mid { opacity: .42; pointer-events: none; }
+    .clickable { cursor: pointer; }
+
+    .notes {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    @media (max-width: 720px) { .notes { grid-template-columns: 1fr; } }
+    .note {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 14px; padding: 14px;
+    }
+    .note h4 { font-size: 13px; font-weight: 650; margin-bottom: 6px; }
+    .note p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .note.yes { border-color: rgba(52,199,89,.28); }
+    .note.yes h4 { color: #b7f0c4; }
+
+    .table-wrap {
+      background: #121214; border: 1px solid #2a2a2c; border-radius: 16px;
+      padding: 16px; overflow-x: auto;
+    }
+    .table-wrap h3 { font-size: 14px; font-weight: 650; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      text-align: left; padding: 10px 12px; border-bottom: 1px solid #222;
+      vertical-align: top; line-height: 1.45;
+    }
+    th { color: var(--dim); font-weight: 650; font-size: 11px; }
+    td strong { color: #e8e8ed; }
+    .mute { color: var(--dim); }
+    tr:last-child td { border-bottom: 0; }
+
+    .footer-note {
+      text-align: center; font-size: 11px; color: #48484a; line-height: 1.5;
+    }
+    .footer-note a { color: #8e8e93; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="eyebrow">Structure Sketch · 去做全页</div>
+      <h1>下区有意向 → 全面展开「去做」</h1>
+      <p>
+        主门只留钩子；点下区进入门内二级页。随手小事（后台可配）· 我的挂件 · 想去的地方；
+        选中后轻反馈，再卸门。
+      </p>
+    </header>
+
+    <div class="flow-bar" aria-label="交互流">
+      <span class="step on" id="flow1">① 主门 · 下区收起</span>
+      <span class="arr">→</span>
+      <span class="step" id="flow2">② 去做全页</span>
+      <span class="arr">→</span>
+      <span class="step" id="flow3">③ 轻反馈 · 卸门</span>
+    </div>
+
+    <section class="phones">
+      <!-- ① 收起 -->
+      <div>
+        <div class="col-head">
+          <h3>① 主门 · 收起态</h3>
+          <p>中区决策干净 · 下区只是意向钩子</p>
+        </div>
+        <div class="phone" id="phone1">
+          <div class="status-bar"><span>9:41</span><span>门</span></div>
+
+          <section class="region gate-top">
+            <div class="region-tag tag-green">上区</div>
+            <div class="app-meta">
+              <div class="app-icon">红</div>
+              <div>
+                <div class="app-name">小红书</div>
+                <div class="app-sub">今日第 3 次</div>
+              </div>
+            </div>
+            <div class="clock"></div>
+          </section>
+
+          <section class="region" style="padding-top:16px;">
+            <div class="region-tag tag-green">中区 · 决策</div>
+            <div class="ask">这一次，你想专注做什么？</div>
+            <div class="search-row">
+              <span class="ph">搜你要找的内容…</span>
+              <span class="search-go">进入</span>
+            </div>
+            <div class="leave">先不进去了</div>
+          </section>
+
+          <section class="region teaser pulse clickable" id="teaser" onclick="goDoPage()" role="button" tabindex="0">
+            <div class="region-tag tag-amber">下区 · 钩子</div>
+            <div class="teaser-title">
+              <span class="l">也可以去做</span>
+              <span class="r">展开 ›</span>
+            </div>
+            <div class="chips">
+              <span class="chip">喝杯水</span>
+              <span class="chip">闭目一会儿</span>
+              <span class="chip mine">背 5 词</span>
+              <span class="chip place">备忘录</span>
+            </div>
+            <div class="teaser-hint">随手小事 · 我的挂件 · 想去的地方</div>
+            <div class="teaser-hit">点这里 → 进入「去做」全页</div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ② 全页 -->
+      <div>
+        <div class="col-head">
+          <h3>② 去做全页</h3>
+          <p>门内二级页 · 可返回继续写意图</p>
+        </div>
+        <div class="phone" id="phone2">
+          <div class="status-bar"><span>9:41</span><span>去做</span></div>
+
+          <div class="do-page">
+            <div class="do-nav">
+              <button type="button" onclick="goGate()">‹ 回门</button>
+              <div class="title">去做</div>
+              <button type="button" class="leave-link" onclick="goFeedback('先离开','守住')">离开</button>
+            </div>
+
+            <section class="region" style="padding-top:14px;">
+              <div class="region-tag tag-amber">此刻相关</div>
+              <div class="item hl" onclick="goFeedback('练习吉他','计划 · 为了学吉他')">
+                <div class="item-ico">▤</div>
+                <div>
+                  <div class="item-name">守计划 · 练习吉他</div>
+                  <div class="item-sub">14:00–14:40 · 为了 · 学吉他</div>
+                </div>
+                <span class="item-act">去做</span>
+              </div>
+            </section>
+
+            <section class="region" style="padding-top:14px;">
+              <div class="region-tag tag-green">A · 随手小事</div>
+              <div class="section-label">通用 · 不经规划 <span class="server-tag">后台可配</span></div>
+              <div class="item" onclick="goFeedback('喝杯水','随手小事')">
+                <div class="item-ico">◎</div>
+                <div>
+                  <div class="item-name">喝杯水</div>
+                  <div class="item-sub">无绑定 · 卸门即可</div>
+                </div>
+                <span class="item-act">去做</span>
+              </div>
+              <div class="item" onclick="goFeedback('去趟厕所','随手小事')">
+                <div class="item-ico">◎</div>
+                <div>
+                  <div class="item-name">去趟厕所</div>
+                  <div class="item-sub">无绑定</div>
+                </div>
+                <span class="item-act">去做</span>
+              </div>
+              <div class="item" onclick="goFeedback('闭目一会儿','随手小事 · 微仪式')">
+                <div class="item-ico">◎</div>
+                <div>
+                  <div class="item-name">闭目一会儿</div>
+                  <div class="item-sub">可带 10 秒轻倒计时</div>
+                </div>
+                <span class="item-act">去做</span>
+              </div>
+            </section>
+
+            <section class="region" style="padding-top:14px;">
+              <div class="region-tag tag-amber" style="border-color:rgba(191,90,242,.35);color:#e0b0ff;background:#1a0f22;">B · 我的挂件</div>
+              <div class="section-label">习惯 / 计划小事 <span>可选绑 App</span></div>
+              <div class="item mine" onclick="goFeedback('背 5 个单词','挂件 · 打开 App')">
+                <div class="item-ico">✧</div>
+                <div>
+                  <div class="item-name">背 5 个单词</div>
+                  <div class="item-sub">绑定 · 百词斩</div>
+                </div>
+                <span class="item-act">打开</span>
+              </div>
+              <div class="item mine" onclick="goFeedback('记一笔账','挂件')">
+                <div class="item-ico">✧</div>
+                <div>
+                  <div class="item-name">记一笔账</div>
+                  <div class="item-sub">无绑定 · 仅记录选择</div>
+                </div>
+                <span class="item-act">去做</span>
+              </div>
+            </section>
+
+            <section class="region" style="padding-top:14px;">
+              <div class="region-tag tag-blue">C · 想去的地方</div>
+              <div class="section-label">换一个更值得的 App</div>
+              <div class="item place" onclick="goFeedback('备忘录','想去的地方')">
+                <div class="item-ico">→</div>
+                <div>
+                  <div class="item-name">备忘录</div>
+                  <div class="item-sub">别名可配</div>
+                </div>
+                <span class="item-act">换去</span>
+              </div>
+              <div class="item place" onclick="goFeedback('音乐','想去的地方')">
+                <div class="item-ico">→</div>
+                <div>
+                  <div class="item-name">音乐</div>
+                  <div class="item-sub">系统音乐 App</div>
+                </div>
+                <span class="item-act">换去</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ 反馈 -->
+      <div>
+        <div class="col-head">
+          <h3>③ 轻反馈</h3>
+          <p>即时肯定 · 可跳过 · 再卸门</p>
+        </div>
+        <div class="phone" id="phone3">
+          <div class="status-bar"><span>9:41</span><span>反馈</span></div>
+          <section class="region feedback" style="flex:1;min-height:520px;">
+            <div class="region-tag tag-blue">即时反馈</div>
+            <div class="eyebrow" id="fbFrom">小红书</div>
+            <div class="big">去做了</div>
+            <div class="sub" id="fbTitle">闭目一会儿</div>
+            <div class="meter" id="fbMeter">10 秒</div>
+            <div class="skip" onclick="alert('演示：跳过 → 卸门回桌面')">跳过 · 直接离开</div>
+            <div class="stats">
+              今日 · 守住 3 · 去做 4<br />
+              <span id="fbKind">随手小事 · 微仪式</span>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="notes">
+      <div class="note yes">
+        <h4>交互原则</h4>
+        <p>
+          点下区 = 有意向，才进入全页；误触成本低。
+          全页内必能「回门」继续写意图；选中项默认记「去做了」，微仪式可跳过。
+        </p>
+      </div>
+      <div class="note yes">
+        <h4>配置边界</h4>
+        <p>
+          A 随手小事：服务端下发 + 本地兜底。
+          B 挂件：用户自建，绑定 App 可选。
+          C 想去的地方：已有正向目的地配置。
+        </p>
+      </div>
+    </section>
+
+    <section class="table-wrap">
+      <h3>三态对照</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>态</th>
+            <th>放什么</th>
+            <th>不放什么</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>① 收起</strong></td>
+            <td>预览芯片 3～4 个 +「展开」</td>
+            <td class="mute">完整列表、编辑入口、天气仪表盘</td>
+          </tr>
+          <tr>
+            <td><strong>② 全页</strong></td>
+            <td>A/B/C 分区 + 命中的守计划</td>
+            <td class="mute">写意图、搜索框（回门再写）</td>
+          </tr>
+          <tr>
+            <td><strong>③ 反馈</strong></td>
+            <td>去做了标题 · 可选短倒计时 · 今日计数</td>
+            <td class="mute">强制「做成了」打卡、连续 streak</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="footer-note">
+      承接
+      <a href="./gate-and-app-structure-sketch.html">门与 App 结构</a>
+      ·
+      <a href="./positive-exit-and-plan-scenes-sketch.html">守计划与去做了</a>
+      <br />
+      演示：点左侧下区可高亮「去做全页」；点全页条目可高亮反馈态
+    </p>
+  </div>
+
+  <script>
+    function setFlow(n) {
+      [1, 2, 3].forEach(i => {
+        document.getElementById('flow' + i).classList.toggle('on', i === n);
+      });
+      document.getElementById('phone1').style.outline = n === 1 ? '2px solid #34c759' : '';
+      document.getElementById('phone2').style.outline = n === 2 ? '2px solid #34c759' : '';
+      document.getElementById('phone3').style.outline = n === 3 ? '2px solid #64d2ff' : '';
+      document.getElementById('phone1').style.outlineOffset = '4px';
+      document.getElementById('phone2').style.outlineOffset = '4px';
+      document.getElementById('phone3').style.outlineOffset = '4px';
+    }
+    function goDoPage() {
+      setFlow(2);
+      document.getElementById('phone2').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function goGate() {
+      setFlow(1);
+      document.getElementById('phone1').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function goFeedback(title, kind) {
+      document.getElementById('fbTitle').textContent = title;
+      document.getElementById('fbKind').textContent = kind;
+      const meter = document.getElementById('fbMeter');
+      if (kind.includes('微仪式')) {
+        meter.style.display = 'grid';
+        meter.textContent = '10 秒';
+      } else {
+        meter.style.display = 'none';
+      }
+      setFlow(3);
+      document.getElementById('phone3').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setFlow(1);
+  </script>
+</body>
+</html>

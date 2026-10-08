@@ -2,22 +2,41 @@ package com.life.mindfulnessapp.domain.model
 
 import java.util.Calendar
 
+/** 新时段与已有时段的冲突类型 */
+enum class PeriodWindowConflict {
+    Duplicate,
+    Overlap
+}
+
 /**
  * 时段锁判定与解锁相关时刻。
  *
  * 优先级约定（由调用方保证）：时段硬锁 > 日限额 > 意图门。
- * 拦截页不提供破界；生效期间关闭配置才走解锁门槛。
+ * 拦截页不提供破界；已武装时关闭 / 删除 / 改动走 [BreathCostPolicy] 呼吸代价（不要求此刻落在窗内）。
+ * 硬门可留「紧急进入」计次出口（见 [EXEMPTIONS_PER_DAY]）：选时长进门，不拆整段锁。
  */
 object PeriodLockPolicy {
 
-    /** 生效中关闭时，长按需持续的毫秒数 */
-    const val BREAK_HOLD_MS = 2_500L
+    private const val MINUTES_PER_DAY = 1440
 
-    /** 承诺文案最短字数（开启时段锁时） */
-    const val COMMITMENT_MIN_CHARS = 2
+    /** 每个 App 每个自然日可紧急进入硬门的次数 */
+    const val EXEMPTIONS_PER_DAY = 1
 
-    /** 承诺文案最长字数 */
-    const val COMMITMENT_MAX_CHARS = 40
+    /** @deprecated MVP 已统一为 [BreathCostPolicy.DURATION_MS]；保留以免旧引用编译失败 */
+    const val BREAK_HOLD_MS = BreathCostPolicy.DURATION_MS
+
+    /** 硬门上次要入口文案；有剩余次数才展示 */
+    fun exemptionEnterLabel(@Suppress("UNUSED_PARAMETER") remaining: Int = EXEMPTIONS_PER_DAY): String =
+        "紧急进入"
+
+    /** 每段寄语最长字数（可选；出现在该段拦截页与关闭门槛） */
+    const val MESSAGE_MAX_CHARS = 120
+
+    /** @deprecated 使用 [MESSAGE_MAX_CHARS]；保留以免旧引用编译失败 */
+    const val COMMITMENT_MAX_CHARS = MESSAGE_MAX_CHARS
+
+    /** @deprecated 寄语改为可选，不再强制最短字数 */
+    const val COMMITMENT_MIN_CHARS = 0
 
     /**
      * 当前是否处于任一**已开启**锁定窗口内。
@@ -92,6 +111,14 @@ object PeriodLockPolicy {
         endCal.set(Calendar.SECOND, 0)
         endCal.set(Calendar.MILLISECOND, 0)
 
+        if (window.isAllDay) {
+            // 全天：本轮至次日 00:00 结束（若次日仍全天命中，由下一次判定续上）
+            endCal.add(Calendar.DAY_OF_YEAR, 1)
+            endCal.set(Calendar.HOUR_OF_DAY, 0)
+            endCal.set(Calendar.MINUTE, 0)
+            return endCal.timeInMillis.coerceAtLeast(nowMillis)
+        }
+
         if (!window.crossesMidnight) {
             // 同日窗口：结束于今日 endMinute
             endCal.set(Calendar.HOUR_OF_DAY, window.endMinute / 60)
@@ -120,6 +147,36 @@ object PeriodLockPolicy {
         return (exemptionUntilMillis(window, nowMillis) - nowMillis).coerceAtLeast(0L)
     }
 
+    /**
+     * 硬挡页标题。
+     * 日程锁有名时用「{名}\n先不进去」；否则全天说「今天」，其余说「这段时间」。
+     */
+    fun doorTitle(window: PeriodWindow, scheduleTitle: String? = null): String {
+        val name = scheduleTitle?.trim().orEmpty()
+        if (name.isNotEmpty()) return "$name\n先不进去"
+        return if (window.isAllDay) "今天\n先不进去" else "这段时间\n先不进去"
+    }
+
+    /** 硬挡页英雄：时间窗本身，用短横线。 */
+    fun doorHero(window: PeriodWindow): String =
+        window.label().replace(" – ", "–").replace(" - ", "–").trim()
+
+    /**
+     * 硬挡页何时再开。
+     * 全天写「明天 0 点打开」；不足一小时写「N 分后打开」；否则写「每天 · 07:00 打开」。
+     */
+    fun doorWhenLine(
+        window: PeriodWindow,
+        nowMillis: Long = System.currentTimeMillis()
+    ): String {
+        if (window.isAllDay) return "明天 0 点打开"
+        val remainMs = exemptionUntilMillis(window, nowMillis) - nowMillis
+        if (remainMs <= 0L) return "即将打开"
+        val totalMin = ((remainMs + 59_999L) / 60_000L).toInt().coerceAtLeast(1)
+        if (totalMin < 60) return "$totalMin 分后打开"
+        return "${window.daysLabel()} · ${PeriodWindow.formatHm(window.endMinute)} 打开"
+    }
+
     /** 如「约 3 小时后解锁」「约 25 分钟后解锁」 */
     fun remainingUnlockLabel(
         window: PeriodWindow?,
@@ -138,12 +195,100 @@ object PeriodLockPolicy {
         }
     }
 
+    /**
+     * [candidate] 与已有时段是否冲突（重复或重叠）。
+     * 编辑时传入 [excludeId] 以忽略自身。
+     */
+    fun conflictWith(
+        candidate: PeriodWindow,
+        existing: List<PeriodWindow>,
+        excludeId: String? = null
+    ): PeriodWindowConflict? {
+        val (cs, ce) = PeriodWindow.normalizeRange(candidate.startMinute, candidate.endMinute)
+        val cDays = candidate.daysMask and PeriodDays.EVERY_DAY
+        for (w in existing) {
+            if (w.id == candidate.id || w.id == excludeId) continue
+            val (ws, we) = PeriodWindow.normalizeRange(w.startMinute, w.endMinute)
+            val wDays = w.daysMask and PeriodDays.EVERY_DAY
+            if (cs == ws && ce == we && cDays == wDays) return PeriodWindowConflict.Duplicate
+            if (rangesOverlap(candidate, w)) return PeriodWindowConflict.Overlap
+        }
+        return null
+    }
+
+    /** 列表内部是否已有互相重叠（不含完全相同）的时段 */
+    fun hasInternalOverlap(windows: List<PeriodWindow>): Boolean {
+        for (i in windows.indices) {
+            for (j in (i + 1) until windows.size) {
+                val a = windows[i]
+                val b = windows[j]
+                if (sameRange(a, b)) continue
+                if (rangesOverlap(a, b)) return true
+            }
+        }
+        return false
+    }
+
+    fun sameRange(a: PeriodWindow, b: PeriodWindow): Boolean {
+        val (as_, ae) = PeriodWindow.normalizeRange(a.startMinute, a.endMinute)
+        val (bs, be) = PeriodWindow.normalizeRange(b.startMinute, b.endMinute)
+        return as_ == bs &&
+            ae == be &&
+            (a.daysMask and PeriodDays.EVERY_DAY) == (b.daysMask and PeriodDays.EVERY_DAY)
+    }
+
+    /**
+     * 两段在任一星期几上的分钟区间是否相交（半开区间）。
+     * 相邻不冲突：如 09:00–12:00 与 12:00–18:00。
+     */
+    fun rangesOverlap(a: PeriodWindow, b: PeriodWindow): Boolean {
+        val sa = coveredSpans(a)
+        val sb = coveredSpans(b)
+        for (x in sa) {
+            for (y in sb) {
+                if (x.day != y.day) continue
+                if (x.startMinute < y.endMinute && y.startMinute < x.endMinute) return true
+            }
+        }
+        return false
+    }
+
+    private data class DaySpan(val day: Int, val startMinute: Int, val endMinute: Int)
+
+    /**
+     * 把窗口展开成一周内各天的半开分钟区间。周一 = 0。
+     * 跨午夜：今晚落在 [daysMask] 当天，清晨落在次日。
+     */
+    private fun coveredSpans(window: PeriodWindow): List<DaySpan> {
+        val mask = window.daysMask and PeriodDays.EVERY_DAY
+        val days = (0..6).filter { mask and (1 shl it) != 0 }
+        if (days.isEmpty()) return emptyList()
+        val (start, end) = PeriodWindow.normalizeRange(window.startMinute, window.endMinute)
+        val normalized = window.copy(startMinute = start, endMinute = end)
+        if (normalized.isAllDay) {
+            return days.map { DaySpan(it, 0, MINUTES_PER_DAY) }
+        }
+        if (!normalized.crossesMidnight) {
+            if (start >= end) return emptyList()
+            return days.map { DaySpan(it, start, end) }
+        }
+        return days.flatMap { d ->
+            buildList {
+                if (start < MINUTES_PER_DAY) add(DaySpan(d, start, MINUTES_PER_DAY))
+                if (end > 0) add(DaySpan((d + 1) % 7, 0, end))
+            }
+        }
+    }
+
     private fun isInWindow(
         window: PeriodWindow,
         minuteOfDay: Int,
         todayBit: Int,
         yesterdayBit: Int
     ): Boolean {
+        if (window.isAllDay) {
+            return window.daysMask and todayBit != 0
+        }
         if (!window.crossesMidnight) {
             if (window.daysMask and todayBit == 0) return false
             return minuteOfDay >= window.startMinute && minuteOfDay < window.endMinute
